@@ -1,6 +1,34 @@
 (function() {
     'use strict';
 
+    // --- INÍCIO DO SISTEMA DE ATUALIZAÇÃO ---
+    const VERSAO_ATUAL = "2.9"; // ATENÇÃO: Mude isso aqui e no version.json sempre que lançar atualização
+    const URL_VERSAO = "https://raw.githubusercontent.com/tonn3r/PlatTransp/main/version.json";
+
+    async function verificarAtualizacao() {
+        try {
+            // O "?t=" no final evita que o navegador use cache antigo
+            const response = await fetch(URL_VERSAO + "?t=" + new Date().getTime());
+            const dados = await response.json();
+            
+            if (dados.version !== VERSAO_ATUAL) {
+                if (!document.getElementById('alerta-atualizacao-addon')) {
+                    const alerta = document.createElement('div');
+                    alerta.id = 'alerta-atualizacao-addon';
+                    alerta.style = "position:fixed; top:0; left:0; width:100%; background:#e74c3c; color:white; text-align:center; padding:12px; z-index:999999; font-family:verdana; font-size:13px; font-weight:bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3);";
+                    alerta.innerHTML = `⚠️ NOVA VERSÃO DO ADDON DISPONÍVEL (${dados.version})! Sua versão atual é a ${VERSAO_ATUAL}. <br><a href="${dados.url}" style="color:#ffeb3b; text-decoration:underline; font-size:15px; display:inline-block; margin-top:5px;">📥 Clique aqui para baixar o ZIP atualizado</a> <span style="font-size:11px; font-weight:normal; margin-left:10px;">(Após baixar, extraia, substitua os arquivos antigos e clique em 'Atualizar' nas Extensões do Chrome)</span>`;
+                    document.body.prepend(alerta);
+                }
+            }
+        } catch (e) {
+            console.log("Erro ao verificar atualização do Addon PlatTransp:", e);
+        }
+    }
+    
+    // Chama a verificação logo que entra na página
+    verificarAtualizacao();
+    // --- FIM DO SISTEMA DE ATUALIZAÇÃO ---
+    
     const urlAtual = window.location.href;
 
     // ========================================================================
