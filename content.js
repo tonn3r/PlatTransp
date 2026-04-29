@@ -2,7 +2,7 @@
     'use strict';
 
     // --- INÍCIO DO SISTEMA DE ATUALIZAÇÃO ---
-    const VERSAO_ATUAL = "2.9"; // ATENÇÃO: Mude isso aqui e no version.json sempre que lançar atualização
+    const VERSAO_ATUAL = "3.0"; // ATENÇÃO: Mude isso aqui, no manifest e no version.json sempre que lançar atualização
     const URL_VERSAO = "https://raw.githubusercontent.com/tonn3r/PlatTransp/main/version.json";
 
     async function verificarAtualizacao() {
@@ -64,6 +64,7 @@
         iniciarPaginaPesquisa();
     } else if (urlAtual.includes('ficha_transporte')) {
         iniciarPaginaFicha();
+	adicionarBotaoAssistente();
     }
 
     // ========================================================================
@@ -972,4 +973,378 @@
 
     } // Fim de iniciarPaginaPesquisa()
 
+// ========================================================================
+    // NOVO RECURSO: ASSISTENTE DE ANÁLISE (WIZARD)
+    // ========================================================================
+    function adicionarBotaoAssistente() {
+        if (document.getElementById('btn-assistente-transporte')) return;
+        
+        // 1. VERIFICA O STATUS GERAL ANTES DE CRIAR O BOTÃO
+        const statusDiv = document.getElementById('status_atendimento') || document.getElementById('mostra_status_pedido');
+        if (!statusDiv) return;
+        
+        const textoStatus = statusDiv.innerText.toUpperCase();
+        // Se NÃO contiver "EM ANÁLISE", o botão não deve aparecer
+        if (!textoStatus.includes('EM ANÁLISE') && !textoStatus.includes('EM ANALISE')) {
+            return;
+        }
+        
+        const btn = document.createElement('button');
+        btn.id = 'btn-assistente-transporte';
+        btn.innerHTML = 'Assistente de Análise';
+        btn.style = "position:fixed; bottom:20px; right:20px; background:#8e44ad; color:white; border:none; border-radius:50px; padding:15px 20px; font-size:14px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.3); z-index:99999;";
+        
+        btn.onmouseover = () => btn.style.background = "#9b59b6";
+        btn.onmouseout = () => btn.style.background = "#8e44ad";
+        
+        btn.onclick = (e) => {
+            e.preventDefault();
+            const modal = document.getElementById('modal-assistente-analise');
+            if (modal) {
+                // Se já existe, apenas alterna a visibilidade. Isso PRESENVA O ESTADO e a etapa atual.
+                modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
+            } else {
+                // Se não existe, inicia a análise
+                abrirModalAssistente();
+            }
+        };
+        
+        document.body.appendChild(btn);
+    }
+
+    function abrirModalAssistente() {
+        // 1. TENTA EXTRAIR DADOS DA TELA
+        let isMudanca = false;
+        const statusDiv = document.getElementById('status_atendimento') || document.getElementById('mostra_status_pedido');
+        
+        if (statusDiv) {
+            const textoStatus = statusDiv.innerText.toUpperCase();
+            if (textoStatus.includes('MUDANÇA') || textoStatus.includes('MUDANCA')) {
+                isMudanca = true;
+            }
+        }
+
+        // --- CAPTURA DE ENDEREÇO E RESPONSÁVEIS (Para caso de mudança) ---
+        const endRua = document.getElementById('endereco') ? document.getElementById('endereco').value : '';
+        const endNum = document.getElementById('endereco_numero_residencia') ? document.getElementById('endereco_numero_residencia').value : '';
+        const endBairro = document.getElementById('endereco_bairro') ? document.getElementById('endereco_bairro').value : '';
+        const enderecoCompleto = [endRua, endNum, endBairro].filter(Boolean).join(", "); 
+
+        const inputMae = document.querySelector('input[name="nome_mae"]');
+        const inputPai = document.querySelector('input[name="nome_pai"]');
+        const nomeMae = inputMae ? inputMae.value.trim() : '';
+        const nomePai = inputPai ? inputPai.value.trim() : '';
+        let nomesResponsaveis = [nomeMae, nomePai].filter(Boolean).join(" e ");
+        if (!nomesResponsaveis) nomesResponsaveis = "NÃO INFORMADO";
+
+        // Função auxiliar ajustada para ignorar a palavra "NENHUMA"
+        function campoPreenchido(id) {
+            const el = document.getElementById(id);
+            if (!el) return false;
+            const val = (el.value || el.innerText || "").trim().toUpperCase();
+            return val !== "" && val !== "NÃO" && val !== "NAO" && val !== "0" && val !== "SELECIONE" && val !== "NENHUMA";
+        }
+
+        // 2. DETECTA DEFICIÊNCIAS AUTOMATICAMENTE PELOS CAMPOS
+        let sugestaoDeficienciaHtml = null;
+        
+        const elCadeirante = document.getElementById('aluno_cadeirante');
+        const isCadeirante = elCadeirante && (elCadeirante.value || elCadeirante.innerText || "").toUpperCase().includes("SIM");
+
+        if (campoPreenchido('tipo_deficiencia') || campoPreenchido('detalhamento_deficiencia') || isCadeirante) {
+            sugestaoDeficienciaHtml = 'ALUNO';
+        } else if (campoPreenchido('descricao_deficiencia_pais_irmao') || campoPreenchido('descricao_deficiencia_pais_irmao_outro')) {
+            sugestaoDeficienciaHtml = 'FAMILIA';
+        }
+
+        // 3. CRIA A INTERFACE DO MODAL
+        const modal = document.createElement('div');
+        modal.id = 'modal-assistente-analise';
+        modal.style = "position:fixed; bottom:80px; right:20px; width:450px; max-width:90%; background:#fff; border-radius:8px; box-shadow:0 5px 25px rgba(0,0,0,0.4); border:1px solid #bdc3c7; z-index:100000; display:flex; flex-direction:column; font-family:verdana; overflow:hidden;";
+        
+        modal.innerHTML = `
+            <div style="background:#2c3e50; color:#fff; padding:15px; font-size:16px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+                <span>Assistente Passo a Passo</span>
+                <button id="btn-fechar-assistente" style="background:transparent; border:none; color:#fff; font-size:24px; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            <div id="conteudo-assistente" style="padding:20px; font-size:14px; color:#333; min-height:150px; max-height:70vh; overflow-y:auto;">
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('btn-fechar-assistente').onclick = () => {
+            modal.style.display = 'none';
+        };
+
+        // 4. ESTADO E LÓGICA DO ASSISTENTE
+        let estado = {
+            mudancaOk: false,
+            escolaProxima: null,
+            encaminhamentoOk: null,
+            distancia: null,
+            deficiencia: null, 
+            dificuldadeAcesso: null
+        };
+
+        function renderizarPasso() {
+            const conteudo = document.getElementById('conteudo-assistente');
+
+            // --- PASSO 1: Mudança de Endereço ---
+            if (isMudanca && !estado.mudancaOk) {
+                conteudo.innerHTML = `
+                    <h3 style="color:#e67e22; margin-top:0;">⚠️ Mudança de Endereço</h3>
+                    <p>Verifique se o comprovante de endereço está OK, e se ele contém os seguintes dados compatíveis com a ficha:</p>
+                    <ul style="background:#f9f9f9; padding:10px 10px 10px 25px; border-radius:4px; border:1px solid #eee;">
+                        <li style="margin-bottom:5px;"><b>Endereço:</b> ${enderecoCompleto}</li>
+                        <li><b>Responsável(eis):</b> ${nomesResponsaveis}</li>
+                    </ul>
+                    <div style="margin-top:20px; display:flex; gap:10px;">
+                        <button id="btn-mudanca-sim" style="flex:1; padding:10px; background:#27ae60; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Sim, comprovante OK</button>
+                        <button id="btn-mudanca-nao" style="flex:1; padding:10px; background:#c0392b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Não, inválido/ausente</button>
+                    </div>
+                `;
+                document.getElementById('btn-mudanca-sim').onclick = () => { estado.mudancaOk = true; renderizarPasso(); };
+                document.getElementById('btn-mudanca-nao').onclick = () => finalizarAssistente("❌ INDEFERIR", "O comprovante de endereço é inválido ou está ausente no caso de mudança.");
+                return;
+            }
+
+            // --- PASSO 2: Escola Mais Próxima ---
+            if (estado.escolaProxima === null) {
+                conteudo.innerHTML = `
+                    <h3 style="color:#2980b9; margin-top:0;">🏫 Verificação de Escola</h3>
+                    <p>O aluno está matriculado na <b>escola mais próxima</b> da sua residência (que possua a etapa de ensino dele)?</p>
+                    <p style="font-size:12px; color:#555;"><i>(Nota: Se a mais próxima for Integral, o atendimento na escola Parcial mais próxima é válido).</i></p>
+                    <div style="margin-top:20px; display:flex; gap:10px;">
+                        <button id="btn-esc-sim" style="flex:1; padding:10px; background:#27ae60; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Sim, na mais próxima</button>
+                        <button id="btn-esc-nao" style="flex:1; padding:10px; background:#c0392b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Não está</button>
+                    </div>
+                `;
+                document.getElementById('btn-esc-sim').onclick = () => { estado.escolaProxima = true; renderizarPasso(); };
+                document.getElementById('btn-esc-nao').onclick = () => { estado.escolaProxima = false; renderizarPasso(); };
+                return;
+            }
+
+            // --- PASSO 2.1: Encaminhamento ---
+            if (estado.escolaProxima === false && estado.encaminhamentoOk === null) {
+                conteudo.innerHTML = `
+                    <h3 style="color:#8e44ad; margin-top:0;">🔄 Encaminhamento</h3>
+                    <p>Verifique no SOMARH ou nas planilhas da Central de Matrículas se ele possui um <b>encaminhamento válido</b> por falta de vaga.</p>
+                    <p style="font-size:12px; color:#555;"><i>(A escola matriculada e o endereço devem bater com o encaminhamento).</i></p>
+                    <div style="margin-top:20px; display:flex; gap:10px;">
+                        <button id="btn-enc-sim" style="flex:1; padding:10px; background:#27ae60; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Sim, possui encaminhamento</button>
+                        <button id="btn-enc-nao" style="flex:1; padding:10px; background:#c0392b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Não possui</button>
+                    </div>
+                `;
+                document.getElementById('btn-enc-sim').onclick = () => { estado.encaminhamentoOk = true; renderizarPasso(); };
+                document.getElementById('btn-enc-nao').onclick = () => finalizarAssistente("❌ INDEFERIR", "O aluno não está na escola mais próxima e NÃO possui encaminhamento justificado por falta de vaga.");
+                return;
+            }
+
+            // --- PASSO 3: Distância ---
+            if (estado.distancia === null) {
+                const campoDistExistente = document.querySelector('input[name="distancia_aferida"], #distancia_aferida');
+                const valorSugerido = campoDistExistente && campoDistExistente.value ? campoDistExistente.value : "";
+
+                conteudo.innerHTML = `
+                    <h3 style="color:#f39c12; margin-top:0;">📏 Aferição de Distância</h3>
+                    <p>Qual é a distância aferida entre a residência e a escola (em metros)?</p>
+                    <div style="margin-top:20px; display:flex; gap:10px;">
+                        <input type="number" id="input-assistente-dist" value="${valorSugerido}" placeholder="Ex: 1650" style="flex:2; padding:10px; border:1px solid #ccc; border-radius:4px; font-size:14px;">
+                        <button id="btn-dist-ok" style="flex:1; padding:10px; background:#2980b9; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Avançar</button>
+                    </div>
+                `;
+                
+                const inputDist = document.getElementById('input-assistente-dist');
+                setTimeout(() => { 
+                    inputDist.focus(); 
+                    if (valorSugerido) inputDist.select();
+                }, 100);
+
+                inputDist.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        document.getElementById('btn-dist-ok').click();
+                    }
+                });
+
+                document.getElementById('btn-dist-ok').onclick = () => {
+                    const dist = parseInt(inputDist.value);
+                    if (isNaN(dist) || dist < 0) return alert("Por favor, insira uma distância válida em metros.");
+                    estado.distancia = dist;
+                    
+                    if (estado.distancia >= 1500) {
+                        finalizarAssistente("✅ DEFERIR", `A distância atinge o requisito mínimo (${estado.distancia}m) e os critérios da escola ou encaminhamento estão corretos.`);
+                    } else {
+                        renderizarPasso();
+                    }
+                };
+                return;
+            }
+
+            // --- PASSO 4: Exceção -> Deficiência ---
+            if (estado.distancia < 1500 && estado.deficiencia === null) {
+                let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
+                let estiloAluno = "background:#27ae60;";
+                let estiloFamilia = "background:#2980b9;";
+
+                if (sugestaoDeficienciaHtml === 'ALUNO') {
+                    textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência da criança. Verifique se o laudo está ok:</p>";
+                    estiloAluno = "background:#27ae60; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
+                } else if (sugestaoDeficienciaHtml === 'FAMILIA') {
+                    textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência na família. Verifique se o laudo está ok:</p>";
+                    estiloFamilia = "background:#2980b9; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
+                }
+
+                conteudo.innerHTML = `
+                    <h3 style="color:#d35400; margin-top:0;">⚖️ Exceção: Distância Abaixo da Regra (${estado.distancia}m)</h3>
+                    <p>A distância aferida é <b>inferior a 1500m</b>.</p>
+                    ${textoPergunta}
+                    <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
+                        <button id="btn-def-aluno" style="padding:10px; ${estiloAluno} color:#fff; border-radius:4px; cursor:pointer; font-weight:bold; transition:all 0.2s;">A criança tem deficiência</button>
+                        <button id="btn-def-familia" style="padding:10px; ${estiloFamilia} color:#fff; border-radius:4px; cursor:pointer; font-weight:bold; transition:all 0.2s;">Pai/Mãe tem deficiência</button>
+                        <button id="btn-def-nao" style="padding:10px; background:#c0392b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Não possui deficiência</button>
+                    </div>
+                `;
+                
+                document.getElementById('btn-def-aluno').onclick = () => { 
+                    estado.deficiencia = 'ALUNO'; 
+                    finalizarAssistente("✅ DEFERIR", `Deferido por motivo de deficiência do aluno.`); 
+                };
+                document.getElementById('btn-def-familia').onclick = () => { 
+                    estado.deficiencia = 'FAMILIA'; 
+                    finalizarAssistente("✅ DEFERIR", `Deferido por motivo de deficiência do responsável.`); 
+                };
+                document.getElementById('btn-def-nao').onclick = () => { 
+                    estado.deficiencia = false; 
+                    renderizarPasso(); 
+                };
+                return;
+            }
+
+            // --- PASSO 5: Exceção -> Dificuldade de Acesso ---
+            if (estado.distancia < 1500 && estado.deficiencia === false && estado.dificuldadeAcesso === null) {
+                conteudo.innerHTML = `
+                    <h3 style="color:#d35400; margin-top:0;">🚧 Dificuldade de Acesso</h3>
+                    <p>O trajeto da residência até a escola possui <b>dificuldade de acesso excepcional</b> (barreiras físicas severas, vias intransitáveis) mapeadas?</p>
+                    <div style="margin-top:20px; display:flex; gap:10px;">
+                        <button id="btn-dif-sim" style="flex:1; padding:10px; background:#27ae60; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Sim, há dificuldade</button>
+                        <button id="btn-dif-nao" style="flex:1; padding:10px; background:#c0392b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Não</button>
+                    </div>
+                `;
+                
+                document.getElementById('btn-dif-sim').onclick = () => { 
+                    estado.dificuldadeAcesso = true; 
+                    finalizarAssistente("✅ DEFERIR", `Deferido devido a Dificuldade de Acesso comprovada na rota.`); 
+                };
+                document.getElementById('btn-dif-nao').onclick = () => { 
+                    estado.dificuldadeAcesso = false; 
+                    finalizarAssistente("❌ INDEFERIR", `A distância não atinge 1500m e o caso não se enquadra nas exceções.`); 
+                };
+                return;
+            }
+        }
+
+        // --- TELA FINAL DE RESULTADO (LÓGICA REFINADA) ---
+        function finalizarAssistente(titulo, mensagem) {
+            const conteudo = document.getElementById('conteudo-assistente');
+            
+            const tipoAcao = titulo.includes('INDEFERIR') ? 'INDEFERIR' : 'DEFERIR';
+            const corTitulo = tipoAcao === 'DEFERIR' ? '#27ae60' : '#c0392b';
+
+            // 1. Determina o Motivo a ser selecionado na combo
+            let termoBusca = "";
+            let textoDetalhes = "";
+
+            if (tipoAcao === 'DEFERIR') {
+                if (estado.distancia >= 1500) {
+                    termoBusca = "DISTÂNCIA MAIOR QUE 1500 METROS";
+                    if (estado.encaminhamentoOk === true) {
+                        textoDetalhes = "encaminhado";
+                    }
+                } 
+                else if (estado.deficiencia === 'ALUNO') termoBusca = "ALUNO DEFICIENTE";
+                else if (estado.deficiencia === 'FAMILIA') termoBusca = "PAI/MÃE DEFICIENTE";
+                else if (estado.dificuldadeAcesso === true) termoBusca = "DIFICULDADE DE ACESSO";
+                else termoBusca = "ENCAMINHADO PELA SEÇÃO DE MATRICULAS";
+            } else {
+                if (isMudanca && estado.mudancaOk === false) {
+                    termoBusca = ""; // Deixa em branco para o usuário selecionar manualmente ou manter o padrão
+                } else if (estado.distancia !== null && estado.distancia < 1500) {
+                    termoBusca = "DISTÂNCIA MENOR QUE 1500 METROS";
+                } else {
+                    termoBusca = "ESCOLA POR OPÇÃO";
+                }
+            }
+
+            // 2. Monta a exibição (Mostra a mensagem exata do erro/motivo e a opção do sistema)
+            conteudo.innerHTML = `
+                <div style="text-align:center; padding:10px;">
+                    <h2 style="color:${corTitulo}; margin-top:0; font-size:24px;">${titulo}</h2>
+                    <p style="font-size:15px; background:#f8f9fa; padding:15px; border-radius:5px; border-left:4px solid ${corTitulo}; text-align:left; margin-bottom:0;">
+                        ${mensagem}
+                        ${termoBusca ? `<br><br><b>Opção no Sistema:</b> ${termoBusca}` : ''}
+                        ${textoDetalhes ? '<br><span style="color:#e67e22; font-size:12px; display:inline-block; margin-top:5px;">⚠️ Obs: Será preenchido como Encaminhado nos detalhes</span>' : ''}
+                    </p>
+                </div>
+                <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px; justify-content:center;">
+                    <button id="btn-aplicar-resultado" style="padding:12px; background:${corTitulo}; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold; width:100%; box-shadow:0 2px 5px rgba(0,0,0,0.2);">Finalizar</button>
+                </div>
+            `;
+
+            document.getElementById('btn-aplicar-resultado').onclick = () => {
+                // ETAPA 1: DISTÂNCIA
+                try {
+                    const camposDist = document.querySelectorAll('input[name="distancia_aferida"], #distancia_aferida');
+                    if (estado.distancia !== null && estado.distancia !== undefined) {
+                        camposDist.forEach(campo => {
+                            campo.value = estado.distancia;
+                            campo.setAttribute('value', estado.distancia);
+                        });
+                    }
+                } catch (erro) {
+                    console.error("[ERRO NA DISTÂNCIA]", erro);
+                }
+
+                // ETAPA 2: DETALHES
+                try {
+                    const camposDet = document.querySelectorAll('textarea[name="status_detalhes"], #status_atual_detalhes, textarea[name="motivo_detalhes"]');
+                    camposDet.forEach(campo => {
+                        campo.value = textoDetalhes;
+                        campo.innerHTML = textoDetalhes; 
+                    });
+                } catch (erro) {
+                    console.error("[ERRO NOS DETALHES]", erro);
+                }
+
+                // ETAPA 3: SELECTS
+                try {
+                    if (termoBusca !== "") {
+                        const selectsMotivo = document.querySelectorAll('select[name="status_motivo"], #status_motivo');
+                        
+                        selectsMotivo.forEach((select) => {
+                            for (let i = 0; i < select.options.length; i++) {
+                                const opt = select.options[i];
+                                const txtOpcao = opt.text.toUpperCase();
+                                const valOpcao = opt.value.toUpperCase();
+                                
+                                if (txtOpcao.includes(termoBusca) || valOpcao.includes(termoBusca)) {
+                                    select.selectedIndex = i;
+                                    try { select.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
+                                    break; 
+                                }
+                            }
+                        });
+                    }
+                } catch (erro) {
+                    console.error("[ERRO NO MOTIVO]", erro);
+                }
+
+                // FECHA O ASSISTENTE
+                const modalAssis = document.getElementById('modal-assistente-analise');
+                if (modalAssis) modalAssis.remove();
+            };
+        }
+
+        renderizarPasso(); // Inicia o Wizard
+    }
 })();
