@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Plataforma SE2 - Otimizador",
-  "version": "2.9",
-  "description": "Autocompletar, Histórico de cadastros acessados, mudança no comportamento dos filtros e paginação, responsividade (evita que os filtros nome e endereço fiquem fora do espaço da tela)",
+  "version": "3.0",
+  "description": "Melhorias de qualidade de vida e um guia para ajudar nas análises",
   "permissions": ["storage"],
   "content_scripts": [
     {
