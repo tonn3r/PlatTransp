@@ -951,9 +951,9 @@ window.abrirModalAssistente = function() {
             ruaLimpa = ruaLimpa.replace(prefixos, '').trim(); 
             
             const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-            // Verifica se a baseUrl já termina ou contém o caminho do módulo
+            // Verifica se a basePath já termina ou contém o caminho do módulo
             const moduloPath = "modulos/transporte_escolar/";
-            const prefixo = baseUrl.includes(moduloPath) ? "" : moduloPath;
+            const prefixo = basePath.includes(moduloPath) ? "" : moduloPath;
             const urlPesquisaRua = `${basePath}${prefixo}solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ruaLimpa)}`;
 
             conteudo.innerHTML = `
