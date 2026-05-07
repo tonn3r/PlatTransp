@@ -15,9 +15,70 @@ window.normalizarTexto = function(texto) {
     return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/º|ª/g, "O").trim();
 };
 
+window.aplicarLinkPesquisaEndereco = function() {
+    const docAlvo = document;
+    let elEndereco = null;
+    let textoOriginal = "";
+
+    const legends = Array.from(docAlvo.querySelectorAll('legend'));
+    const legendEnderecos = legends.find(el => el.innerText.trim() === 'Endereço');
+    if (legendEnderecos) {
+        const container = legendEnderecos.closest('.set_inner');
+        if (container) {
+            elEndereco = container.querySelector('span.texto_dados b u');
+            if (elEndereco) textoOriginal = elEndereco.innerText;
+        }
+    }
+
+    if (!textoOriginal) {
+        const elInput = docAlvo.getElementById('endereco');
+        if (elInput) {
+            textoOriginal = elInput.value || elInput.innerText;
+            elEndereco = elInput; 
+        }
+    }
+
+    if (!textoOriginal) return;
+
+    let ruaLimpa = textoOriginal.split(',')[0].trim();
+    const prefixos = /^(RUA|R\.|AVENIDA|AV\.|AV|TRAVESSA|TRV\.|VIELA|PRA[ÇC]A|ESTRADA|ALAMEDA|RODOVIA|LADEIRA|BECO|MARGINAL)\s+/i;
+    ruaLimpa = ruaLimpa.replace(prefixos, '').trim(); 
+    const particulas = /\b(DO|DA|DOS|DAS)\b/gi;
+    ruaLimpa = ruaLimpa.replace(particulas, '').replace(/\s+/g, ' ').trim();
+
+    const baseUrl = window.location.href.split('ficha_transporte')[0];
+
+    // Verifica se a baseUrl já termina ou contém o caminho do módulo
+    const moduloPath = "modulos/transporte_escolar/";
+    const prefixo = baseUrl.includes(moduloPath) ? "" : moduloPath;
+
+    const urlPesquisa = `${baseUrl}${prefixo}solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ruaLimpa)}`;
+
+    if (elEndereco.tagName === 'U') {
+        elEndereco.style.cursor = 'pointer';
+        elEndereco.style.color = '#2980b9'; 
+        elEndereco.title = `Pesquisar outros alunos na rua: ${ruaLimpa}`;
+        elEndereco.onclick = function() { window.open(urlPesquisa, '_blank'); };
+    } else {
+        if (!docAlvo.getElementById('link-pesquisa-rua')) {
+            const btnPesquisa = docAlvo.createElement('a');
+            btnPesquisa.id = 'link-pesquisa-rua';
+            btnPesquisa.href = urlPesquisa;
+            btnPesquisa.target = '_blank';
+            btnPesquisa.innerHTML = ' 🔍 Pesquisar Rua';
+            btnPesquisa.style.cssText = 'font-size: 11px; margin-left: 10px; color: #2980b9; text-decoration: none; font-weight: bold; cursor: pointer;';
+            btnPesquisa.title = `Pesquisar outros alunos na rua: ${ruaLimpa}`;
+            elEndereco.parentNode.insertBefore(btnPesquisa, elEndereco.nextSibling);
+        }
+    }
+};
+
 window.iniciarPaginaFicha = function() {
     if (typeof window.realizarCalculosIniciaisDistancia === 'function') {
         window.realizarCalculosIniciaisDistancia();
+    }
+    if (typeof window.aplicarLinkPesquisaEndereco === 'function') {
+        window.aplicarLinkPesquisaEndereco();
     }
 
     const storageHelper = {
@@ -83,10 +144,42 @@ window.iniciarPaginaFicha = function() {
 
 window.realizarCalculosIniciaisDistancia = async function() {
     const docAlvo = document;
-    const endRua = docAlvo.getElementById('endereco') ? (docAlvo.getElementById('endereco').value || docAlvo.getElementById('endereco').innerText) : '';
-    const endNum = docAlvo.getElementById('endereco_numero_residencia') ? (docAlvo.getElementById('endereco_numero_residencia').value || docAlvo.getElementById('endereco_numero_residencia').innerText) : '';
-    const endBairro = docAlvo.getElementById('endereco_bairro') ? (docAlvo.getElementById('endereco_bairro').value || docAlvo.getElementById('endereco_bairro').innerText) : '';
-    const enderecoCompleto = [endRua, endNum, endBairro].filter(Boolean).join(" ");
+    let enderecoCompleto = "";
+
+    const inputRua = docAlvo.querySelector('input#endereco') || docAlvo.querySelector('input[name="endereco"]');
+    const inputNum = docAlvo.querySelector('input#endereco_numero_residencia') || docAlvo.querySelector('input[name="endereco_numero_residencia"]');
+    const inputBairro = docAlvo.querySelector('input#endereco_bairro') || docAlvo.querySelector('input[name="endereco_bairro"]');
+
+    let endRua = inputRua ? (inputRua.value || "").trim() : '';
+    let endNum = inputNum ? (inputNum.value || "").trim() : '';
+    let endBairro = inputBairro ? (inputBairro.value || "").trim() : '';
+
+    if (!endRua) {
+        const elRua = docAlvo.getElementById('endereco');
+        endRua = elRua ? (elRua.value || elRua.innerText || "").trim() : '';
+    }
+    if (!endNum) {
+        const elNum = docAlvo.getElementById('endereco_numero_residencia');
+        endNum = elNum ? (elNum.value || elNum.innerText || "").trim() : '';
+    }
+    if (!endBairro) {
+        const elBairro = docAlvo.getElementById('endereco_bairro');
+        endBairro = elBairro ? (elBairro.value || elBairro.innerText || "").trim() : '';
+    }
+
+    enderecoCompleto = [endRua, endNum, endBairro].filter(Boolean).join(", ");
+
+    if (!enderecoCompleto || enderecoCompleto.length < 5) {
+        const legends = Array.from(docAlvo.querySelectorAll('legend'));
+        const legendEnd = legends.find(el => el.innerText.trim() === 'Endereço' || el.innerText.trim() === 'Residência');
+        if (legendEnd) {
+            const container = legendEnd.closest('.set_inner') || legendEnd.parentElement;
+            if (container) {
+                const spanDados = container.querySelector('span.texto_dados');
+                if (spanDados) enderecoCompleto = spanDados.innerText.replace(/\s+/g, ' ').trim();
+            }
+        }
+    }
 
     let idSolInput = docAlvo.querySelector('input[name="id_solicitacao"]') || docAlvo.querySelector('input[name="id"]');
     let idFicha = idSolInput ? idSolInput.value : '';
@@ -98,22 +191,39 @@ window.realizarCalculosIniciaisDistancia = async function() {
     if (!dadosGeo || !dadosGeo.geoEscola_Latit) return;
 
     let coordEndereco = await window.obterCoordenadasPorEndereco(enderecoCompleto);
+
+    console.log("=== ANÁLISE DE COORDENADAS ===");
+    console.log("1. Endereço Extraído:", enderecoCompleto);
+    
+    let distDiferentes = false;
+    let diferencaGeografica = 0;
+    let distEndFoot = null;
+
+    if (coordEndereco && coordEndereco.lat) {
+        console.log(`2. Nominatim Sucesso: LAT ${coordEndereco.lat} / LON ${coordEndereco.lon}`);
+        diferencaGeografica = window.calcularDistanciaHaversine(
+            dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit,
+            coordEndereco.lat, coordEndereco.lon
+        );
+        distDiferentes = (diferencaGeografica > 200);
+    } else {
+        console.log("2. Nominatim FALHOU: Fallback para a string do endereço ativado.");
+        // PLANO B: Se não achar, a variável guardará apenas a STRING do endereço.
+        coordEndereco = enderecoCompleto; 
+        distDiferentes = false; 
+    }
     
     let distCoordFoot = await window.calcularTrajetoOSRM(dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit, dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'foot');
-    let distEndFoot = null;
     
-    if (coordEndereco && coordEndereco.lat) {
+    // OSRM não suporta textos. Usa o OSRM do Endereço apenas se a coordenada do endereço existir.
+    if (typeof coordEndereco === 'string') {
+        distEndFoot = distCoordFoot; 
+    } else if (distDiferentes) {
         distEndFoot = await window.calcularTrajetoOSRM(coordEndereco.lat, coordEndereco.lon, dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'foot');
     } else {
-        distEndFoot = distCoordFoot; 
-        coordEndereco = { lat: dadosGeo.geoEndereco_Latit, lon: dadosGeo.geoEndereco_Longit };
+        distEndFoot = distCoordFoot;
     }
 
-    const arredonda100 = (val) => Math.round((val || 0) / 100) * 100;
-    let dif = Math.abs(arredonda100(distCoordFoot) - arredonda100(distEndFoot));
-    let distDiferentes = (dif > 200);
-
-    // Salva na memória do Iframe e da Janela Pai simultaneamente
     window.DistDiferentesEntreMapas = distDiferentes;
     try { window.top.DistDiferentesEntreMapas = distDiferentes; } catch(e){}
 
@@ -124,7 +234,12 @@ window.realizarCalculosIniciaisDistancia = async function() {
 
     if (distCoordFoot > 10000 || distEndFoot > 10000) {
         let distCoordCar = distCoordFoot > 10000 ? await window.calcularTrajetoOSRM(dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit, dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'driving') : distCoordFoot;
-        let distEndCar = distEndFoot > 10000 ? await window.calcularTrajetoOSRM(coordEndereco.lat, coordEndereco.lon, dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'driving') : distEndFoot;
+        let distEndCar = distEndFoot;
+        
+        if (distEndFoot > 10000) {
+            if (typeof coordEndereco === 'string') distEndCar = distCoordCar;
+            else distEndCar = await window.calcularTrajetoOSRM(coordEndereco.lat, coordEndereco.lon, dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'driving');
+        }
         
         if ((distCoordFoot > 10000 && distCoordCar < 5000) || (distEndFoot > 10000 && distEndCar < 5000)) {
             usarCarro = true;
@@ -136,13 +251,12 @@ window.realizarCalculosIniciaisDistancia = async function() {
 
     let objRota = {
         coordAlunoGPS: { lat: dadosGeo.geoEndereco_Latit, lon: dadosGeo.geoEndereco_Longit },
-        coordAlunoEnd: coordEndereco,
+        coordAlunoEnd: coordEndereco, // <- Carregando a {lat, lon} ou a String
         distanciaCoord: distCoordFinal,
         distanciaEnd: distEndFinal,
         perfilOSRM: perfilFinal
     };
 
-    // Salva na memória do Iframe e da Janela Pai simultaneamente
     window.dadosGeraisRota = objRota;
     try { window.top.dadosGeraisRota = objRota; } catch(e){}
 
@@ -158,15 +272,15 @@ window.realizarCalculosIniciaisDistancia = async function() {
         else if (window.top && typeof window.top.atualizarURLsMapasGlobal === 'function') window.top.atualizarURLsMapasGlobal();
     }
 
-    console.log("=== LOG DE VARIÁVEIS DE CÁLCULO (funcs_ficha) ===");
+    console.log("=== RESULTADOS FINAIS OSRM ===");
+    console.log("Perfil Trajeto Final:", perfilFinal);
+    console.log("OSRM Coord:", distCoordFinal, "metros");
+    console.log("OSRM Endereço:", distEndFinal, "metros");
     console.log("Endereço Buscado:", enderecoCompleto);
-    console.log("Distância Coord (A pé):", distCoordFoot);
-    console.log("Distância Endereço (A pé):", distEndFoot);
-    console.log("Diferença Arredondada (>200):", dif);
-    console.log("DistDiferentesEntreMapas:", window.DistDiferentesEntreMapas);
-    console.log("Perfil Final OSRM:", perfilFinal);
-    console.log("Distância Coord Final:", distCoordFinal);
-    console.log("Distância Endereço Final:", distEndFinal);
+    console.log("Distância pelas Coordenadas (A pé):", distCoordFoot);
+    console.log("Distância pelo Endereço (A pé):", distEndFoot);
+    console.log("Diferença Arredondada (>200):", diferencaGeografica);
+    console.log("Locais diferentes entre os mapas:", window.DistDiferentesEntreMapas);
     console.log("Modo Transporte Padrão:", window.modoTransporteAtual || 'pe');
     console.log("=================================================");
 };

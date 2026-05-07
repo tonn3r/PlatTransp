@@ -29,7 +29,6 @@ window.gerenciarBotaoAssistente = function() {
     const currentIdInput = doc.querySelector('input[name="id_solicitacao"]') || doc.querySelector('input[name="id"]');
     const currentId = currentIdInput ? currentIdInput.value : 'desconhecido';
 
-    // CORREÇÃO: Limpar todas as globais quando a ficha muda (resolve o endereço persistente)
     if (window.currentStudentId !== currentId) {
         window.currentStudentId = currentId;
         window.mapaSincronizado = false;
@@ -190,13 +189,13 @@ window.abrirModalAssistente = function() {
         distanciaSugeridaInput: "",
         distanciasOSRM: {}, 
         buscandoOSRM: false,
-        DistDiferentesEntreMapas: false,
         distanciasVerificadasInicialmente: false,
         perfilOSRM: 'foot',
         cacheDistancias: {} 
     };
 
     let historico = [];
+    let listaExibirBase = [];
 
     function salvarHistorico() {
         historico.push(JSON.parse(JSON.stringify(estado)));
@@ -237,11 +236,9 @@ window.abrirModalAssistente = function() {
             }
 
             if (tipoAcao === 'DEFERIR') {
-                if (estado.distancia >= 1500) {
-                    termoBusca = "DISTÂNCIA MAIOR QUE 1500 METROS";
-                } 
-                else if (estado.deficiencia === 'ALUNO') termoBusca = "ALUNO DEFICIENTE";
+                if (estado.deficiencia === 'ALUNO') termoBusca = "ALUNO DEFICIENTE";
                 else if (estado.deficiencia === 'FAMILIA') termoBusca = "PAI/MÃE DEFICIENTE";
+                else if (estado.distancia >= 1500) { termoBusca = "DISTÂNCIA MAIOR QUE 1500 METROS"; } 
                 else if (estado.dificuldadeAcesso === true) termoBusca = "DIFICULDADE DE ACESSO";
                 else termoBusca = "ENCAMINHADO PELA SEÇÃO DE MATRICULAS";
             } else {
@@ -407,14 +404,14 @@ window.abrirModalAssistente = function() {
                 let latA = window.dadosGeograficos ? window.dadosGeograficos.geoEndereco_Latit : null;
                 let lonA = window.dadosGeograficos ? window.dadosGeograficos.geoEndereco_Longit : null;
                 let linkBotaoErro = (latA && lonA) 
-                    ? `https://maps.google.com/maps?saddr=${latA}+${lonA}&daddr=0+0&travelmode=walking&dirflg=w`  //não alterar
-                    : `https://maps.google.com/maps?saddr=$`;
+                    ? `https://maps.google.com/maps?saddr=${latA}+${lonA}&daddr=0+0&travelmode=walking&dirflg=w` //nao alterar
+                    : `https://maps.google.com/maps?saddr=$`; //nao alterar
 
                 conteudo.innerHTML = `
                     <h3 style="color:#2980b9; margin-top:0;">🏫 Verificação de Escola</h3>
                     <p style="color:#e74c3c; font-weight:bold;">Verifique se está na escola mais próxima.</p>
                     <div style="margin-bottom: 15px; font-size:13px;">
-                        <a href="${linkBotaoErro}" target="_blank" style="display:block; text-align:center; padding:8px; background:#3498db; color:#fff; font-weight:bold; text-decoration:none; border-radius:4px; margin-bottom:15px; font-size:12px;">🗺️ Conferir mapa da rede</a>
+                        <a href="${linkBotaoErro}" target="_blank" onclick="if(window.copiarCoordenadasEndereco) window.copiarCoordenadasEndereco();" style="display:block; text-align:center; padding:8px; background:#3498db; color:#fff; font-weight:bold; text-decoration:none; border-radius:4px; margin-bottom:15px; font-size:12px;">🗺️ Conferir mapa da rede</a>
                     </div>
                     
                     <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
@@ -504,12 +501,13 @@ window.abrirModalAssistente = function() {
                     setTimeout(renderizarPasso, 500);
                     return;
                 }
-                estado.DistDiferentesEntreMapas = window.DistDiferentesEntreMapas;
                 estado.perfilOSRM = window.modoTransporteAtual === 'carro' ? 'driving' : 'foot';
             }
 
+            let mapMode = window.modoMapaAtual || (window.top && window.top.modoMapaAtual) || 'coordenada';
+
             if (window.dadosGeraisRota && !document.getElementById('input-assistente-dist')?.dataset.editado) {
-                let distFinalSugerida = (window.modoMapaAtual === 'endereco') ? window.dadosGeraisRota.distanciaEnd : window.dadosGeraisRota.distanciaCoord;
+                let distFinalSugerida = (mapMode === 'endereco') ? window.dadosGeraisRota.distanciaEnd : window.dadosGeraisRota.distanciaCoord;
                 if (distFinalSugerida !== null) {
                     estado.distanciaSugeridaInput = Math.round(distFinalSugerida / 50) * 50;
                 }
@@ -529,11 +527,19 @@ window.abrirModalAssistente = function() {
                     }
                 });
             }
+            
             const nivelAlunoNorm = window.normalizarTexto(nivelAlunoOriginal);
+            const isBercarioGeral = nivelAlunoNorm === "BERCARIO";
 
             const escolasAptas = baseEscolas.filter(esc => {
                 if (!esc.turmas || !Array.isArray(esc.turmas)) return false;
-                const turmasNivel = esc.turmas.filter(turma => window.normalizarTexto(turma.nivel) === nivelAlunoNorm);
+                const turmasNivel = esc.turmas.filter(turma => {
+                    const nivelTurmaNorm = window.normalizarTexto(turma.nivel);
+                    if (isBercarioGeral) {
+                        return nivelTurmaNorm.includes("BERCARIO");
+                    }
+                    return nivelTurmaNorm === nivelAlunoNorm;
+                });
                 
                 if (turmasNivel.length > 0) {
                     esc.periodosEncontrados = [...new Set(turmasNivel.map(t => t.periodo))].join(' / ');
@@ -542,46 +548,137 @@ window.abrirModalAssistente = function() {
                 return false;
             });
 
-            escolasAptas.forEach(esc => {
-                esc.distancia = window.calcularDistanciaHaversine(latAluno, lonAluno, esc.lat, esc.lon);
-            });
-
-            escolasAptas.sort((a, b) => a.distancia - b.distancia);
-            
-            let indexAtual = escolasAptas.findIndex(e => String(e.id) === String(idEscolaAtual));
-            let indexParcial = escolasAptas.findIndex(e => e.periodosEncontrados && e.periodosEncontrados.includes('PARCIAL'));
-            let indexIntegral = escolasAptas.findIndex(e => e.periodosEncontrados && e.periodosEncontrados.includes('INTEGRAL'));
-            
-            let idxAtualValid = indexAtual !== -1 ? indexAtual : -1;
-            let idxParcialValid = indexParcial !== -1 ? indexParcial : -1;
-            let idxIntegralValid = indexIntegral !== -1 ? indexIntegral : -1;
-            
-            let limiteFinal = 3; 
-            const prioridades = [0, idxParcialValid, idxIntegralValid, idxAtualValid].filter(idx => idx !== -1);
-            
-            prioridades.forEach(idx => {
-                if (idx >= 3 && idx <= 9) {
-                    if ((idx + 1) > limiteFinal) {
-                        limiteFinal = idx + 1;
+            // Função para gerar a lista atualizada baseada na origem correta (GPS ou Nominatim)
+            function obterEscolasAptasExibicao() {
+                let latBase = latAluno;
+                let lonBase = lonAluno;
+                if (mapMode === 'endereco') {
+                    let rota = window.dadosGeraisRota || (window.top && window.top.dadosGeraisRota);
+                    if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
+                        latBase = rota.coordAlunoEnd.lat;
+                        lonBase = rota.coordAlunoEnd.lon;
                     }
                 }
-            });
-            
-            const listaExibirBase = escolasAptas.slice(0, limiteFinal);
 
-            // CORREÇÃO: Gerenciamento do Cache através dos dados OSRM, e não HTML.
-            let chaveCache = `${window.modoMapaAtual}_${window.modoTransporteAtual}`;
-            estado.perfilOSRM = window.modoTransporteAtual === 'carro' ? 'driving' : 'foot';
+                escolasAptas.forEach(esc => {
+                    esc.distancia = window.calcularDistanciaHaversine(latBase, lonBase, esc.lat, esc.lon);
+                });
+
+                escolasAptas.sort((a, b) => a.distancia - b.distancia);
+                
+                let indexAtual = escolasAptas.findIndex(e => String(e.id) === String(idEscolaAtual));
+                let indexParcial = escolasAptas.findIndex(e => e.periodosEncontrados && e.periodosEncontrados.includes('PARCIAL'));
+                let indexIntegral = escolasAptas.findIndex(e => e.periodosEncontrados && e.periodosEncontrados.includes('INTEGRAL'));
+                
+                let idxAtualValid = indexAtual !== -1 ? indexAtual : -1;
+                let idxParcialValid = indexParcial !== -1 ? indexParcial : -1;
+                let idxIntegralValid = indexIntegral !== -1 ? indexIntegral : -1;
+                
+                let limiteFinal = 3; 
+                const prioridades = [0, idxParcialValid, idxIntegralValid, idxAtualValid].filter(idx => idx !== -1);
+                
+                prioridades.forEach(idx => {
+                    if (idx >= 3 && idx <= 9) {
+                        if ((idx + 1) > limiteFinal) {
+                            limiteFinal = idx + 1;
+                        }
+                    }
+                });
+                
+                return escolasAptas.slice(0, limiteFinal);
+            }
+
+            listaExibirBase = obterEscolasAptasExibicao();
+
+            let transpMode = window.modoTransporteAtual || (window.top && window.top.modoTransporteAtual) || 'pe';
+            let chaveCache = `${mapMode}_${transpMode}`;
+            estado.perfilOSRM = transpMode === 'carro' ? 'driving' : 'foot';
 
             if (!estado.cacheDistancias) estado.cacheDistancias = {};
             if (!estado.cacheDistancias[chaveCache]) estado.cacheDistancias[chaveCache] = {};
             
-            // Aponta a variável local de distâncias para o cache ativo
             estado.distanciasOSRM = estado.cacheDistancias[chaveCache];
+            estado.ultimoModoUsado = chaveCache; // Rastrear qual modo foi usado pela última vez
+
+            // Definir variáveis de modo em escopo mais amplo para uso em atualizarListaEscolasDinamicamente e OSRM
+            let mapModeAtual = window.modoMapaAtual || (window.top && window.top.modoMapaAtual) || 'coordenada';
+            let transpModeAtual = window.modoTransporteAtual || (window.top && window.top.modoTransporteAtual) || 'pe';
 
             const atualizarListaEscolasDinamicamente = () => {
+                console.log("🔄 Iniciando atualização da lista de escolas dinamicamente");
+                
+                // Ler o mapMode atual (pode ter mudado ao pressionar o botão)
+                mapModeAtual = window.modoMapaAtual || (window.top && window.top.modoMapaAtual) || 'coordenada';
+                transpModeAtual = window.modoTransporteAtual || (window.top && window.top.modoTransporteAtual) || 'pe';
+                let chaveCacheAtual = `${mapModeAtual}_${transpModeAtual}`;
+                
+                console.log("📍 Modo atual:", mapModeAtual, "| Transporte:", transpModeAtual, "| Cache:", chaveCacheAtual);
+                
+                // Se DistDiferentesEntreMapas for true e o modo mudou, recalcular a lista
+                if (window.DistDiferentesEntreMapas && chaveCacheAtual !== estado.ultimoModoUsado) {
+                    console.log("🔄 Recalculando lista - modo mudou de", estado.ultimoModoUsado, "para", chaveCacheAtual);
+                    
+                    // Recalcular lista com as coordenadas do novo modo
+                    listaExibirBase = [];
+                    let latBase = latAluno;
+                    let lonBase = lonAluno;
+                    
+                    if (mapModeAtual === 'endereco') {
+                        let rota = window.dadosGeraisRota || (window.top && window.top.dadosGeraisRota);
+                        if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
+                            latBase = rota.coordAlunoEnd.lat;
+                            lonBase = rota.coordAlunoEnd.lon;
+                            console.log("✅ Usando coordenadas do Nominatim: LAT", latBase, "LON", lonBase);
+                        }
+                    } else {
+                        console.log("✅ Usando coordenadas GPS: LAT", latBase, "LON", lonBase);
+                    }
+                    
+                    // Recalcular distâncias com as novas coordenadas
+                    escolasAptas.forEach(esc => {
+                        esc.distancia = window.calcularDistanciaHaversine(latBase, lonBase, esc.lat, esc.lon);
+                    });
+                    escolasAptas.sort((a, b) => a.distancia - b.distancia);
+                    
+                    let indexAtual = escolasAptas.findIndex(e => String(e.id) === String(idEscolaAtual));
+                    let indexParcial = escolasAptas.findIndex(e => e.periodosEncontrados && e.periodosEncontrados.includes('PARCIAL'));
+                    let indexIntegral = escolasAptas.findIndex(e => e.periodosEncontrados && e.periodosEncontrados.includes('INTEGRAL'));
+                    
+                    let idxAtualValid = indexAtual !== -1 ? indexAtual : -1;
+                    let idxParcialValid = indexParcial !== -1 ? indexParcial : -1;
+                    let idxIntegralValid = indexIntegral !== -1 ? indexIntegral : -1;
+                    
+                    let limiteFinal = 3; 
+                    const prioridades = [0, idxParcialValid, idxIntegralValid, idxAtualValid].filter(idx => idx !== -1);
+                    
+                    prioridades.forEach(idx => {
+                        if (idx >= 3 && idx <= 9) {
+                            if ((idx + 1) > limiteFinal) {
+                                limiteFinal = idx + 1;
+                            }
+                        }
+                    });
+                    
+                    listaExibirBase = escolasAptas.slice(0, limiteFinal);
+                    estado.ultimoModoUsado = chaveCacheAtual;
+                    console.log("📊 Nova lista calculada com", listaExibirBase.length, "escolas");
+                    
+                    // Preparar cache para este modo/transporte se não existir
+                    if (!estado.cacheDistancias) estado.cacheDistancias = {};
+                    if (!estado.cacheDistancias[chaveCacheAtual]) estado.cacheDistancias[chaveCacheAtual] = {};
+                    estado.distanciasOSRM = estado.cacheDistancias[chaveCacheAtual];
+                    estado.perfilOSRM = transpModeAtual === 'carro' ? 'driving' : 'foot';
+                    estado.buscandoOSRM = false; // Reset flag para recalcular OSRM no novo modo
+                    console.log("🔄 OSRM reset para modo", chaveCacheAtual, "- será recalculado");
+                }
+                
                 const containerLista = document.getElementById('container-lista-escolas');
-                if (!containerLista) return;
+                if (!containerLista) {
+                    console.log("❌ Container 'container-lista-escolas' não encontrado");
+                    return;
+                }
+                console.log("✅ Container encontrado");
+                console.log("📊 listaExibirBase tem", listaExibirBase.length, "itens");
 
                 let listaOrdenada = [...listaExibirBase];
                 listaOrdenada.sort((a, b) => {
@@ -589,6 +686,7 @@ window.abrirModalAssistente = function() {
                     let distB = (estado.distanciasOSRM[b.id] !== undefined && estado.distanciasOSRM[b.id] !== 'Erro') ? estado.distanciasOSRM[b.id] : b.distancia;
                     return distA - distB;
                 });
+                console.log("📋 listaOrdenada tem", listaOrdenada.length, "itens após ordenação");
 
                 const ehMaisProxima = (listaOrdenada.length > 0 && String(listaOrdenada[0].id) === String(idEscolaAtual));
                 const escolaMaisProximaParcial = listaOrdenada.find(e => e.periodosEncontrados && e.periodosEncontrados.includes('PARCIAL'));
@@ -626,15 +724,22 @@ window.abrirModalAssistente = function() {
                 if (listaOrdenada.length === 0) {
                     listaHtml += `<li style="color:#c0392b;">⚠️ Nenhuma escola encontrada na base.</li>`;
                 } else {
-                    const latOrigemLista = (window.modoMapaAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd) ? window.dadosGeraisRota.coordAlunoEnd.lat : latAluno;
-                    const lonOrigemLista = (window.modoMapaAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd) ? window.dadosGeraisRota.coordAlunoEnd.lon : lonAluno;
+                    const latOrigemLista = (mapModeAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd && typeof window.dadosGeraisRota.coordAlunoEnd !== 'string') ? window.dadosGeraisRota.coordAlunoEnd.lat : latAluno;
+                    const lonOrigemLista = (mapModeAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd && typeof window.dadosGeraisRota.coordAlunoEnd !== 'string') ? window.dadosGeraisRota.coordAlunoEnd.lon : lonAluno;
 
                     listaOrdenada.forEach((esc, i) => {
                         const cor = String(esc.id) === String(idEscolaAtual) ? 'color:#27ae60; font-weight:bold;' : 'color:#555;';
                         const tagAtual = String(esc.id) === String(idEscolaAtual) ? ' ⭐ (Escola Solicitada)' : '';
                         
-                        let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : "";  //não alterar
-                        const urlConfere = `https://maps.google.com/maps?saddr=${latOrigemLista}+${lonOrigemLista}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;  //não alterar
+                        let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : "";
+                        let urlConfere = "";
+                        
+                        if (mapModeAtual === 'endereco' && window.dadosGeraisRota && typeof window.dadosGeraisRota.coordAlunoEnd === 'string') {
+                            let endStrEncode = encodeURIComponent(window.dadosGeraisRota.coordAlunoEnd);
+                            urlConfere = `https://maps.google.com/maps?saddr=${endStrEncode}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;
+                        } else {
+                            urlConfere = `https://maps.google.com/maps?saddr=${latOrigemLista}+${lonOrigemLista}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`; //nao alterar
+                        }
                         
                         let icone = estado.perfilOSRM === 'foot' ? '🚶' : '🚗';
                         let txtDist = `<span style="font-size:11px; color:#f39c12;">${icone} <i>Calculando trajeto...</i></span>`;
@@ -650,51 +755,53 @@ window.abrirModalAssistente = function() {
                         listaHtml += `<li style="margin-bottom:8px; ${cor}">
                             ${i + 1}º - ${esc.nome} <span style="font-size:11px; color:#8e44ad;">[${esc.periodosEncontrados}]</span>${tagAtual}
                             <br>${txtDist}
-                            <br><a href="${urlConfere}" target="_blank" style="font-size:10px; color:#3498db; text-decoration:none; display:inline-block; margin-top:2px;">📍 Ver rota no Google Maps</a>
+                            <br><a href="${urlConfere}" target="_blank" onclick="if(window.copiarCoordenadasEndereco) window.copiarCoordenadasEndereco();" style="font-size:10px; color:#3498db; text-decoration:none; display:inline-block; margin-top:2px;">📍 Ver rota no Google Maps</a>
                         </li>`;
                     });
                 }
                 listaHtml += `</ul>`;
                 
                 let linkMapaRede = "";
-                let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : "";  //não alterar
-                linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latAluno}%2C${lonAluno}&z=18`;  //não alterar
-
+                let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : ""; //nao alterar
+                linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latAluno}%2C${lonAluno}&z=18`; //nao alterar
                 
-                listaHtml += `<a href="${linkMapaRede}" target="_blank" style="display:block; text-align:center; padding:8px; background:#3498db; color:#fff; font-weight:bold; text-decoration:none; border-radius:4px; margin-bottom:15px; font-size:12px;">🗺️ Conferir mapa da rede</a>`;
+                listaHtml += `<a href="${linkMapaRede}" target="_blank" onclick="if(window.copiarCoordenadasEndereco) window.copiarCoordenadasEndereco();" style="display:block; text-align:center; padding:8px; background:#3498db; color:#fff; font-weight:bold; text-decoration:none; border-radius:4px; margin-bottom:15px; font-size:12px;">🗺️ Conferir mapa da rede</a>`;
 
+                console.log("📝 Aplicando HTML à lista:", listaHtml.substring(0, 100) + "...");
                 containerLista.innerHTML = listaHtml;
-            };
-
-            window.atualizarListaEscolasPeloSwitch = () => {
-                // Busca as variáveis blindadas em ambas as memórias
-                let difMapas = window.DistDiferentesEntreMapas;
-                if (difMapas === undefined && window.top) difMapas = window.top.DistDiferentesEntreMapas;
-
-                let dadosRota = window.dadosGeraisRota || (window.top && window.top.dadosGeraisRota);
-
-                console.log("🚦 Sinal recebido pelo Assistente! DistDiferentesEntreMapas =", difMapas);
-
-                if (difMapas) {
-                    chaveCache = `${window.modoMapaAtual}_${window.modoTransporteAtual}`;
-                    estado.perfilOSRM = window.modoTransporteAtual === 'carro' ? 'driving' : 'foot';
-
-                    if (dadosRota) {
-                        let distFinal = (window.modoMapaAtual === 'endereco') ? dadosRota.distanciaEnd : dadosRota.distanciaCoord;
-                        let arredondado = Math.round(distFinal / 50) * 50;
-                        const ipt = document.getElementById('input-assistente-dist');
-                        if (ipt && !ipt.dataset.editado) {
-                            ipt.value = arredondado;
-                            estado.distanciaSugeridaInput = arredondado;
-                        }
-                    }
+                console.log("✅ Lista de escolas atualizada com sucesso");
+                console.log("🎯 Atualização concluída -", listaOrdenada.length, "escolas renderizadas");
+                
+                // Verificar se há distâncias OSRM ainda não calculadas e iniciar se necessário
+                let faltaCalcularAgora = listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
+                if (faltaCalcularAgora && typeof window.calcularTrajetoOSRM === 'function' && !estado.buscandoOSRM) {
+                    console.log("🔄 Iniciando cálculo OSRM para modo atual:", mapModeAtual);
+                    estado.buscandoOSRM = true;
                     
-                    // Chamar o renderizarPasso recarrega tudo do zero com os novos parâmetros
-                    renderizarPasso();
-                } else {
-                    console.log("🚦 Switch alternado, mas DistDiferentesEntreMapas é false. Lista mantida.");
+                    if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+                    window.osrmAbortController = new AbortController();
+
+                    (async () => {
+                        const latOrigemLista = (mapModeAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd) ? window.dadosGeraisRota.coordAlunoEnd.lat : latAluno;
+                        const lonOrigemLista = (mapModeAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd) ? window.dadosGeraisRota.coordAlunoEnd.lon : lonAluno;
+
+                        for (let esc of listaExibirBase) {
+                            if (estado.distanciasOSRM[esc.id] === undefined) {
+                                const dist = await window.calcularTrajetoOSRM(latOrigemLista, lonOrigemLista, esc.lat, esc.lon, estado.perfilOSRM, window.osrmAbortController.signal);
+                                if (window.osrmAbortController.signal.aborted) break; 
+                                
+                                estado.distanciasOSRM[esc.id] = dist !== null ? dist : 'Erro';
+                                console.log("📞 Chamando atualizarListaEscolasDinamicamente após calcular OSRM para", esc.nome);
+                                atualizarListaEscolasDinamicamente();
+                                await new Promise(r => setTimeout(r, 250));
+                            }
+                        }
+                        estado.buscandoOSRM = false;
+                    })();
                 }
             };
+
+            window.atualizarListaEscolasDinamicamente = atualizarListaEscolasDinamicamente;
 
             conteudo.innerHTML = `
                 <h3 style="color:#2980b9; margin-top:0;">🏫 Verificação de Escola</h3>
@@ -716,6 +823,7 @@ window.abrirModalAssistente = function() {
                 </div>
             `;
             
+            console.log("📞 Chamando atualizarListaEscolasDinamicamente após renderizar HTML inicial");
             atualizarListaEscolasDinamicamente();
 
             const inputDist = document.getElementById('input-assistente-dist');
@@ -754,18 +862,17 @@ window.abrirModalAssistente = function() {
                 renderizarPasso(); 
             };
 
-            // VERIFICA SE OS CÁLCULOS FALTAM NO CACHE ATIVO
-            let faltaCalcular = listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
+            let faltaCalcularInicial = listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
 
-            if (!estado.buscandoOSRM && typeof window.calcularTrajetoOSRM === 'function' && faltaCalcular) {
+            if (!estado.buscandoOSRM && typeof window.calcularTrajetoOSRM === 'function' && faltaCalcularInicial) {
                 estado.buscandoOSRM = true;
                 
                 if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
                 window.osrmAbortController = new AbortController();
 
                 (async () => {
-                    const latOrigemLista = (window.modoMapaAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd) ? window.dadosGeraisRota.coordAlunoEnd.lat : latAluno;
-                    const lonOrigemLista = (window.modoMapaAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd) ? window.dadosGeraisRota.coordAlunoEnd.lon : lonAluno;
+                    const latOrigemLista = (mapModeAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd) ? window.dadosGeraisRota.coordAlunoEnd.lat : latAluno;
+                    const lonOrigemLista = (mapModeAtual === 'endereco' && window.dadosGeraisRota && window.dadosGeraisRota.coordAlunoEnd) ? window.dadosGeraisRota.coordAlunoEnd.lon : lonAluno;
 
                     for (let esc of listaExibirBase) {
                         if (estado.distanciasOSRM[esc.id] === undefined) {
@@ -773,6 +880,7 @@ window.abrirModalAssistente = function() {
                             if (window.osrmAbortController.signal.aborted) break; 
                             
                             estado.distanciasOSRM[esc.id] = dist !== null ? dist : 'Erro';
+                            console.log("📞 Chamando atualizarListaEscolasDinamicamente após calcular OSRM para", esc.nome);
                             atualizarListaEscolasDinamicamente();
                             await new Promise(r => setTimeout(r, 250));
                         }
@@ -841,8 +949,12 @@ window.abrirModalAssistente = function() {
             let ruaLimpa = endRua.split(',')[0].trim();
             const prefixos = /^(RUA|R\.|AVENIDA|AV\.|AV|TRAVESSA|TRV\.|VIELA|PRA[ÇC]A|ESTRADA|ALAMEDA|RODOVIA|LADEIRA|BECO|MARGINAL)\s+/i;
             ruaLimpa = ruaLimpa.replace(prefixos, '').trim(); 
+            
             const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-            const urlPesquisaRua = `${basePath}solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ruaLimpa)}`;
+            // Verifica se a baseUrl já termina ou contém o caminho do módulo
+            const moduloPath = "modulos/transporte_escolar/";
+            const prefixo = baseUrl.includes(moduloPath) ? "" : moduloPath;
+            const urlPesquisaRua = `${basePath}${prefixo}solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ruaLimpa)}`;
 
             conteudo.innerHTML = `
                 <h3 style="color:#d35400; margin-top:0;">🚧 Dificuldade de Acesso</h3>

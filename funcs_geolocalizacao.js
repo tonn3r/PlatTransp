@@ -1,5 +1,13 @@
 window.mapaSincronizado = false;
 
+window.copiarCoordenadasEndereco = function() {
+    let rota = window.dadosGeraisRota || (window.top && window.top.dadosGeraisRota);
+    if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
+        let txt = `${rota.coordAlunoEnd.lat} ${rota.coordAlunoEnd.lon}`;
+        navigator.clipboard.writeText(txt).catch(e => console.error("Erro copy", e));
+    }
+};
+
 window.extrairDadosGeograficos = async function(urlFichaNova) {
     const tInicioGeo = performance.now();
     try {
@@ -51,6 +59,18 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
     }
 };
 
+window.copiarCoordenadasEndereco = function() {
+    let rota = window.dadosGeraisRota || (window.top && window.top.dadosGeraisRota);
+    if (rota && rota.coordAlunoEnd) {
+        if (typeof rota.coordAlunoEnd === 'string') {
+            navigator.clipboard.writeText(rota.coordAlunoEnd).catch(e => console.error("Erro copy", e));
+        } else if (rota.coordAlunoEnd.lat) {
+            let txt = `${rota.coordAlunoEnd.lat} ${rota.coordAlunoEnd.lon}`;
+            navigator.clipboard.writeText(txt).catch(e => console.error("Erro copy", e));
+        }
+    }
+};
+
 window.sincronizarMapaECoordenadas = async function(docAlvo) {
     if (window.mapaSincronizado) return; 
     window.mapaSincronizado = true;
@@ -61,13 +81,22 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
     let idFicha = idSolInput ? idSolInput.value : '';
 
     let basePath = urlOrigem.substring(0, urlOrigem.lastIndexOf('/') + 1);
-    let urlFichaNova = basePath + 'ficha_transporte_nova_versao.php?id_solicitacao=' + idFicha;
+    // Verifica se a baseUrl já termina ou contém o caminho do módulo
+    const moduloPath = "modulos/transporte_escolar/";
+    const prefixo = basePath.includes(moduloPath) ? "" : moduloPath;
+    let urlFichaNova = basePath + prefixo + 'ficha_transporte_nova_versao.php?id_solicitacao=' + idFicha;
 
     const dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
 
     if (dadosGeo) {
         const iframeAtual = docAlvo.getElementById('map_endereco');
         const linkMapaNovaGuia = docAlvo.getElementById('botao_mapa');
+        
+        const btnAbrirFicha = docAlvo.getElementById('botaoAbrirFicha');
+        if (btnAbrirFicha && !btnAbrirFicha.dataset.copyBound) {
+            btnAbrirFicha.dataset.copyBound = 'true';
+            btnAbrirFicha.addEventListener('click', window.copiarCoordenadasEndereco);
+        }
 
         if (iframeAtual && !urlOrigem.includes('nova_versao')) {
             if (!window.urlEnderecoGlobal) {
@@ -82,27 +111,52 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
             window.modoTransporteAtual = 'pe';
 
             const atualizarURLsMapas = () => {
+                console.log("🗺️ atualizarURLsMapas() iniciada");
                 let sufixoTransporteBotao = window.modoTransporteAtual === 'pe' ? "&travelmode=walking&dirflg=w" : "";
                 let sufixoTransporteFrame = window.modoTransporteAtual === 'pe' ? "&mode=walking" : "";
                 
                 if (window.modoMapaAtual === 'coordenada') {
-                    const urlIframe = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;  //não alterar
-                    const urlLink = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;  //não alterar
+                    const urlIframe = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`; //nao alterar
+                    const urlLink = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`; //nao alterar
                     
                     iframeAtual.src = urlIframe;
                     if (linkMapaNovaGuia) linkMapaNovaGuia.href = urlLink;
                 } else {
-                    iframeAtual.src = window.urlEnderecoGlobal;
-                    if (linkMapaNovaGuia) linkMapaNovaGuia.href = window.urlBotaoEnderecoGlobal;
+                    let rota = window.dadosGeraisRota || (window.top && window.top.dadosGeraisRota);
+                    let urlIframeEnd = "";
+                    let urlLinkEnd = "";
+                    
+                    if (rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd === 'string') {
+                        let stringEndereco = encodeURIComponent(rota.coordAlunoEnd);
+                        urlIframeEnd = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${stringEndereco}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+                        urlLinkEnd = `https://maps.google.com/maps?saddr=${stringEndereco}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
+                    } else if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
+                        urlIframeEnd = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+                        urlLinkEnd = `https://maps.google.com/maps?saddr=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
+                    } else {
+                        urlIframeEnd = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+                        urlLinkEnd = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
+                    }
+                    
+                    let isPrimeiraVez = !window.primeiraExecucaoMapasFinalizada;
+                    window.primeiraExecucaoMapasFinalizada = true;
+                    
+                    if (!isPrimeiraVez) {
+                        iframeAtual.src = urlIframeEnd;
+                    }
+                    if (linkMapaNovaGuia) linkMapaNovaGuia.href = urlLinkEnd;
                 }
 
-                console.log("🔄 Switch acionado: Solicitando atualização da lista do Assistente.");
-                if (typeof window.atualizarListaEscolasPeloSwitch === 'function') {
-                    window.atualizarListaEscolasPeloSwitch();
-                } else if (window.top && typeof window.top.atualizarListaEscolasPeloSwitch === 'function') {
-                    window.top.atualizarListaEscolasPeloSwitch();
+                if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
+                    console.log("✅ atualizarListaEscolasDinamicamente encontrada em window");
+                    console.log("📞 Chamando atualizarListaEscolasDinamicamente via window após mudança de mapa");
+                    window.atualizarListaEscolasDinamicamente();
+                } else if (window.top && typeof window.top.atualizarListaEscolasDinamicamente === 'function') {
+                    console.log("✅ atualizarListaEscolasDinamicamente encontrada em window.top");
+                    console.log("📞 Chamando atualizarListaEscolasDinamicamente via window.top após mudança de mapa");
+                    window.top.atualizarListaEscolasDinamicamente();
                 } else {
-                    console.log("⚠️ A função do assistente não foi encontrada nem na janela atual nem na Pai.");
+                    console.log("❌ Função atualizarListaEscolasDinamicamente não encontrada em window ou window.top");
                 }
             };
 
@@ -124,7 +178,10 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
 
                 btnModoMapa.onclick = (e) => {
                     e.preventDefault();
+                    console.log("🖱️ Botão 'Por Coordenadas/Endereço' clicado");
+                    console.log("⚠️ DistDiferentesEntreMapas =", window.DistDiferentesEntreMapas);
                     window.modoMapaAtual = window.modoMapaAtual === 'endereco' ? 'coordenada' : 'endereco';
+                    console.log("🔄 Novo modoMapaAtual:", window.modoMapaAtual);
                     btnModoMapa.innerHTML = window.modoMapaAtual === 'endereco' ? "📍 Por Endereço" : "📍 Por Coordenadas";
                     atualizarURLsMapas();
                 };
@@ -175,8 +232,66 @@ window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDe
 
 window.obterCoordenadasPorEndereco = async function(enderecoCompleto) {
     if (!enderecoCompleto) return null;
+    
+    // Função auxiliar para substituir abreviações de tipos de vias
+    function substituirAbreviacoes(endereco) {
+        const substituicoes = {
+            'AV ': 'AVENIDA ',
+            'EST ': 'ESTRADA ',
+            'R ': 'RUA ',
+            'AL ': 'ALAMEDA ',
+            'PC ': 'PRAÇA ',
+            'VIE ': 'VIELA ',
+            'VL ': 'VIELA ', // Cuidado: pode ser Via também, mas priorizando Viela
+            'ROD ': 'RODOVIA ',
+            'TRAV ': 'TRAVESSA ',
+            'TV ': 'TRAVESSA ',
+            'LAR ': 'LARGO ',
+            'BEC ': 'BECO ',
+            'CAM ': 'CAMINHO ',
+            'CHA ': 'CHACARA ',
+            'CON ': 'CONDOMINIO ',
+            'FAZ ': 'FAZENDA ',
+            'JAR ': 'JARDIM ',
+            'LOT ': 'LOTEAMENTO ',
+            'NUC ': 'NUCLEO ',
+            'PAR ': 'PARQUE ',
+            'PAS ': 'PASSAGEM ',
+            'PTE ': 'PONTE ',
+            'REC ': 'RECANTO ',
+            'RES ': 'RESIDENCIAL ',
+            'SIT ': 'SITIO ',
+            'VIL ': 'VILA ',
+            'VL ': 'VIELA ',
+            'QD ': 'QUADRA ',
+            'LOT ': 'LOTE ',
+            'GAL ': 'GALERIA ',
+            'PAV ': 'PAVILHAO ',
+            'BL ': 'BLOCO ',
+            'AP ': 'APARTAMENTO ',
+            'CS ': 'CASA ',
+            'ED ': 'EDIFICIO ',
+            'SL ': 'SALA ',
+            'AND ': 'ANDAR ',
+            'CJ ': 'CONJUNTO ',
+            'NU ': 'NUMERO ',
+            'N ': 'NUMERO '
+        };
+        
+        let enderecoCorrigido = endereco.toUpperCase();
+        for (const [abreviacao, completo] of Object.entries(substituicoes)) {
+            enderecoCorrigido = enderecoCorrigido.replace(new RegExp(`\\b${abreviacao}`, 'g'), completo);
+        }
+        return enderecoCorrigido;
+    }
+    
     try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoCompleto)}&limit=1`;
+        let enderecoBusca = substituirAbreviacoes(enderecoCompleto);
+        if (enderecoBusca && !enderecoBusca.toUpperCase().includes("BERNARDO")) {
+            enderecoBusca += ", São Bernardo do Campo - SP";
+        }
+        
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBusca)}&limit=1`;
         const response = await fetch(url);
         const data = await response.json();
         if (data && data.length > 0) {
