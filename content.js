@@ -89,8 +89,10 @@
     }
 
     setInterval(() => {
-        if (typeof window.gerenciarBotaoAssistente === 'function') {
-            window.gerenciarBotaoAssistente();
+        // Respect APP_SCOPE for scope-aware hierarchy
+        const scope = window.APP_SCOPE || window;
+        if (typeof scope.gerenciarBotaoAssistente === 'function') {
+            scope.gerenciarBotaoAssistente();
         }
         monitorarCicloDeVidaModal();
     }, 1000);

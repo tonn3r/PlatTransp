@@ -15,6 +15,28 @@ window.normalizarTexto = function(texto) {
     return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/º|ª/g, "O").trim();
 };
 
+// --- SECTION: SCOPE MANAGEMENT ---
+// Detects the appropriate scope for storing global variables based on frame hierarchy
+window.getAppRoot = function() {
+    try {
+        // Check if we're in an iframe and parent has the expected structure
+        if (window !== window.top && window.parent && window.parent.document) {
+            // Test if parent has the main application elements
+            const parentHasMainElements = window.parent.document.querySelector('form[name="form1"]') ||
+                                         window.parent.document.querySelector('#container-assistente');
+            if (parentHasMainElements) {
+                return window.parent;
+            }
+        }
+    } catch (e) {
+        // Cross-origin or other access issues, fall back to current window
+    }
+    return window;
+};
+
+// Initialize APP_SCOPE once for consistent access across the application
+window.APP_SCOPE = window.getAppRoot();
+
 window.aplicarLinkPesquisaEndereco = function() {
     const docAlvo = document;
     let elEndereco = null;
@@ -104,11 +126,11 @@ window.iniciarPaginaFicha = function() {
     const form = document.querySelector('form[name="form1"]');
     if (!form) return;
 
-    storageHelper.get('dados_analise_assistente', (dados) => {
-        if (!dados) return;
+    storageHelper.get('dados_analise_assistente', (dadosSalvos) => {
+        if (!dadosSalvos) return;
 
-        if(dados.distanciamedia || dados.distancia) {
-            const valDist = dados.distanciamedia || dados.distancia;
+        if(dadosSalvos.distanciamedia || dadosSalvos.distancia) {
+            const valDist = dadosSalvos.distanciamedia || dadosSalvos.distancia;
             const inputDist = form.querySelector('input[name="distancia_aferida"]');
             if(inputDist) inputDist.value = valDist.replace(/[^0-9]/g, ''); 
         }
@@ -116,8 +138,8 @@ window.iniciarPaginaFicha = function() {
         const textarea = form.querySelector('textarea[name="status_detalhes"]');
         if(textarea) {
             let textoArr = [];
-            if(dados.analise || dados.obs) {
-                textoArr.push(`Análise Base: ${dados.analise || ''} | ${dados.obs || ''}`);
+            if(dadosSalvos.analise || dadosSalvos.obs) {
+                textoArr.push(`Análise Base: ${dadosSalvos.analise || ''} | ${dadosSalvos.obs || ''}`);
             }
             
             const dbLocal = window.escolasDB || [];
@@ -192,22 +214,18 @@ window.realizarCalculosIniciaisDistancia = async function() {
 
     let coordEndereco = await window.obterCoordenadasPorEndereco(enderecoCompleto);
 
-    console.log("=== ANÁLISE DE COORDENADAS ===");
-    console.log("1. Endereço Extraído:", enderecoCompleto);
     
     let distDiferentes = false;
     let diferencaGeografica = 0;
     let distEndFoot = null;
 
     if (coordEndereco && coordEndereco.lat) {
-        console.log(`2. Nominatim Sucesso: LAT ${coordEndereco.lat} / LON ${coordEndereco.lon}`);
         diferencaGeografica = window.calcularDistanciaHaversine(
             dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit,
             coordEndereco.lat, coordEndereco.lon
         );
         distDiferentes = (diferencaGeografica > 200);
     } else {
-        console.log("2. Nominatim FALHOU: Fallback para a string do endereço ativado.");
         // PLANO B: Se não achar, a variável guardará apenas a STRING do endereço.
         coordEndereco = enderecoCompleto; 
         distDiferentes = false; 
@@ -225,7 +243,7 @@ window.realizarCalculosIniciaisDistancia = async function() {
     }
 
     window.DistDiferentesEntreMapas = distDiferentes;
-    try { window.top.DistDiferentesEntreMapas = distDiferentes; } catch(e){}
+    try { window.APP_SCOPE.DistDiferentesEntreMapas = distDiferentes; } catch(e){}
 
     let usarCarro = false;
     let distCoordFinal = distCoordFoot;
@@ -258,31 +276,40 @@ window.realizarCalculosIniciaisDistancia = async function() {
     };
 
     window.dadosGeraisRota = objRota;
-    try { window.top.dadosGeraisRota = objRota; } catch(e){}
+    try { window.APP_SCOPE.dadosGeraisRota = objRota; } catch(e){}
+
+    // Disparar evento customizado quando dados ficam disponíveis
+    window.dispatchEvent(new CustomEvent('dadosGeraisRotaReady', { 
+        detail: { rota: objRota, scope: window.APP_SCOPE } 
+    }));
 
     if (usarCarro) {
         window.modoTransporteAtual = 'carro';
-        try { window.top.modoTransporteAtual = 'carro'; } catch(e){}
+        try { window.APP_SCOPE.modoTransporteAtual = 'carro'; } catch(e){}
         
         const toggleContainer = document.getElementById('mapa-toggle-container');
         if (toggleContainer && toggleContainer.children[1]) {
             toggleContainer.children[1].innerHTML = "🚗 De Carro";
         }
         if (typeof window.atualizarURLsMapasGlobal === 'function') window.atualizarURLsMapasGlobal();
-        else if (window.top && typeof window.top.atualizarURLsMapasGlobal === 'function') window.top.atualizarURLsMapasGlobal();
+        else if (window.APP_SCOPE && typeof window.APP_SCOPE.atualizarURLsMapasGlobal === 'function') window.APP_SCOPE.atualizarURLsMapasGlobal();
     }
 
-    console.log("=== RESULTADOS FINAIS OSRM ===");
-    console.log("Perfil Trajeto Final:", perfilFinal);
-    console.log("OSRM Coord:", distCoordFinal, "metros");
-    console.log("OSRM Endereço:", distEndFinal, "metros");
+    console.log("=== LOG DE VARIÁVEIS DE CÁLCULO (funcs_ficha) ===");
     console.log("Endereço Buscado:", enderecoCompleto);
-    console.log("Distância pelas Coordenadas (A pé):", distCoordFoot);
-    console.log("Distância pelo Endereço (A pé):", distEndFoot);
+    console.log("Coordenada do Aluno obtida pelo fetch (modo Coordenada):", dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit);
+    console.log("Coordenada do Aluno calculada por obterCoordenadasPorEndereco (modo Endereço):", typeof coordEndereco === 'string' ? coordEndereco : `${coordEndereco.lat}, ${coordEndereco.lon}`);
+    console.log("Distância Coord (A pé):", distCoordFoot);
+    console.log("Distância Endereço (A pé):", distEndFoot);
     console.log("Diferença Arredondada (>200):", diferencaGeografica);
-    console.log("Locais diferentes entre os mapas:", window.DistDiferentesEntreMapas);
+    console.log("DistDiferentesEntreMapas:", window.DistDiferentesEntreMapas);
+    console.log("Perfil Final OSRM:", perfilFinal);
+    console.log("Distância Coord Final:", distCoordFinal);
+    console.log("Distância Endereço Final:", distEndFinal);
     console.log("Modo Transporte Padrão:", window.modoTransporteAtual || 'pe');
     console.log("=================================================");
+    
+
 };
 
 document.addEventListener('DOMContentLoaded', window.iniciarPaginaFicha);

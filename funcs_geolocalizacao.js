@@ -1,13 +1,20 @@
 window.mapaSincronizado = false;
 
 window.copiarCoordenadasEndereco = function() {
-    let rota = window.dadosGeraisRota || (window.top && window.top.dadosGeraisRota);
+    let rota = window.dadosGeraisRota || (window.APP_SCOPE && window.APP_SCOPE.dadosGeraisRota);
     if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
         let txt = `${rota.coordAlunoEnd.lat} ${rota.coordAlunoEnd.lon}`;
         navigator.clipboard.writeText(txt).catch(e => console.error("Erro copy", e));
     }
 };
 
+// --- SECTION: GEOGRAPHIC DATA EXTRACTION ---
+// Technical comments for extrairDadosGeograficos:
+// - Uses DOMParser to parse HTML from ficha_transporte_nova_versao.php
+// - Extracts iframe src URL containing Google Maps parameters
+// - Regex patterns: /origin=([^&]+)/i and /destination=([^&]+)/i capture coordinate strings
+// - Coordinate parsing handles space/comma separators and converts to float
+// - Returns structured object with lat/lon for address and school locations
 window.extrairDadosGeograficos = async function(urlFichaNova) {
     const tInicioGeo = performance.now();
     try {
@@ -49,7 +56,6 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
             };
 
             const tFimGeo = performance.now();
-            console.log(`⏱️ [Geo] Dados extraídos em ${(tFimGeo - tInicioGeo).toFixed(2)}ms`);
             return dados;
         }
         return null;
@@ -60,7 +66,7 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
 };
 
 window.copiarCoordenadasEndereco = function() {
-    let rota = window.dadosGeraisRota || (window.top && window.top.dadosGeraisRota);
+    let rota = window.dadosGeraisRota || (window.APP_SCOPE && window.APP_SCOPE.dadosGeraisRota);
     if (rota && rota.coordAlunoEnd) {
         if (typeof rota.coordAlunoEnd === 'string') {
             navigator.clipboard.writeText(rota.coordAlunoEnd).catch(e => console.error("Erro copy", e));
@@ -111,18 +117,32 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
             window.modoTransporteAtual = 'pe';
 
             const atualizarURLsMapas = () => {
-                console.log("🗺️ atualizarURLsMapas() iniciada");
                 let sufixoTransporteBotao = window.modoTransporteAtual === 'pe' ? "&travelmode=walking&dirflg=w" : "";
                 let sufixoTransporteFrame = window.modoTransporteAtual === 'pe' ? "&mode=walking" : "";
+
+                const normalizeUrl = (url) => url ? url.replace(/&amp;/g, '&') : url;
+                const setIframeSrc = (newUrl) => {
+                    if (!iframeAtual || !newUrl) return;
+                    const normalized = normalizeUrl(newUrl);
+                    if (iframeAtual.src !== normalized) {
+                        iframeAtual.src = normalized;
+                    }
+                };
+                const setLinkHref = (newUrl) => {
+                    if (!linkMapaNovaGuia || !newUrl) return;
+                    const normalized = normalizeUrl(newUrl);
+                    if (linkMapaNovaGuia.href !== normalized) {
+                        linkMapaNovaGuia.href = normalized;
+                    }
+                };
                 
                 if (window.modoMapaAtual === 'coordenada') {
                     const urlIframe = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`; //nao alterar
                     const urlLink = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`; //nao alterar
-                    
-                    iframeAtual.src = urlIframe;
-                    if (linkMapaNovaGuia) linkMapaNovaGuia.href = urlLink;
+                    setIframeSrc(urlIframe);
+                    setLinkHref(urlLink);
                 } else {
-                    let rota = window.dadosGeraisRota || (window.top && window.top.dadosGeraisRota);
+                    let rota = window.dadosGeraisRota || (window.APP_SCOPE && window.APP_SCOPE.dadosGeraisRota);
                     let urlIframeEnd = "";
                     let urlLinkEnd = "";
                     
@@ -138,52 +158,74 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
                         urlLinkEnd = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
                     }
                     
-                    let isPrimeiraVez = !window.primeiraExecucaoMapasFinalizada;
-                    window.primeiraExecucaoMapasFinalizada = true;
-                    
-                    if (!isPrimeiraVez) {
-                        iframeAtual.src = urlIframeEnd;
-                    }
-                    if (linkMapaNovaGuia) linkMapaNovaGuia.href = urlLinkEnd;
+                    setIframeSrc(urlIframeEnd);
+                    setLinkHref(urlLinkEnd);
                 }
 
                 if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
-                    console.log("✅ atualizarListaEscolasDinamicamente encontrada em window");
-                    console.log("📞 Chamando atualizarListaEscolasDinamicamente via window após mudança de mapa");
                     window.atualizarListaEscolasDinamicamente();
-                } else if (window.top && typeof window.top.atualizarListaEscolasDinamicamente === 'function') {
-                    console.log("✅ atualizarListaEscolasDinamicamente encontrada em window.top");
-                    console.log("📞 Chamando atualizarListaEscolasDinamicamente via window.top após mudança de mapa");
-                    window.top.atualizarListaEscolasDinamicamente();
+                } else if (window.APP_SCOPE && typeof window.APP_SCOPE.atualizarListaEscolasDinamicamente === 'function') {
+                    window.APP_SCOPE.atualizarListaEscolasDinamicamente();
                 } else {
-                    console.log("❌ Função atualizarListaEscolasDinamicamente não encontrada em window ou window.top");
                 }
             };
 
             atualizarURLsMapas();
             window.atualizarURLsMapasGlobal = atualizarURLsMapas;
+            window.addEventListener('dadosGeraisRotaReady', () => {
+                if (typeof window.atualizarURLsMapasGlobal === 'function') {
+                    window.atualizarURLsMapasGlobal();
+                }
+            });
 
-            if (!docAlvo.getElementById('mapa-toggle-container')) {
+            // --- SECTION: UI RESILIENCE ---
+            // Implement retry-loop (max 5 times, 500ms interval) or MutationObserver for mapa-toggle-container injection
+            let retryCount = 0;
+            const maxRetries = 5;
+            const retryInterval = 500;
+
+            const injectToggleContainer = () => {
+                if (docAlvo.getElementById('mapa-toggle-container')) return; // Already exists
+
                 const toggleContainer = docAlvo.createElement('div');
                 toggleContainer.id = 'mapa-toggle-container';
                 toggleContainer.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; font-size: 11px;";
 
                 const btnModoMapa = docAlvo.createElement('button');
+                btnModoMapa.id = 'switch-origem-mapa';
                 btnModoMapa.innerHTML = ehMudanca ? "📍 Por Endereço" : "📍 Por Coordenadas";
                 btnModoMapa.style.cssText = "padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f9f9f9; color: #555; border-radius: 3px;";
                 
                 const btnModoTransp = docAlvo.createElement('button');
+                btnModoTransp.id = 'switch-transporte-mapa';
                 btnModoTransp.innerHTML = "🚶 A pé";
                 btnModoTransp.style.cssText = "padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f9f9f9; color: #555; border-radius: 3px;";
 
+                // Hide "Coordenada/Endereço" switch IF DistDiferentesEntreMapas === false
+                if (window.DistDiferentesEntreMapas === false) {
+                    btnModoMapa.style.display = 'none';
+                }
+
                 btnModoMapa.onclick = (e) => {
                     e.preventDefault();
-                    console.log("🖱️ Botão 'Por Coordenadas/Endereço' clicado");
-                    console.log("⚠️ DistDiferentesEntreMapas =", window.DistDiferentesEntreMapas);
                     window.modoMapaAtual = window.modoMapaAtual === 'endereco' ? 'coordenada' : 'endereco';
-                    console.log("🔄 Novo modoMapaAtual:", window.modoMapaAtual);
                     btnModoMapa.innerHTML = window.modoMapaAtual === 'endereco' ? "📍 Por Endereço" : "📍 Por Coordenadas";
                     atualizarURLsMapas();
+                    // Disparar evento para atualizar inputs dependentes
+                    window.dispatchEvent(new CustomEvent('modoMapaChanged', { 
+                        detail: { modo: window.modoMapaAtual } 
+                    }));
+                    // Fallback direto para atualizar o input-assistente-dist e recarregar lista quando disponível
+                    if (typeof window.atualizarInputDistancia === 'function') {
+                        window.atualizarInputDistancia();
+                    } else if (window.APP_SCOPE && typeof window.APP_SCOPE.atualizarInputDistancia === 'function') {
+                        window.APP_SCOPE.atualizarInputDistancia();
+                    }
+                    if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
+                        window.atualizarListaEscolasDinamicamente();
+                    } else if (window.APP_SCOPE && typeof window.APP_SCOPE.atualizarListaEscolasDinamicamente === 'function') {
+                        window.APP_SCOPE.atualizarListaEscolasDinamicamente();
+                    }
                 };
 
                 btnModoTransp.onclick = (e) => {
@@ -195,8 +237,28 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
 
                 toggleContainer.appendChild(btnModoMapa);
                 toggleContainer.appendChild(btnModoTransp);
-                iframeAtual.parentNode.insertBefore(toggleContainer, iframeAtual.nextSibling);
+
+                if (iframeAtual && iframeAtual.parentNode) {
+                    iframeAtual.parentNode.insertBefore(toggleContainer, iframeAtual.nextSibling);
+                } else if (retryCount < maxRetries) {
+                    retryCount++;
+                    setTimeout(injectToggleContainer, retryInterval);
+                }
+            };
+
+            // Use MutationObserver for resilience if available
+            if (typeof MutationObserver !== 'undefined') {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'childList' && !docAlvo.getElementById('mapa-toggle-container')) {
+                            injectToggleContainer();
+                        }
+                    });
+                });
+                observer.observe(docAlvo.body, { childList: true, subtree: true });
             }
+
+            injectToggleContainer();
         }
 
         if (linkMapaNovaGuia) {
@@ -209,6 +271,13 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
     }
 };
 
+// --- SECTION: OSRM ROUTING CALCULATION ---
+// Technical comments for OSRM wrappers:
+// - Coordinate calculation logic: Uses OSRM API with profile ('foot' or 'driving')
+// - URL format: https://router.project-osrm.org/route/v1/{profile}/{lon},{lat};{lon},{lat}?overview=false
+// - Returns distance in meters, rounded to nearest integer
+// - Handles AbortController signals for cancellation
+// - Gracefully returns null on errors or invalid coordinates
 window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDest, profile = 'foot', signal = null) {
     if (!latOrigin || !lonOrigin || !latDest || !lonDest) return null;
     try {
