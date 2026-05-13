@@ -1,10 +1,20 @@
-window.mapaSincronizado = false;
-
 window.copiarCoordenadasEndereco = function() {
-    let rota = window.dadosGeraisRota || (window.APP_SCOPE && window.APP_SCOPE.dadosGeraisRota);
-    if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
-        let txt = `${rota.coordAlunoEnd.lat} ${rota.coordAlunoEnd.lon}`;
-        navigator.clipboard.writeText(txt).catch(e => console.error("Erro copy", e));
+    const rota = window.getSharedStoreValue?.('dadosGeraisRota');
+
+    if (!rota || !rota.coordAlunoEnd) return;
+
+    if (typeof rota.coordAlunoEnd === 'string') {
+        navigator.clipboard
+            .writeText(rota.coordAlunoEnd)
+            .catch(e => console.error("Erro copy", e));
+        return;
+    }
+
+    if (rota.coordAlunoEnd.lat) {
+        const txt = `${rota.coordAlunoEnd.lat} ${rota.coordAlunoEnd.lon}`;
+        navigator.clipboard
+            .writeText(txt)
+            .catch(e => console.error("Erro copy", e));
     }
 };
 
@@ -17,257 +27,598 @@ window.copiarCoordenadasEndereco = function() {
 // - Returns structured object with lat/lon for address and school locations
 window.extrairDadosGeograficos = async function(urlFichaNova) {
     const tInicioGeo = performance.now();
+
     try {
         const resposta = await fetch(urlFichaNova);
+        if (!resposta.ok) return null;
         const htmlText = await resposta.text();
-        
+
         const parser = new DOMParser();
-        const docVirtual = parser.parseFromString(htmlText, "text/html");
-        const iframeMap = docVirtual.getElementById('map_endereco');
+        const docVirtual = parser.parseFromString(
+            htmlText,
+            "text/html"
+        );
+
+        const iframeMap =
+            docVirtual.getElementById('map_endereco');
 
         if (iframeMap && iframeMap.src) {
+
             const urlCompleta = iframeMap.src;
-            const regexOrigin = /origin=([^&]+)/i;
-            const regexDest = /destination=([^&]+)/i;
 
-            const matchOrigin = urlCompleta.match(regexOrigin);
-            const matchDest = urlCompleta.match(regexDest);
+            const regexOrigin =
+                /origin=([^&]+)/i;
 
-            const separarCoordenadas = (matchString) => {
-                if (!matchString) return { lat: null, lon: null };
-                const decodificado = decodeURIComponent(matchString[1]).trim();
-                const partes = decodificado.split(/[\s,]+/);
-                
-                if (partes.length >= 2) {
-                    return { lat: parseFloat(partes[0].trim()), lon: parseFloat(partes[1].trim()) };
+            const regexDest =
+                /destination=([^&]+)/i;
+
+            const matchOrigin =
+                urlCompleta.match(regexOrigin);
+
+            const matchDest =
+                urlCompleta.match(regexDest);
+
+            const separarCoordenadas = (
+                matchString
+            ) => {
+
+                if (!matchString) {
+                    return {
+                        lat: null,
+                        lon: null
+                    };
                 }
-                return { lat: null, lon: null };
+
+                const decodificado =
+                    decodeURIComponent(
+                        matchString[1]
+                    ).trim();
+
+                const partes =
+                    decodificado.split(
+                        /[\s,]+/
+                    );
+
+                if (partes.length >= 2) {
+
+                    return {
+                        lat: parseFloat(
+                            partes[0].trim()
+                        ),
+                        lon: parseFloat(
+                            partes[1].trim()
+                        )
+                    };
+                }
+
+                return {
+                    lat: null,
+                    lon: null
+                };
             };
 
-            const coordOrigin = separarCoordenadas(matchOrigin);
-            const coordDest = separarCoordenadas(matchDest);
+            const coordOrigin =
+                separarCoordenadas(matchOrigin);
+
+            const coordDest =
+                separarCoordenadas(matchDest);
 
             const dados = {
                 urlMaps: urlCompleta,
-                geoEndereco_Latit: coordOrigin.lat,
-                geoEndereco_Longit: coordOrigin.lon,
-                geoEscola_Latit: coordDest.lat,
-                geoEscola_Longit: coordDest.lon
+                geoEndereco_Latit:
+                    coordOrigin.lat,
+                geoEndereco_Longit:
+                    coordOrigin.lon,
+                geoEscola_Latit:
+                    coordDest.lat,
+                geoEscola_Longit:
+                    coordDest.lon
             };
 
             const tFimGeo = performance.now();
+
             return dados;
         }
+
         return null;
+
     } catch (erro) {
-        console.error("❌ Erro ao extrair dados geográficos:", erro);
+
+        console.error(
+            "❌ Erro ao extrair dados geográficos:",
+            erro
+        );
+
         return null;
     }
 };
 
-window.copiarCoordenadasEndereco = function() {
-    let rota = window.dadosGeraisRota || (window.APP_SCOPE && window.APP_SCOPE.dadosGeraisRota);
-    if (rota && rota.coordAlunoEnd) {
-        if (typeof rota.coordAlunoEnd === 'string') {
-            navigator.clipboard.writeText(rota.coordAlunoEnd).catch(e => console.error("Erro copy", e));
-        } else if (rota.coordAlunoEnd.lat) {
-            let txt = `${rota.coordAlunoEnd.lat} ${rota.coordAlunoEnd.lon}`;
-            navigator.clipboard.writeText(txt).catch(e => console.error("Erro copy", e));
-        }
-    }
-};
+window.sincronizarMapaECoordenadas =
+async function(docAlvo) {
 
-window.sincronizarMapaECoordenadas = async function(docAlvo) {
-    if (window.mapaSincronizado) return; 
-    window.mapaSincronizado = true;
+    let urlOrigem =
+        docAlvo.location
+            ? docAlvo.location.href
+            : window.location.href;
 
-    let urlOrigem = docAlvo.location ? docAlvo.location.href : window.location.href;
-    
-    let idSolInput = docAlvo.querySelector('input[name="id_solicitacao"]') || docAlvo.querySelector('input[name="id"]');
-    let idFicha = idSolInput ? idSolInput.value : '';
+    let idSolInput =
+        docAlvo.querySelector(
+            'input[name="id_solicitacao"]'
+        ) ||
+        docAlvo.querySelector(
+            'input[name="id"]'
+        );
 
-    let basePath = urlOrigem.substring(0, urlOrigem.lastIndexOf('/') + 1);
+    let idFicha =
+        idSolInput
+            ? idSolInput.value
+            : '';
+
+    let basePath =
+        urlOrigem.substring(
+            0,
+            urlOrigem.lastIndexOf('/') + 1
+        );
+
     // Verifica se a baseUrl já termina ou contém o caminho do módulo
-    const moduloPath = "modulos/transporte_escolar/";
-    const prefixo = basePath.includes(moduloPath) ? "" : moduloPath;
-    let urlFichaNova = basePath + prefixo + 'ficha_transporte_nova_versao.php?id_solicitacao=' + idFicha;
+    const moduloPath =
+        "modulos/transporte_escolar/";
 
-    const dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
+    const prefixo =
+        basePath.includes(moduloPath)
+            ? ""
+            : moduloPath;
+
+    let urlFichaNova =
+        basePath +
+        prefixo +
+        'ficha_transporte_nova_versao.php?id_solicitacao=' +
+        idFicha;
+
+    const dadosGeo =
+        await window.extrairDadosGeograficos(
+            urlFichaNova
+        );
 
     if (dadosGeo) {
-        const iframeAtual = docAlvo.getElementById('map_endereco');
-        const linkMapaNovaGuia = docAlvo.getElementById('botao_mapa');
-        
-        const btnAbrirFicha = docAlvo.getElementById('botaoAbrirFicha');
-        if (btnAbrirFicha && !btnAbrirFicha.dataset.copyBound) {
-            btnAbrirFicha.dataset.copyBound = 'true';
-            btnAbrirFicha.addEventListener('click', window.copiarCoordenadasEndereco);
+
+        const iframeAtual =
+            docAlvo.getElementById(
+                'map_endereco'
+            );
+
+        const linkMapaNovaGuia =
+            docAlvo.getElementById(
+                'botao_mapa'
+            );
+
+        const btnAbrirFicha =
+            docAlvo.getElementById(
+                'botaoAbrirFicha'
+            );
+
+        if (
+            btnAbrirFicha &&
+            !btnAbrirFicha.dataset.copyBound
+        ) {
+
+            btnAbrirFicha.dataset.copyBound =
+                'true';
+
+            btnAbrirFicha.addEventListener(
+                'click',
+                window.copiarCoordenadasEndereco
+            );
         }
 
-        if (iframeAtual && !urlOrigem.includes('nova_versao')) {
+        if (
+            iframeAtual &&
+            !urlOrigem.includes('nova_versao')
+        ) {
+
             if (!window.urlEnderecoGlobal) {
-                window.urlEnderecoGlobal = iframeAtual.src;
-                window.urlBotaoEnderecoGlobal = linkMapaNovaGuia ? linkMapaNovaGuia.href : iframeAtual.src;
+
+                window.urlEnderecoGlobal =
+                    iframeAtual.src;
+
+                window.urlBotaoEnderecoGlobal =
+                    linkMapaNovaGuia
+                        ? linkMapaNovaGuia.href
+                        : iframeAtual.src;
+            }
+
+            let currentModoMapa = window.getSharedStoreValue?.('modoMapaAtual');
+            if (!currentModoMapa) {
+                const statusTexto = (docAlvo.getElementById('status_atendimento')?.innerText || "").toUpperCase();
+                const ehMudanca = statusTexto.includes("MUDANCA") || statusTexto.includes("MUDANÇA");
+
+                window.setSharedStore({
+                    modoMapaAtual: ehMudanca ? 'endereco' : 'coordenada',
+                    modoTransporteAtual: 'pe'
+                });
             }
             
-            const statusTexto = (docAlvo.getElementById('status_atendimento')?.innerText || "").toUpperCase();
-            const ehMudanca = statusTexto.includes("MUDANCA") || statusTexto.includes("MUDANÇA");
+            const statusTextoAux = (docAlvo.getElementById('status_atendimento')?.innerText || "").toUpperCase();
+            const ehMudancaAux = statusTextoAux.includes("MUDANCA") || statusTextoAux.includes("MUDANÇA");
 
-            window.modoMapaAtual = ehMudanca ? 'endereco' : 'coordenada';
-            window.modoTransporteAtual = 'pe';
+            const atualizarURLsMapas = (atualizarLista = false) => {
 
-            const atualizarURLsMapas = () => {
-                let sufixoTransporteBotao = window.modoTransporteAtual === 'pe' ? "&travelmode=walking&dirflg=w" : "";
-                let sufixoTransporteFrame = window.modoTransporteAtual === 'pe' ? "&mode=walking" : "";
+                const modoTransporte =
+                    window.getSharedStoreValue?.(
+                        'modoTransporteAtual'
+                    ) || 'pe';
 
-                const normalizeUrl = (url) => url ? url.replace(/&amp;/g, '&') : url;
-                const setIframeSrc = (newUrl) => {
-                    if (!iframeAtual || !newUrl) return;
-                    const normalized = normalizeUrl(newUrl);
-                    if (iframeAtual.src !== normalized) {
-                        iframeAtual.src = normalized;
+                let sufixoTransporteBotao =
+                    modoTransporte === 'pe'
+                        ? "&travelmode=walking&dirflg=w"
+                        : "";
+
+                let sufixoTransporteFrame =
+                    modoTransporte === 'pe'
+                        ? "&mode=walking"
+                        : "";
+
+                const normalizeUrl = (url) =>
+                    url
+                        ? url.replace(
+                            /&amp;/g,
+                            '&'
+                        )
+                        : url;
+
+                const setIframeSrc = (
+                    newUrl
+                ) => {
+
+                    if (
+                        !iframeAtual ||
+                        !newUrl
+                    ) return;
+
+                    const normalized =
+                        normalizeUrl(newUrl);
+
+                    if (iframeAtual.dataset.currentSrc !== normalized) {
+                        iframeAtual.dataset.currentSrc = normalized;
+                        iframeAtual.src =
+                            normalized;
                     }
                 };
-                const setLinkHref = (newUrl) => {
-                    if (!linkMapaNovaGuia || !newUrl) return;
-                    const normalized = normalizeUrl(newUrl);
-                    if (linkMapaNovaGuia.href !== normalized) {
-                        linkMapaNovaGuia.href = normalized;
+
+                const setLinkHref = (
+                    newUrl
+                ) => {
+
+                    if (
+                        !linkMapaNovaGuia ||
+                        !newUrl
+                    ) return;
+
+                    const normalized =
+                        normalizeUrl(newUrl);
+
+                    if (linkMapaNovaGuia.dataset.currentHref !== normalized) {
+                        linkMapaNovaGuia.dataset.currentHref = normalized;
+                        linkMapaNovaGuia.href =
+                            normalized;
                     }
                 };
-                
-                if (window.modoMapaAtual === 'coordenada') {
-                    const urlIframe = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`; //nao alterar
-                    const urlLink = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`; //nao alterar
+
+                const modoMapa =
+                    window.getSharedStoreValue?.(
+                        'modoMapaAtual'
+                    ) || 'coordenada';
+
+                if (
+                    modoMapa === 'coordenada'
+                ) {
+
+                    const urlIframe =
+                        `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`; //nao alterar
+
+                    const urlLink =
+                        `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`; //nao alterar
+
                     setIframeSrc(urlIframe);
                     setLinkHref(urlLink);
+
                 } else {
-                    let rota = window.dadosGeraisRota || (window.APP_SCOPE && window.APP_SCOPE.dadosGeraisRota);
+
+                    let rota =
+                        window.getSharedStoreValue?.(
+                            'dadosGeraisRota'
+                        );
+
                     let urlIframeEnd = "";
                     let urlLinkEnd = "";
-                    
-                    if (rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd === 'string') {
-                        let stringEndereco = encodeURIComponent(rota.coordAlunoEnd);
-                        urlIframeEnd = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${stringEndereco}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
-                        urlLinkEnd = `https://maps.google.com/maps?saddr=${stringEndereco}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
-                    } else if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
-                        urlIframeEnd = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
-                        urlLinkEnd = `https://maps.google.com/maps?saddr=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
+
+                    if (
+                        rota &&
+                        rota.coordAlunoEnd &&
+                        typeof rota.coordAlunoEnd === 'string'
+                    ) {
+
+                        let stringEndereco =
+                            encodeURIComponent(
+                                rota.coordAlunoEnd
+                            );
+
+                        urlIframeEnd =
+                            `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${stringEndereco}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+
+                        urlLinkEnd =
+                            `https://maps.google.com/maps?saddr=${stringEndereco}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
+
+                    } else if (
+                        rota &&
+                        rota.coordAlunoEnd &&
+                        rota.coordAlunoEnd.lat
+                    ) {
+
+                        urlIframeEnd =
+                            `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+
+                        urlLinkEnd =
+                            `https://maps.google.com/maps?saddr=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
+
                     } else {
-                        urlIframeEnd = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
-                        urlLinkEnd = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
+
+                        urlIframeEnd =
+                            `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+
+                        urlLinkEnd =
+                            `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
                     }
-                    
+
                     setIframeSrc(urlIframeEnd);
                     setLinkHref(urlLinkEnd);
                 }
 
-                if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
+                if (
+                    atualizarLista &&
+                    typeof window.atualizarListaEscolasDinamicamente ===
+                    'function'
+                ) {
+
                     window.atualizarListaEscolasDinamicamente();
-                } else if (window.APP_SCOPE && typeof window.APP_SCOPE.atualizarListaEscolasDinamicamente === 'function') {
-                    window.APP_SCOPE.atualizarListaEscolasDinamicamente();
-                } else {
                 }
             };
 
-            atualizarURLsMapas();
-            window.atualizarURLsMapasGlobal = atualizarURLsMapas;
-            window.addEventListener('dadosGeraisRotaReady', () => {
-                if (typeof window.atualizarURLsMapasGlobal === 'function') {
-                    window.atualizarURLsMapasGlobal();
-                }
-            });
+            atualizarURLsMapas(false);
+
+            window.atualizarURLsMapasGlobal = () =>
+                atualizarURLsMapas(true);
 
             // --- SECTION: UI RESILIENCE ---
             // Implement retry-loop (max 5 times, 500ms interval) or MutationObserver for mapa-toggle-container injection
+
             let retryCount = 0;
+
             const maxRetries = 5;
+
             const retryInterval = 500;
 
             const injectToggleContainer = () => {
-                if (docAlvo.getElementById('mapa-toggle-container')) return; // Already exists
 
-                const toggleContainer = docAlvo.createElement('div');
-                toggleContainer.id = 'mapa-toggle-container';
-                toggleContainer.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; font-size: 11px;";
+                if (
+                    docAlvo.getElementById(
+                        'mapa-toggle-container'
+                    )
+                ) return;
 
-                const btnModoMapa = docAlvo.createElement('button');
-                btnModoMapa.id = 'switch-origem-mapa';
-                btnModoMapa.innerHTML = ehMudanca ? "📍 Por Endereço" : "📍 Por Coordenadas";
-                btnModoMapa.style.cssText = "padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f9f9f9; color: #555; border-radius: 3px;";
-                
-                const btnModoTransp = docAlvo.createElement('button');
-                btnModoTransp.id = 'switch-transporte-mapa';
-                btnModoTransp.innerHTML = "🚶 A pé";
-                btnModoTransp.style.cssText = "padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f9f9f9; color: #555; border-radius: 3px;";
+                const toggleContainer =
+                    docAlvo.createElement('div');
+
+                toggleContainer.id =
+                    'mapa-toggle-container';
+
+                toggleContainer.style.cssText =
+                    "display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; font-size: 11px;";
+
+                const btnModoMapa =
+                    docAlvo.createElement(
+                        'button'
+                    );
+
+                btnModoMapa.id =
+                    'switch-origem-mapa';
+
+                btnModoMapa.innerHTML =
+                    ehMudancaAux
+                        ? "📍 Por Endereço"
+                        : "📍 Por Coordenadas";
+
+                btnModoMapa.style.cssText =
+                    "padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f9f9f9; color: #555; border-radius: 3px;";
+
+                const btnModoTransp =
+                    docAlvo.createElement(
+                        'button'
+                    );
+
+                btnModoTransp.id =
+                    'switch-transporte-mapa';
+
+                btnModoTransp.innerHTML =
+                    "🚶 A pé";
+
+                btnModoTransp.style.cssText =
+                    "padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f9f9f9; color: #555; border-radius: 3px;";
 
                 // Hide "Coordenada/Endereço" switch IF DistDiferentesEntreMapas === false
-                if (window.DistDiferentesEntreMapas === false) {
-                    btnModoMapa.style.display = 'none';
-                }
 
                 btnModoMapa.onclick = (e) => {
+
                     e.preventDefault();
-                    window.modoMapaAtual = window.modoMapaAtual === 'endereco' ? 'coordenada' : 'endereco';
-                    btnModoMapa.innerHTML = window.modoMapaAtual === 'endereco' ? "📍 Por Endereço" : "📍 Por Coordenadas";
-                    atualizarURLsMapas();
-                    // Disparar evento para atualizar inputs dependentes
-                    window.dispatchEvent(new CustomEvent('modoMapaChanged', { 
-                        detail: { modo: window.modoMapaAtual } 
-                    }));
-                    // Fallback direto para atualizar o input-assistente-dist e recarregar lista quando disponível
-                    if (typeof window.atualizarInputDistancia === 'function') {
-                        window.atualizarInputDistancia();
-                    } else if (window.APP_SCOPE && typeof window.APP_SCOPE.atualizarInputDistancia === 'function') {
-                        window.APP_SCOPE.atualizarInputDistancia();
-                    }
-                    if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
-                        window.atualizarListaEscolasDinamicamente();
-                    } else if (window.APP_SCOPE && typeof window.APP_SCOPE.atualizarListaEscolasDinamicamente === 'function') {
-                        window.APP_SCOPE.atualizarListaEscolasDinamicamente();
+
+                    const modoAtual =
+                        window.getSharedStoreValue?.(
+                            'modoMapaAtual'
+                        ) || 'coordenada';
+
+                    const novoModo =
+                        modoAtual === 'endereco'
+                            ? 'coordenada'
+                            : 'endereco';
+
+                    window.setSharedStoreValue(
+                        'modoMapaAtual',
+                        novoModo
+                    );
+
+                    btnModoMapa.innerHTML =
+                        novoModo === 'endereco'
+                            ? "📍 Por Endereço"
+                            : "📍 Por Coordenadas";
+
+                    atualizarURLsMapas(true);
+
+                    const distanciaCoord =
+                        Number(
+                            window.getSharedStoreValue?.(
+                                'distanciaCoord'
+                            )
+                        );
+
+                    const distanciaEnd =
+                        Number(
+                            window.getSharedStoreValue?.(
+                                'distanciaEnd'
+                            )
+                        );
+
+                    const distanciaAtual =
+                        novoModo === 'endereco'
+                            ? distanciaEnd
+                            : distanciaCoord;
+
+                    if (
+                        typeof window.atualizarInputDistancia ===
+                        'function'
+                    ) {
+
+                        window.atualizarInputDistancia(
+                            distanciaAtual
+                        );
                     }
                 };
 
                 btnModoTransp.onclick = (e) => {
+
                     e.preventDefault();
-                    window.modoTransporteAtual = window.modoTransporteAtual === 'pe' ? 'carro' : 'pe';
-                    btnModoTransp.innerHTML = window.modoTransporteAtual === 'pe' ? "🚶 A pé" : "🚗 De Carro";
-                    atualizarURLsMapas();
+
+                    const modoAtual =
+                        window.getSharedStoreValue?.(
+                            'modoTransporteAtual'
+                        ) || 'pe';
+
+                    const novoModo =
+                        modoAtual === 'pe'
+                            ? 'carro'
+                            : 'pe';
+
+                    window.setSharedStoreValue(
+                        'modoTransporteAtual',
+                        novoModo
+                    );
+
+                    btnModoTransp.innerHTML =
+                        novoModo === 'pe'
+                            ? "🚶 A pé"
+                            : "🚗 De Carro";
+
+                    atualizarURLsMapas(true);
                 };
 
-                toggleContainer.appendChild(btnModoMapa);
-                toggleContainer.appendChild(btnModoTransp);
+                toggleContainer.appendChild(
+                    btnModoMapa
+                );
 
-                if (iframeAtual && iframeAtual.parentNode) {
-                    iframeAtual.parentNode.insertBefore(toggleContainer, iframeAtual.nextSibling);
-                } else if (retryCount < maxRetries) {
+                toggleContainer.appendChild(
+                    btnModoTransp
+                );
+
+                if (
+                    iframeAtual &&
+                    iframeAtual.parentNode
+                ) {
+
+                    iframeAtual.parentNode.insertBefore(
+                        toggleContainer,
+                        iframeAtual.nextSibling
+                    );
+
+                } else if (
+                    retryCount < maxRetries
+                ) {
+
                     retryCount++;
-                    setTimeout(injectToggleContainer, retryInterval);
+
+                    setTimeout(
+                        injectToggleContainer,
+                        retryInterval
+                    );
                 }
             };
 
             // Use MutationObserver for resilience if available
-            if (typeof MutationObserver !== 'undefined') {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.type === 'childList' && !docAlvo.getElementById('mapa-toggle-container')) {
-                            injectToggleContainer();
+
+            if (
+                typeof MutationObserver !==
+                'undefined'
+            ) {
+
+                const observer =
+                    new MutationObserver(
+                        (mutations) => {
+
+                            mutations.forEach(
+                                (mutation) => {
+
+                                    if (
+                                        mutation.type ===
+                                        'childList' &&
+                                        !docAlvo.getElementById(
+                                            'mapa-toggle-container'
+                                        )
+                                    ) {
+
+                                        injectToggleContainer();
+                                    }
+                                }
+                            );
                         }
-                    });
-                });
-                observer.observe(docAlvo.body, { childList: true, subtree: true });
+                    );
+
+                observer.observe(
+                    docAlvo.body,
+                    {
+                        childList: true,
+                        subtree: true
+                    }
+                );
             }
 
             injectToggleContainer();
+
         }
 
         if (linkMapaNovaGuia) {
-            linkMapaNovaGuia.target = "_blank";
+            linkMapaNovaGuia.target =
+                "_blank";
         }
 
-        window.dadosGeograficos = dadosGeo; 
+        window.setSharedStoreValue(
+            'dadosGeograficos',
+            dadosGeo
+        );
+
     } else {
-        window.dadosGeograficos = { erro: true };
+
+        window.setSharedStoreValue(
+            'dadosGeograficos',
+            { erro: true }
+        );
     }
 };
 
@@ -278,32 +629,87 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
 // - Returns distance in meters, rounded to nearest integer
 // - Handles AbortController signals for cancellation
 // - Gracefully returns null on errors or invalid coordinates
-window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDest, profile = 'foot', signal = null) {
-    if (!latOrigin || !lonOrigin || !latDest || !lonDest) return null;
+
+window.calcularTrajetoOSRM =
+async function(
+    latOrigin,
+    lonOrigin,
+    latDest,
+    lonDest,
+    profile = 'foot',
+    signal = null
+) {
+
+    if (
+        !latOrigin ||
+        !lonOrigin ||
+        !latDest ||
+        !lonDest
+    ) return null;
+
     try {
-        const url = `https://router.project-osrm.org/route/v1/${profile}/${lonOrigin},${latOrigin};${lonDest},${latDest}?overview=false`;
-        const fetchOptions = signal ? { signal } : {};
-        const response = await fetch(url, fetchOptions);
-        
-        if (!response.ok) return null;
-        
-        const data = await response.json();
-        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-            return Math.round(data.routes[0].distance); 
+
+        const url =
+            `https://router.project-osrm.org/route/v1/${profile}/${lonOrigin},${latOrigin};${lonDest},${latDest}?overview=false`;
+
+        const fetchOptions =
+            signal
+                ? { signal }
+                : {};
+
+        const response =
+            await fetch(
+                url,
+                fetchOptions
+            );
+
+        if (!response.ok) {
+            return null;
         }
+
+        const data =
+            await response.json();
+
+        if (
+            data.code === 'Ok' &&
+            data.routes &&
+            data.routes.length > 0
+        ) {
+
+            return Math.round(
+                data.routes[0].distance
+            );
+        }
+
     } catch (e) {
-        if (e.name !== 'AbortError') {
-            console.error(`❌ Erro ao calcular trajeto via OSRM (${profile}):`, e);
+
+        if (
+            e.name !== 'AbortError'
+        ) {
+
+            console.error(
+                `❌ Erro ao calcular trajeto via OSRM (${profile}):`,
+                e
+            );
         }
     }
+
     return null;
 };
 
-window.obterCoordenadasPorEndereco = async function(enderecoCompleto) {
-    if (!enderecoCompleto) return null;
-    
+window.obterCoordenadasPorEndereco =
+async function(enderecoCompleto) {
+
+    if (!enderecoCompleto) {
+        return null;
+    }
+
     // Função auxiliar para substituir abreviações de tipos de vias
-    function substituirAbreviacoes(endereco) {
+
+    function substituirAbreviacoes(
+        endereco
+    ) {
+
         const substituicoes = {
             'AV ': 'AVENIDA ',
             'EST ': 'ESTRADA ',
@@ -311,7 +717,7 @@ window.obterCoordenadasPorEndereco = async function(enderecoCompleto) {
             'AL ': 'ALAMEDA ',
             'PC ': 'PRAÇA ',
             'VIE ': 'VIELA ',
-            'VL ': 'VIELA ', // Cuidado: pode ser Via também, mas priorizando Viela
+            'VL ': 'VIELA ',
             'ROD ': 'RODOVIA ',
             'TRAV ': 'TRAVESSA ',
             'TV ': 'TRAVESSA ',
@@ -331,7 +737,6 @@ window.obterCoordenadasPorEndereco = async function(enderecoCompleto) {
             'RES ': 'RESIDENCIAL ',
             'SIT ': 'SITIO ',
             'VIL ': 'VILA ',
-            'VL ': 'VIELA ',
             'QD ': 'QUADRA ',
             'LOT ': 'LOTE ',
             'GAL ': 'GALERIA ',
@@ -346,28 +751,88 @@ window.obterCoordenadasPorEndereco = async function(enderecoCompleto) {
             'NU ': 'NUMERO ',
             'N ': 'NUMERO '
         };
-        
-        let enderecoCorrigido = endereco.toUpperCase();
-        for (const [abreviacao, completo] of Object.entries(substituicoes)) {
-            enderecoCorrigido = enderecoCorrigido.replace(new RegExp(`\\b${abreviacao}`, 'g'), completo);
+
+        let enderecoCorrigido =
+            endereco.toUpperCase();
+
+        for (
+            const [abreviacao, completo]
+            of Object.entries(
+                substituicoes
+            )
+        ) {
+
+            enderecoCorrigido =
+                enderecoCorrigido.replace(
+                    new RegExp(
+                        `\\b${abreviacao}`,
+                        'g'
+                    ),
+                    completo
+                );
         }
+
         return enderecoCorrigido;
     }
-    
+
     try {
-        let enderecoBusca = substituirAbreviacoes(enderecoCompleto);
-        if (enderecoBusca && !enderecoBusca.toUpperCase().includes("BERNARDO")) {
-            enderecoBusca += ", São Bernardo do Campo - SP";
+
+        let enderecoBusca =
+            substituirAbreviacoes(
+                enderecoCompleto
+            );
+
+        if (
+            enderecoBusca &&
+            !enderecoBusca
+                .toUpperCase()
+                .includes("BERNARDO")
+        ) {
+
+            enderecoBusca +=
+                ", São Bernardo do Campo - SP";
         }
-        
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBusca)}&limit=1`;
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data && data.length > 0) {
-            return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+
+        const url =
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBusca)}&limit=1&email=seu-email@dominio.com`;
+
+        const response =
+            await fetch(url, {
+                headers: {
+                    'Accept-Language': 'pt-BR,pt;q=0.9'
+                }
+            });
+
+        if (!response.ok) {
+            console.warn(`⚠️ Aviso Nominatim: Falha na requisição (Status: ${response.status})`);
+            return null;
         }
+
+        const data =
+            await response.json();
+
+        if (
+            data &&
+            data.length > 0
+        ) {
+
+            return {
+                lat: parseFloat(
+                    data[0].lat
+                ),
+                lon: parseFloat(
+                    data[0].lon
+                )
+            };
+        }
+
     } catch(e) {
-        console.error("❌ Erro ao buscar coordenadas do endereço no Nominatim:", e);
+
+        console.error(
+            "❌ Erro ao buscar coordenadas do endereço no Nominatim:",
+            e
+        );
     }
+
     return null;
 };

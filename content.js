@@ -30,7 +30,7 @@
     }
     
     if (window === window.top) {
-        verificarAtualizacao();
+        // verificarAtualizacao();
     }
 
     const urlAtual = window.location.href;
@@ -61,7 +61,11 @@
                 if (mod) mod.remove();
                 
                 window.mapaSincronizado = false;
-                window.dadosGeograficos = null;
+                if (typeof window.setSharedStoreValue === 'function') {
+                    window.setSharedStoreValue('dadosGeograficos', null);
+                } else {
+                    window.dadosGeograficos = null;
+                }
                 window.currentStudentId = null; 
                 
                 // MATA OS PROCESSOS EM BACKGROUND
@@ -80,7 +84,11 @@
                 if (mod) mod.remove();
                 
                 window.mapaSincronizado = false;
-                window.dadosGeograficos = null;
+                if (typeof window.setSharedStoreValue === 'function') {
+                    window.setSharedStoreValue('dadosGeograficos', null);
+                } else {
+                    window.dadosGeograficos = null;
+                }
                 window.currentStudentId = null;
 
                 if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
@@ -89,10 +97,8 @@
     }
 
     setInterval(() => {
-        // Respect APP_SCOPE for scope-aware hierarchy
-        const scope = window.APP_SCOPE || window;
-        if (typeof scope.gerenciarBotaoAssistente === 'function') {
-            scope.gerenciarBotaoAssistente();
+        if (typeof window.gerenciarBotaoAssistente === 'function') {
+            window.gerenciarBotaoAssistente();
         }
         monitorarCicloDeVidaModal();
     }, 1000);

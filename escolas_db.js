@@ -4737,8 +4737,12 @@ window.escolasDB = [
                 "nivel": "4º ANO",
                 "periodo": "PARCIAL"
             },
-            {
+	    {
                 "nivel": "5º ANO",
+                "periodo": "PARCIAL"
+            },
+            {
+                "nivel": "ESPECIAL",
                 "periodo": "PARCIAL"
             }
         ]
