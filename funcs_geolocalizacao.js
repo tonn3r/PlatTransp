@@ -227,6 +227,10 @@ async function(docAlvo) {
                         : iframeAtual.src;
             }
 
+                if (typeof window.gerarEstilosAssistente === 'function') {
+                    window.gerarEstilosAssistente(docAlvo);
+                }
+
             let currentModoMapa = window.getSharedStoreValue?.('modoMapaAtual');
             if (!currentModoMapa) {
                 const statusTexto = (docAlvo.getElementById('status_atendimento')?.innerText || "").toUpperCase();
@@ -399,144 +403,55 @@ async function(docAlvo) {
             const retryInterval = 500;
 
             const injectToggleContainer = () => {
+                if (docAlvo.getElementById('mapa-toggle-container')) return;
 
-                if (
-                    docAlvo.getElementById(
-                        'mapa-toggle-container'
-                    )
-                ) return;
+                const toggleContainer = docAlvo.createElement('div');
+                toggleContainer.id = 'mapa-toggle-container';
+                toggleContainer.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; font-size: 11px;";
 
-                const toggleContainer =
-                    docAlvo.createElement('div');
+                const btnModoMapa = docAlvo.createElement('button');
+                btnModoMapa.id = 'switch-origem-mapa';
+                btnModoMapa.className = 'toggle-btn';
+                btnModoMapa.innerHTML = ehMudancaAux
+                    ? `<span class="mdi mdi-map-search" style="font-size:14px; margin-right:4px;"></span> Por Endereço`
+                    : `<span class="mdi mdi-map-marker-radius-outline" style="font-size:14px; margin-right:4px;"></span> Por Coordenadas`;
 
-                toggleContainer.id =
-                    'mapa-toggle-container';
-
-                toggleContainer.style.cssText =
-                    "display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; font-size: 11px;";
-
-                const btnModoMapa =
-                    docAlvo.createElement(
-                        'button'
-                    );
-
-                btnModoMapa.id =
-                    'switch-origem-mapa';
-
-                btnModoMapa.innerHTML =
-                    ehMudancaAux
-                        ? "📍 Por Endereço"
-                        : "📍 Por Coordenadas";
-
-                btnModoMapa.style.cssText =
-                    "padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f9f9f9; color: #555; border-radius: 3px;";
-
-                const btnModoTransp =
-                    docAlvo.createElement(
-                        'button'
-                    );
-
-                btnModoTransp.id =
-                    'switch-transporte-mapa';
-
-                btnModoTransp.innerHTML =
-                    "🚶 A pé";
-
-                btnModoTransp.style.cssText =
-                    "padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; background-color: #f9f9f9; color: #555; border-radius: 3px;";
-
-                // Hide "Coordenada/Endereço" switch IF DistDiferentesEntreMapas === false
+                const btnModoTransp = docAlvo.createElement('button');
+                btnModoTransp.id = 'switch-transporte-mapa';
+                btnModoTransp.className = 'toggle-btn';
+                btnModoTransp.innerHTML = `<span class="mdi mdi-walk" style="font-size:14px; margin-right:4px;"></span> A pé`;
 
                 btnModoMapa.onclick = (e) => {
-
                     e.preventDefault();
-
-                    const modoAtual =
-                        window.getSharedStoreValue?.(
-                            'modoMapaAtual'
-                        ) || 'coordenada';
-
-                    const novoModo =
-                        modoAtual === 'endereco'
-                            ? 'coordenada'
-                            : 'endereco';
-
-                    window.setSharedStoreValue(
-                        'modoMapaAtual',
-                        novoModo
-                    );
-
-                    btnModoMapa.innerHTML =
-                        novoModo === 'endereco'
-                            ? "📍 Por Endereço"
-                            : "📍 Por Coordenadas";
-
+                    const modoAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
+                    const novoModo = modoAtual === 'endereco' ? 'coordenada' : 'endereco';
+                    window.setSharedStoreValue('modoMapaAtual', novoModo);
+                    btnModoMapa.innerHTML = novoModo === 'endereco'
+                        ? `<span class="mdi mdi-map-search" style="font-size:14px; margin-right:4px;"></span> Por Endereço`
+                        : `<span class="mdi mdi-map-marker-radius-outline" style="font-size:14px; margin-right:4px;"></span> Por Coordenadas`;
                     atualizarURLsMapas(true);
 
-                    const distanciaCoord =
-                        Number(
-                            window.getSharedStoreValue?.(
-                                'distanciaCoord'
-                            )
-                        );
-
-                    const distanciaEnd =
-                        Number(
-                            window.getSharedStoreValue?.(
-                                'distanciaEnd'
-                            )
-                        );
-
-                    const distanciaAtual =
-                        novoModo === 'endereco'
-                            ? distanciaEnd
-                            : distanciaCoord;
-
-                    if (
-                        typeof window.atualizarInputDistancia ===
-                        'function'
-                    ) {
-
-                        window.atualizarInputDistancia(
-                            distanciaAtual
-                        );
+                    const distanciaCoord = Number(window.getSharedStoreValue?.('distanciaCoord'));
+                    const distanciaEnd = Number(window.getSharedStoreValue?.('distanciaEnd'));
+                    const distanciaAtual = novoModo === 'endereco' ? distanciaEnd : distanciaCoord;
+                    if (typeof window.atualizarInputDistancia === 'function') {
+                        window.atualizarInputDistancia(distanciaAtual);
                     }
                 };
 
                 btnModoTransp.onclick = (e) => {
-
                     e.preventDefault();
-
-                    const modoAtual =
-                        window.getSharedStoreValue?.(
-                            'modoTransporteAtual'
-                        ) || 'pe';
-
-                    const novoModo =
-                        modoAtual === 'pe'
-                            ? 'carro'
-                            : 'pe';
-
-                    window.setSharedStoreValue(
-                        'modoTransporteAtual',
-                        novoModo
-                    );
-
-                    btnModoTransp.innerHTML =
-                        novoModo === 'pe'
-                            ? "🚶 A pé"
-                            : "🚗 De Carro";
-
+                    const modoAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
+                    const novoModo = modoAtual === 'pe' ? 'carro' : 'pe';
+                    window.setSharedStoreValue('modoTransporteAtual', novoModo);
+                    btnModoTransp.innerHTML = novoModo === 'pe'
+                        ? `<span class="mdi mdi-walk" style="font-size:14px; margin-right:4px;"></span> A pé`
+                        : `<span class="mdi mdi-car" style="font-size:14px; margin-right:4px;"></span> De Carro`;
                     atualizarURLsMapas(true);
                 };
 
-                toggleContainer.appendChild(
-                    btnModoMapa
-                );
-
-                toggleContainer.appendChild(
-                    btnModoTransp
-                );
+                toggleContainer.appendChild(btnModoMapa);
+                toggleContainer.appendChild(btnModoTransp);
 
                 if (
                     iframeAtual &&
