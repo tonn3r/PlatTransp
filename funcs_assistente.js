@@ -52,6 +52,9 @@ window.gerarEstilosAssistente = function(targetDoc) {
             box-sizing: inherit;
         }
         
+        .mdi mdi-keyboard-backspace{
+        color: #fff;
+        }
         .fab-assistente {
             position: fixed;
             bottom: 20px;
@@ -194,8 +197,9 @@ window.gerarEstilosAssistente = function(targetDoc) {
             border-bottom: none;
         }
         .school-item.selected {
-            color: #27ae60;
-            font-weight: 700;
+            color: #ae2727;
+            font-weight: 750;
+            font-size: 15px;
         }
         
         .badge {
@@ -208,6 +212,20 @@ window.gerarEstilosAssistente = function(targetDoc) {
             margin-left: 4px;
             display: inline-block;
             vertical-align: middle;
+        }
+
+        .badge-parcial {
+            background: #bdf7b6;
+            color: #1c660d;
+        }
+
+        .badge-integral {
+            background: #e8e5fc;
+            color: #6658d3;
+        }
+        .badge-noite {
+            background: #115185;
+            color: #ffffff;
         }
         
         .school-meta {
@@ -552,6 +570,26 @@ window.abrirModalAssistente = async function() {
     let nomesResponsaveis = [nomeMae, nomePai].filter(Boolean).join(" e ");
     if (!nomesResponsaveis) nomesResponsaveis = "NÃO INFORMADO";
 
+    const elNome = doc.querySelector('input[name="nome_aluno"]') || doc.querySelector('input[name="nome"]') || doc.getElementById('nome_aluno');
+    let nomeStr = elNome ? elNome.value.trim() : "";
+    if (!nomeStr) {
+        const tds = doc.querySelectorAll('td.etiqueta');
+        for (let td of tds) {
+            if (td.innerText.trim() === 'Nome do aluno' || td.innerText.trim() === 'Nome' || td.innerText.trim() === 'Candidato') {
+                const tr = td.parentElement;
+                const nextTr = tr.nextElementSibling;
+                if (nextTr) {
+                    const tdValor = nextTr.querySelector('td.texto_dados');
+                    if (tdValor) {
+                        nomeStr = tdValor.innerText.trim();
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if (!nomeStr) nomeStr = "Não identificado";
+
     function campoPreenchido(id) {
         const el = doc.getElementById(id);
         if (!el) return false;
@@ -626,7 +664,8 @@ window.abrirModalAssistente = async function() {
         isEspecial: false,
         areaRuralProcessada: false,
         areaRuralEsperaDeficiencia: false,
-        deficienciaEspecialProcessada: false
+        deficienciaEspecialProcessada: false,
+        top3EscolasNomes: ""
     };
     
     function persistirEstado() {
@@ -732,6 +771,9 @@ window.abrirModalAssistente = async function() {
                     termoBusca = ""; 
                 } else if (estado.distancia !== null && estado.distancia < 1500) {
                     termoBusca = "DISTÂNCIA MENOR QUE 1500 METROS";
+                if (estado.escolaProximaCalc === false || estado.escolaProximaUser === false) {
+                    textoDetalhes = "Além de não atingir a distância mínima, é também escola de opção";
+                }
                 } else {
                     termoBusca = "ESCOLA POR OPÇÃO";
                 }
@@ -745,8 +787,8 @@ window.abrirModalAssistente = async function() {
                     </h2>
                     <div class="message-box ${tipoAcao === 'DEFERIR' ? 'success' : 'danger'}">
                         ${mensagem}
-                        ${termoBusca ? `<br><br><b>Opção no Sistema:</b> ${termoBusca}` : ''}
-                        ${textoDetalhes ? `<br><span class="text-warning" style="font-size:12px; display:inline-block; margin-top:5px;"><span class="mdi mdi-script-outline" style="font-size: 14px; margin-right: 4px;"></span> Obs: Anotar "Encaminhado" nos detalhes da análise</span>` : ''}
+                        ${termoBusca ? `<br><br><b>Motivo:</b> ${termoBusca}` : ''}
+                        ${textoDetalhes ? `<br><span class="text-warning" style="font-size:12px; display:inline-block; margin-top:5px;"><span class="mdi mdi-script-outline" style="font-size: 14px; margin-right: 4px;"></span> Obs: Aluno encaminhado pela Central de Matrículas</span>` : ''}
                     </div>
                 </div>
                 <div class="action-group-col" style="margin-top:20px;">
@@ -883,7 +925,7 @@ window.abrirModalAssistente = async function() {
 
             let dadosGeograficos = window.getSharedStoreValue?.('dadosGeograficos');
 
-            if (dadosGeograficos && dadosGeograficos.erro && !estado.tentouResgate) {
+            if (dadosGeograficos && (dadosGeograficos.erro || !dadosGeograficos.geoEndereco_Latit) && !estado.tentouResgate) {
                 estado.tentouResgate = true; 
                 
                 const iframeMap = doc.getElementById('map_endereco');
@@ -975,7 +1017,7 @@ window.abrirModalAssistente = async function() {
 
                 conteudo.innerHTML = `
                     <h3 class="section-title text-info">
-                        <span class="mdi mdi-graph" style="font-size: 22px; margin-right: 6px;"></span> Verificação de Escola
+                        <span class="mdi mdi-graph" style="font-size: 22px; margin-right: 6px;"></span> Verificação de unidade escolar e distância
                     </h3>
                     <p class="text-danger">Verifique se está na escola mais próxima.</p>
                     <div style="margin-bottom: 15px;">
@@ -1067,7 +1109,7 @@ if (inputDist) {
 
             dadosGeograficos = window.getSharedStoreValue?.('dadosGeograficos');
             if (!dadosGeograficos || !dadosGeograficos.geoEndereco_Latit) {
-                conteudo.innerHTML = `<div style="text-align:center; padding:20px;" class="text-info"><span class="mdi mdi-refresh" style="font-size: 22px; margin-right: 6px;"></span> <b>A calcular mapa e coordenadas da rede...</b></div>`;
+                conteudo.innerHTML = `<div style="text-align:center; padding:20px;" class="text-info"><span class="mdi mdi-refresh" style="font-size: 22px; margin-right: 6px;"></span> <b>Calculando escolas mais próximas...</b></div>`;
                 setTimeout(renderizarPasso, 500); 
                 return;
             }
@@ -1139,11 +1181,6 @@ if (inputDist) {
 
             if (escolaSelecionada && !estado.distanciasVerificadasInicialmente) {
                 estado.distanciasVerificadasInicialmente = true;
-                if (!window.getSharedStoreValue?.('dadosGeraisRota')) {
-                    conteudo.innerHTML = `<div style="text-align:center; padding:20px;" class="text-info"><span class="mdi mdi-refresh" style="font-size: 22px; margin-right: 6px;"></span> <b>Calculando escolas mais próximas do endereço...</b></div>`;
-                    setTimeout(renderizarPasso, 500);
-                    return;
-                }
                 const transporteAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
                 estado.perfilOSRM = transporteAtual === 'carro' ? 'driving' : 'foot';
             }
@@ -1421,6 +1458,7 @@ if (inputDist) {
                 
                 estado.escolaProximaCalc = ehMaisProxima || ehMaisProximaParcial;
                 estado.ehMaisProximaParcial = ehMaisProximaParcial;
+                estado.top3EscolasNomes = listaOrdenada.slice(0, 3).map(e => e.nome).join(' / ');
 
                 // New exception rule for skipping Encaminhamento step
                 const temDeficiencia = (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA');
@@ -1432,11 +1470,11 @@ if (inputDist) {
                 if (listaOrdenada.length === 0) {
                      statusText = `<span class="text-warning"><span class="mdi mdi-lightning-bolt" style="font-size: 16px; margin-right: 4px;"></span> Verifique o nível do aluno. Nenhuma opção compatível foi encontrada.</span>`;
                 } else if (ehMaisProxima) {
-                     statusText = `<span class="text-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> A escola atual é a MAIS PRÓXIMA com vaga para ${nivelAlunoOriginal}.</span>`;
+                     statusText = `<span class="text-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> A escola atual parece ser a MAIS PRÓXIMA de ${nivelAlunoOriginal}.</span>`;
                 } else if (ehMaisProximaParcial) {
-                     statusText = `<span class="text-info"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> A escola atual é a mais próxima de ENSINO PARCIAL com vaga para ${nivelAlunoOriginal}.</span>`;
+                     statusText = `<span class="text-info"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Parece estar na UE mais próxima de ENSINO PARCIAL para ${nivelAlunoOriginal}.</span>`;
                 } else {
-                     statusText = `<span class="text-danger"><span class="mdi mdi-lightning-bolt" style="font-size: 16px; margin-right: 4px;"></span> Existem opções mais próximas para ${nivelAlunoOriginal}:</span>`;
+                     statusText = `<span class="text-danger"><span class="mdi mdi-lightning-bolt" style="font-size: 16px; margin-right: 4px;"></span> Parece que há UEs mais próximas para ${nivelAlunoOriginal}:</span>`;
                 }
 
                 const btnSim = document.getElementById('btn-esc-sim');
@@ -1471,7 +1509,7 @@ if (inputDist) {
 
                     listaOrdenada.forEach((esc, i) => {
                         const cor = String(esc.id) === String(idEscolaAtual) ? 'selected' : '';
-                        const tagAtual = String(esc.id) === String(idEscolaAtual) ? ` <span class="mdi mdi-star text-warning" style="font-size: 14px; margin-left: 4px;" title="Escola Solicitada"></span>` : '';
+                        const tagAtual = String(esc.id) === String(idEscolaAtual) ? `<span class="mdi mdi-star text-warning" style="font-size: 14px; margin-left: 4px;" title="Escola Solicitada"></span> ` : '';
                         
                         let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : "";
                         let urlConfere = "";
@@ -1496,12 +1534,22 @@ if (inputDist) {
                             }
                         }
 
+                        let classeBadge="";
+                        if (esc.periodosEncontrados.includes('INTEGRAL')) {
+                            classeBadge = ' badge-integral';
+                        } else if (esc.periodosEncontrados.includes('PARCIAL')) {
+                            classeBadge = ' badge-parcial';
+                        } else if (esc.periodosEncontrados.includes('NOITE')) {
+                            classeBadge = ' badge-noite';
+                        }
+
                         listaHtml += `<li data-id="${esc.id}" class="school-item ${cor}">
-                            ${i + 1}º - ${esc.nome} <span class="badge">${esc.periodosEncontrados}</span>${tagAtual}
-                            <div class="school-meta dist-texto">${txtDist}</div>
+
+                            ${tagAtual}${i + 1}º - ${esc.nome} <span class="badge${classeBadge}">${esc.periodosEncontrados}</span>
+                            <div class="school-meta dist-texto">${txtDist}
                             <a href="${urlConfere}" target="_blank" onclick="if(window.copiarCoordenadasEndereco) window.copiarCoordenadasEndereco();" class="link-action">
                                 <span class="mdi mdi-map" style="font-size: 14px; margin-right: 2px;"></span> Ver rota no Google Maps
-                            </a>
+                            </a></div>
                         </li>`;
                     });
                 }
@@ -1534,15 +1582,16 @@ if (inputDist) {
                     window.osrmAbortController = new AbortController();
 
                     (async () => {
+                        const meuSignal = window.osrmAbortController.signal;
                         try {
                             const rota = window.getSharedStoreValue?.('dadosGeraisRota');
-                            const latOrigemLista = (mapModeAtual === 'endereco' && rota && rota.coordAlunoEnd) ? rota.coordAlunoEnd.lat : latAluno;
-                            const lonOrigemLista = (mapModeAtual === 'endereco' && rota && rota.coordAlunoEnd) ? rota.coordAlunoEnd.lon : lonAluno;
+                            const latOrigemLista = (mapModeAtual === 'endereco' && rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd !== 'string') ? rota.coordAlunoEnd.lat : latAluno;
+                            const lonOrigemLista = (mapModeAtual === 'endereco' && rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd !== 'string') ? rota.coordAlunoEnd.lon : lonAluno;
 
                             for (let esc of listaExibirBase) {
                                 if (estado.distanciasOSRM[esc.id] === undefined) {
-                                    const dist = await window.calcularTrajetoOSRM(latOrigemLista, lonOrigemLista, esc.lat, esc.lon, estado.perfilOSRM, window.osrmAbortController.signal);
-                                    if (window.osrmAbortController.signal.aborted) break; 
+                                    const dist = await window.calcularTrajetoOSRM(latOrigemLista, lonOrigemLista, esc.lat, esc.lon, estado.perfilOSRM, meuSignal);
+                                    if (meuSignal.aborted) break; 
                                     
                                     estado.distanciasOSRM[esc.id] = dist !== null ? dist : 'Erro';
                                     persistirEstado();
@@ -1555,14 +1604,16 @@ if (inputDist) {
                         } catch (erro) {
                             console.error('[ASSISTENTE] erro no recálculo OSRM:', erro);
                         } finally {
-                            estado.buscandoOSRM = false;
-                            const temErros = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
-                            const btnRefreshEnd = document.getElementById('btn-refresh-lista');
-                            if (btnRefreshEnd) {
-                                btnRefreshEnd.style.display = temErros ? 'block' : 'none';
-                            }
-                            if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
-                                window.atualizarListaEscolasDinamicamente(false);
+                            if (!meuSignal.aborted) {
+                                estado.buscandoOSRM = false;
+                                const temErros = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
+                                const btnRefreshEnd = document.getElementById('btn-refresh-lista');
+                                if (btnRefreshEnd) {
+                                    btnRefreshEnd.style.display = temErros ? 'block' : 'none';
+                                }
+                                if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
+                                    window.atualizarListaEscolasDinamicamente(false);
+                                }
                             }
                         }
                     })();
@@ -1768,7 +1819,7 @@ if (inputDist) {
                 } else if (mot === "DISTÂNCIA MENOR QUE 1500 METROS" && estado.distancia >= 1500) {
                     pergunta = "Confirma essa distância? Essa rua costuma ser indeferida por DISTANCIA MENOR QUE 1500 METROS.";
                 } else if (mot === "ESCOLA POR OPÇÃO" && estado.escolaProximaUser === true && !estado.escolaProximaCalc) {
-                    pergunta = "Confirma que a escola é a mais próxima? Essa rua costuma ser indeferida por ESCOLA POR OPÇÃO e a calculadora indica que existem opções mais próximas.";
+                    pergunta = "Confirma que a escola é a mais próxima? Essa rua costuma ser indeferida como ESCOLA POR OPÇÃO e a calculadora indica que existem opções mais próximas.";
                 }
             }
 
@@ -1887,12 +1938,32 @@ if (inputDist) {
                 return renderizarPasso();
             }
 
+            let MsgDificuldadeAcesso = ""
+            if (!estado.ruaMatch || !estado.ruaMatch.resultado_motivo === "DIFICULDADE DE ACESSO") {MsgDificuldadeAcesso = "<b>Esse local não está cadastrado para atendimento por dificuldade de acesso. </b>";}
+                
             conteudo.innerHTML = `
                 <h3 class="section-title text-warning">
-                    <span class="mdi mdi-wheelchair-accessibility" style="font-size: 22px; margin-right: 6px;"></span> Dificuldade de Acesso
+                    <span class="mdi mdi-highway" style="font-size: 22px; margin-right: 6px;"></span> Dificuldade de Acesso
                 </h3>
-                <p>O trajeto da residência até a escola possui <b>dificuldade de acesso excepcional</b> (barreiras físicas severas, vias intransitáveis) mapeadas?</p>
                 
+                <p>${MsgDificuldadeAcesso}O trajeto da residência até a escola possui alguma dificuldade de acesso excepcional?</p>
+                <p>São consideradas dificuldade de acesso:</p>
+                <ul>
+  <li>Rodovias;</li>
+  <li>Estradas de terra;</li>
+  <li>Vias sem nenhum tipo de calçada;</li>
+  <li>Locais que proíbam expressamente a passagem de pedestres.</li>
+</ul>
+<p>Não são motivos para dificuldade de acesso:</p>
+<ul>
+<li>Becos e vielas;</li>
+<li>Favelas;</li>
+<li>Escadas, rampas e passarelas;</li>
+<li>Assaltos e problemas de segurança pública;</li>
+<li>Presença de moradores de rua ou usuários de drogas;</li>
+<li>Ruas íngremes;</li>
+<li>Calçadas desniveladas.</li>
+</ul>
                 <div style="text-align:center; margin-bottom:15px;">
                     <a href="${urlPesquisaRua}" target="_blank" class="btn btn-outline" style="text-decoration:none;">
                         <span class="mdi mdi-map-search" style="font-size: 16px; margin-right: 4px;"></span> Ver atendimentos da rua
@@ -1925,9 +1996,27 @@ if (inputDist) {
         }
 
         const excecaoGarantida = (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA' || estado.dificuldadeAcesso === true);
+        let msgExcecao = "";
+        if (excecaoGarantida && estado.distancia < 1500) {
+            msgExcecao = "Embora a distância seja inferior a 1500m, ";
+        }
+        if (excecaoGarantida && estado.distancia >= 1500) {
+            msgExcecao = "Além da distância atingir o requisito mínimo (1500m), ";
+        }
+        if (excecaoGarantida && estado.deficiencia === 'ALUNO') {
+            msgExcecao = msgExcecao + "consta deficiência do aluno, o que garante o direito ao transporte escolar independentemente da distância.";
+        }
+        if (excecaoGarantida && estado.deficiencia === 'FAMILIA') {
+            msgExcecao = msgExcecao + "consta deficiência Na família, o que garante o direito ao transporte escolar independentemente da distância.";
+        }
+        if (excecaoGarantida && estado.dificuldadeAcesso === true) {
+            msgExcecao = msgExcecao + "foi confirmada dificuldade de acesso, o que garante o direito ao transporte escolar independentemente da distância.";
+        }
+
         if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGarantida) && estado.encaminhamentoOk === null) {
             if (estado.isEncaminhamentoDispensado) {
-                estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (${estado.distancia}m) ou possui exceção válida, e a verificação de encaminhamento foi dispensada pelas regras da Secretaria.` };
+                estado.telaFinal = { titulo: "DEFERIR", mensagem: msgExcecao };
+                console.log("[ASSISTENTE] encaminhamento dispensado, exceção=${excecaoGarantida}, estado.dificuldadeAcesso=${estado.dificuldadeAcesso}, estado.deficiencia=${estado.deficiencia}, distância=${estado.distancia}m, escolaProximaUser=${estado.escolaProximaUser}");
                 renderizarPasso();
                 return;
             }
@@ -1937,41 +2026,46 @@ if (inputDist) {
             const isFichaAntiga = docHref.includes('ficha_transporte.php') && !docHref.includes('nova_versao');
 
             let msgCopiado = "";
+            let dataNasc = "Não informada";
             const elDataNasc = doc.getElementById('data_nasc_aluno');
             if (elDataNasc) {
-                const dataNasc = elDataNasc.value || elDataNasc.innerText;
-                if (dataNasc) {
+                const dn = elDataNasc.value || elDataNasc.innerText;
+                if (dn) {
+                    dataNasc = dn.trim();
                     try {
                         const txt = document.createElement('textarea');
-                        txt.value = dataNasc.trim();
+                        txt.value = dataNasc;
                         document.body.appendChild(txt);
                         txt.select();
                         document.execCommand('copy');
                         document.body.removeChild(txt);
-                        msgCopiado = `<div class='message-box success' style='font-size:12px; margin-top:10px;'><span class="mdi mdi-check" style="font-size: 14px; margin-right: 4px;"></span> Data de nascimento já copiada, basta colar no SOMARH.</div>`;
+                        msgCopiado = `<div class='message-box success' style='font-size:12px; margin-top:10px; background-color: #d4efdf; color: #27ae60; padding: 8px; border-radius: 4px; border: 1px solid #a9dfbf;'><span class="mdi mdi-check" style="font-size: 14px; margin-right: 4px;"></span> Data de nascimento já copiada, basta colar no SOMARH.</div>`;
                     } catch(e) {}
                 }
             }
 
             let infoExtraHtml = "";
             if (isFichaAntiga) {
-                const elNome = doc.getElementById('nome_aluno');
-                const nomeStr = elNome ? (elNome.value || elNome.innerText).trim() : "Não informado";
                 infoExtraHtml = `
                     <div class="school-list-container" style="font-size:12px; margin-top:10px;">
                         <b>Nome:</b> ${nomeStr}<br>
-                        <b>Endereço:</b> ${enderecoCompleto}<br>
-                        <b>Escola Atual:</b> ${estado.nomeEscolaAtual || 'Não identificada'}
+                        <b>Nasc:</b> ${dataNasc}<br><br>
+                        <ul style="padding-left: 15px; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                            <li><b>Em <u>Verificação de Semelhança</u></b> os campos "Tipo Inscrição" e "Observações" não podem conter o termo "Transf. - Outros".</li>
+                            <li><b>Em <u>dados do candidato</u>, o endereço deve ser:</b><br>${enderecoCompleto}</li>
+                            <li><b>Em <u>Unidades Escolares</u>, deve ter escolhido as escolas mais próximas:</b><br>${estado.top3EscolasNomes}</li>
+                            <li><b>Em <u>Status Inscrição</u>, deve constar:</b><br>"encaminhado(a) para ${estado.nomeEscolaAtual}"</li>
+                        </ul>
                     </div>
                 `;
             }
 
             conteudo.innerHTML = `
                 <h3 class="section-title text-primary">
-                    <span class="mdi mdi-swap-horizontal-variant" style="font-size: 22px; margin-right: 6px;"></span> Falta de Vaga / Encaminhamento
+                    <span class="mdi mdi-swap-horizontal-variant" style="font-size: 22px; margin-right: 6px;"></span> Encaminhamento por falta de vaga
                 </h3>
-                <p>Verifique no SOMARH e nas planilhas da Central de Matrículas se ele possui um <b>encaminhamento válido</b> por falta de vaga.</p>
-                <p class="text-muted" style="font-size:12px;"><i>(A escola matriculada e o endereço devem bater com o encaminhamento).</i></p>
+                <p>Verifique no SOMARH e nas planilhas da Central de Matrículas se há <b>encaminhamento válido</b> por falta de vaga na UE mais próxima de casa.</p>
+                <p class="text-muted" style="font-size:12px;"><i>(As informações do encaminhamento devem estar como abaixo:).</i></p>
                 ${infoExtraHtml}
                 ${msgCopiado}
                 <div class="action-group" style="margin-top:20px;">

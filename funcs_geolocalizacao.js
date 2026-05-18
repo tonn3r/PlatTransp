@@ -709,7 +709,7 @@ async function(enderecoCompleto) {
         }
 
         const url =
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBusca)}&limit=1&email=seu-email@dominio.com`;
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBusca)}&limit=1&email=app.plattransp@gmail.com`;
 
         const response =
             await fetch(url, {
