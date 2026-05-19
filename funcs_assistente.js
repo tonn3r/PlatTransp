@@ -1172,8 +1172,13 @@ window.abrirModalAssistente = async function() {
             const corTitulo = tipoAcao === 'DEFERIR' ? '#27ae60' : '#c0392b';
 
 
+            // --- CORREÇÃO: Priorizar dados já definidos no estado, depois calcular ---
+
+            let motivoAnalise = estado.telaFinal?.motivoAnalise || "";
+            let textoDetalhes = estado.telaFinal?.textoDetalhes || "";
+
             if (tipoAcao === 'DEFERIR' && estado.ehEncaminhado === true) {
-                textoDetalhes = "encaminhado";
+                textoDetalhes = textoDetalhes ? `${textoDetalhes} / encaminhado` : "encaminhado";
             }
 
             if (tipoAcao === 'DEFERIR' && estado.ehMaisProximaParcial === true) {
@@ -1183,11 +1188,6 @@ window.abrirModalAssistente = async function() {
                     textoDetalhes = "Está na parcial mais próxima";
                 }
             }
-
-            // --- CORREÇÃO: Priorizar dados já definidos no estado, depois calcular ---
-
-let motivoAnalise = estado.telaFinal?.motivoAnalise || "";
-let textoDetalhes = estado.telaFinal?.textoDetalhes || "";
 
 // Se não houver termoBusca definido no estado, tentamos calcular baseados no tipo de ação
 if (!motivoAnalise) {
