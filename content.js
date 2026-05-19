@@ -53,30 +53,53 @@
         window.osrmAbortController = null;
     };
 
+    function ocultarBotaoAssistente() {
+        const btn = document.getElementById('btn-assistente-transporte');
+        const mod = document.getElementById('modal-assistente-analise');
+        if (btn) {
+            btn.style.display = 'none';
+            btn.remove();
+        }
+        if (mod) mod.remove();
+        window.mapaSincronizado = false;
+        if (typeof window.setSharedStoreValue === 'function') {
+            window.setSharedStoreValue('dadosGeograficos', null);
+        } else {
+            window.dadosGeograficos = null;
+        }
+        window.currentStudentId = null;
+        if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+    }
+
+    function envolverFechaModal(originalFechaModal) {
+        if (typeof originalFechaModal !== 'function') return originalFechaModal;
+        if (originalFechaModal.__plattransp_wrapped) return originalFechaModal;
+        const wrapped = function(...args) {
+            ocultarBotaoAssistente();
+            return originalFechaModal.apply(this, args);
+        };
+        wrapped.__plattransp_wrapped = true;
+        return wrapped;
+    }
+
     function monitorarCicloDeVidaModal() {
-        if (typeof window.FechaModal === 'function' && !window.FechaModalMonitorado) {
-            const originalFechaModal = window.FechaModal;
-            window.FechaModalMonitorado = true;
-            
-            window.FechaModal = function(...args) {
-                const btn = document.getElementById('btn-assistente-transporte');
-                const mod = document.getElementById('modal-assistente-analise');
-                if (btn) btn.remove();
-                if (mod) mod.remove();
-                
-                window.mapaSincronizado = false;
-                if (typeof window.setSharedStoreValue === 'function') {
-                    window.setSharedStoreValue('dadosGeograficos', null);
-                } else {
-                    window.dadosGeograficos = null;
-                }
-                window.currentStudentId = null; 
-                
-                // MATA OS PROCESSOS EM BACKGROUND
-                if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-                
-                originalFechaModal.apply(this, args);
-            };
+        if (typeof window.FechaModal === 'function') {
+            window.FechaModal = envolverFechaModal(window.FechaModal);
+        } else {
+            const descriptor = Object.getOwnPropertyDescriptor(window, 'FechaModal');
+            if (!descriptor || descriptor.configurable) {
+                let atual = window.FechaModal;
+                Object.defineProperty(window, 'FechaModal', {
+                    configurable: true,
+                    enumerable: true,
+                    get() {
+                        return atual;
+                    },
+                    set(valor) {
+                        atual = envolverFechaModal(valor);
+                    }
+                });
+            }
         }
 
         const iframePlatform = document.getElementById('img01'); 
@@ -111,7 +134,7 @@
             } catch (e) {
                 console.error('Erro em monitor loop:', e);
             }
-        }, 3000);
+        }, 1500);
     }
 
 })();

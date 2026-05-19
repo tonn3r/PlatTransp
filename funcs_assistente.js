@@ -1127,6 +1127,29 @@ window.abrirModalAssistente = async function() {
         }
     }
 
+    function gerarHtmlMensagensContexto() {
+        const mensagens = [];
+        if (ctx.historicoRua?.temMatch) {
+            mensagens.push(`
+                <span class="assistente-info-extra" style="display:block; margin-top:10px; color:#444; font-size:13px;">
+                    <strong>Histórico de rua:</strong> ${ctx.historicoRua.motivo || 'Informação presente no cadastro de ruas'}.
+                </span>
+            `);
+        }
+        if (ctx.encaminhamento?.maisRecente) {
+            const m = ctx.encaminhamento.maisRecente;
+            const situacao = m.situacao && m.situacao.toUpperCase().includes('NÃO ATENDER') ? 'NÃO ATENDER' : 'DEFERIDO';
+            const unidade = m.unidade || m.unidadeOrigem || 'unidade não informada';
+            const ano = m.ano ? ` em ${m.ano}` : '';
+            mensagens.push(`
+                <span class="assistente-info-extra" style="display:block; margin-top:8px; color:#444; font-size:13px;">
+                    <strong>Encaminhamento:</strong> ${situacao} para ${unidade}${ano}.
+                </span>
+            `);
+        }
+        return mensagens.join('');
+    }
+
     // ==============
     // SECTION: MÁQUINA DE ESTADOS (renderizarPasso)
     // ==============
@@ -1667,13 +1690,15 @@ if (inputDist) {
                         let txtDist = `<span class="text-warning"><span class="mdi mdi-refresh" style="font-size: 14px; margin-right: 2px;"></span> <i>Calculando trajeto...</i></span>`;
                         if (estado.distanciasOSRM[esc.id] !== undefined) {
                             if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) {
-                                // Fallback para Haversine + 100m
                                 let distHaversine = Math.round(esc.distancia + 100);
                                 txtDist = `<span class="text-muted"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> +- ${distHaversine}m (estimativa)</span>`;
                             } else {
                                 let distArredondada = Math.round(estado.distanciasOSRM[esc.id] / 50) * 50;
                                 txtDist = `<span class="text-warning"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> Trajeto: <b>${distArredondada}m</b></span>`;
                             }
+                        } else if (!estado.ehAnalise) {
+                            const distHaversine = Math.round(esc.distancia + 100);
+                            txtDist = `<span class="text-muted"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> +- ${distHaversine}m (estimativa)</span>`;
                         }
 
                         let classeBadge="";
@@ -1705,6 +1730,10 @@ if (inputDist) {
                 </a>`;
 
                 containerLista.innerHTML = listaHtml;
+                const extraInfoContainer = document.getElementById('assistente-info-contexto');
+                if (extraInfoContainer) {
+                    extraInfoContainer.innerHTML = gerarHtmlMensagensContexto();
+                }
                 
                 // Verificar se há erros de cálculo e mostrar botão refresh
                 const temErros = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
@@ -1715,7 +1744,7 @@ if (inputDist) {
                 
                 // Verificar se há distâncias OSRM ainda não calculadas e iniciar se necessário
                 let faltaCalcularAgora = listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
-                if (faltaCalcularAgora && typeof window.calcularTrajetoOSRM === 'function' && !estado.buscandoOSRM) {
+                if (estado.ehAnalise && faltaCalcularAgora && typeof window.calcularTrajetoOSRM === 'function' && !estado.buscandoOSRM) {
                     estado.buscandoOSRM = true;
                     if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
                     window.osrmAbortController = new AbortController();
@@ -1772,8 +1801,8 @@ if (inputDist) {
 
             if (!estado.ehAnalise) {
                 conteudo.innerHTML = `
-                    <div id="container-lista-escolas">
-                    </div>
+                    <div id="container-lista-escolas"></div>
+                    <div id="assistente-info-contexto"></div>
                 `;
                 await atualizarListaEscolasDinamicamente();
 
