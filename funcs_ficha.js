@@ -173,9 +173,12 @@ window.aplicarLinkPesquisaEndereco = function() {
         elEndereco.title =
             `Pesquisar outros alunos na rua: ${ruaLimpa}`;
 
-        elEndereco.onclick = function() {
-            window.open(urlPesquisa, '_blank');
-        };
+        if (!elEndereco.dataset.boundclick) {
+            elEndereco.dataset.boundclick = 'true';
+            elEndereco.addEventListener('click', function() {
+                window.open(urlPesquisa, '_blank');
+            });
+        }
 
     } else {
 
@@ -205,6 +208,13 @@ window.aplicarLinkPesquisaEndereco = function() {
 };
 
 window.iniciarPaginaFicha = function() {
+
+    // Captura o RA do aluno (se houver) e o salva no estado global da aplicação.
+    // Esta informação será utilizada pelo assistente na etapa de "Encaminhamento".
+    const inputRaProdesp = document.getElementById('ra_prodesp_search');
+    if (inputRaProdesp && typeof window.setSharedStoreValue === 'function') {
+        window.setSharedStoreValue('raAluno', inputRaProdesp.value.trim());
+    }
 
     if (
         typeof window.realizarCalculosIniciaisDistancia ===

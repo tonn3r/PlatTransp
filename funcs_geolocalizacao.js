@@ -3,6 +3,30 @@ window.copiarCoordenadasEndereco = function() {
 
     if (!rota || !rota.coordAlunoEnd) return;
 
+    // Proteção para navegadores/contextos que não suportam clipboard API diretamente
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        console.warn("navigator.clipboard API não está disponível no contexto atual.");
+        let txtToCopy = typeof rota.coordAlunoEnd === 'string' ? rota.coordAlunoEnd : (rota.coordAlunoEnd.lat ? `${rota.coordAlunoEnd.lat} ${rota.coordAlunoEnd.lon}` : "");
+        if (txtToCopy) {
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = txtToCopy;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                const success = document.execCommand('copy');
+                textArea.remove();
+                if(!success) console.error("Falha ao copiar usando execCommand");
+            } catch (e) {
+                console.error("Erro no fallback de cópia", e);
+            }
+        }
+        return;
+    }
+
     if (typeof rota.coordAlunoEnd === 'string') {
         navigator.clipboard
             .writeText(rota.coordAlunoEnd)
@@ -29,9 +53,12 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
     const tInicioGeo = performance.now();
 
     try {
-        const resposta = await fetch(urlFichaNova);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const resposta = await fetch(urlFichaNova, { signal: controller.signal });
         if (!resposta.ok) return null;
         const htmlText = await resposta.text();
+        clearTimeout(timeoutId);
 
         const parser = new DOMParser();
         const docVirtual = parser.parseFromString(
@@ -123,12 +150,10 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
         return null;
 
     } catch (erro) {
-
         console.error(
             "❌ Erro ao extrair dados geográficos:",
             erro
         );
-
         return null;
     }
 };
@@ -197,18 +222,16 @@ async function(docAlvo) {
                 'botaoAbrirFicha'
             );
 
-        if (
-            btnAbrirFicha &&
-            !btnAbrirFicha.dataset.copyBound
-        ) {
-
-            btnAbrirFicha.dataset.copyBound =
-                'true';
-
-            btnAbrirFicha.addEventListener(
-                'click',
-                window.copiarCoordenadasEndereco
-            );
+        if (btnAbrirFicha) {
+            try {
+                vincularEventoUnico(btnAbrirFicha, 'click', window.copiarCoordenadasEndereco);
+            } catch (e) {
+                // fallback: dataset marker and native binding
+                if (!btnAbrirFicha.dataset.copyBound) {
+                    btnAbrirFicha.dataset.copyBound = 'true';
+                    btnAbrirFicha.addEventListener('click', window.copiarCoordenadasEndereco);
+                }
+            }
         }
 
         if (
@@ -402,6 +425,8 @@ async function(docAlvo) {
 
             const retryInterval = 500;
 
+            let observer = null;
+
             const injectToggleContainer = () => {
                 if (docAlvo.getElementById('mapa-toggle-container')) return;
 
@@ -421,34 +446,40 @@ async function(docAlvo) {
                 btnModoTransp.className = 'toggle-btn';
                 btnModoTransp.innerHTML = `<span class="mdi mdi-walk" style="font-size:14px; margin-right:4px;"></span> A pé`;
 
-                btnModoMapa.onclick = (e) => {
-                    e.preventDefault();
-                    const modoAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-                    const novoModo = modoAtual === 'endereco' ? 'coordenada' : 'endereco';
-                    window.setSharedStoreValue('modoMapaAtual', novoModo);
-                    btnModoMapa.innerHTML = novoModo === 'endereco'
-                        ? `<span class="mdi mdi-map-search" style="font-size:14px; margin-right:4px;"></span> Por Endereço`
-                        : `<span class="mdi mdi-map-marker-radius-outline" style="font-size:14px; margin-right:4px;"></span> Por Coordenadas`;
-                    atualizarURLsMapas(true);
+                if (!btnModoMapa.dataset.boundclick) {
+                    btnModoMapa.dataset.boundclick = 'true';
+                    btnModoMapa.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const modoAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
+                        const novoModo = modoAtual === 'endereco' ? 'coordenada' : 'endereco';
+                        window.setSharedStoreValue('modoMapaAtual', novoModo);
+                        btnModoMapa.innerHTML = novoModo === 'endereco'
+                            ? `<span class="mdi mdi-map-search" style="font-size:14px; margin-right:4px;"></span> Por Endereço`
+                            : `<span class="mdi mdi-map-marker-radius-outline" style="font-size:14px; margin-right:4px;"></span> Por Coordenadas`;
+                        atualizarURLsMapas(true);
 
-                    const distanciaCoord = Number(window.getSharedStoreValue?.('distanciaCoord'));
-                    const distanciaEnd = Number(window.getSharedStoreValue?.('distanciaEnd'));
-                    const distanciaAtual = novoModo === 'endereco' ? distanciaEnd : distanciaCoord;
-                    if (typeof window.atualizarInputDistancia === 'function') {
-                        window.atualizarInputDistancia(distanciaAtual);
-                    }
-                };
+                        const distanciaCoord = Number(window.getSharedStoreValue?.('distanciaCoord'));
+                        const distanciaEnd = Number(window.getSharedStoreValue?.('distanciaEnd'));
+                        const distanciaAtual = novoModo === 'endereco' ? distanciaEnd : distanciaCoord;
+                        if (typeof window.atualizarInputDistancia === 'function') {
+                            window.atualizarInputDistancia(distanciaAtual);
+                        }
+                    });
+                }
 
-                btnModoTransp.onclick = (e) => {
-                    e.preventDefault();
-                    const modoAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
-                    const novoModo = modoAtual === 'pe' ? 'carro' : 'pe';
-                    window.setSharedStoreValue('modoTransporteAtual', novoModo);
-                    btnModoTransp.innerHTML = novoModo === 'pe'
-                        ? `<span class="mdi mdi-walk" style="font-size:14px; margin-right:4px;"></span> A pé`
-                        : `<span class="mdi mdi-car" style="font-size:14px; margin-right:4px;"></span> De Carro`;
-                    atualizarURLsMapas(true);
-                };
+                if (!btnModoTransp.dataset.boundclick) {
+                    btnModoTransp.dataset.boundclick = 'true';
+                    btnModoTransp.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const modoAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
+                        const novoModo = modoAtual === 'pe' ? 'carro' : 'pe';
+                        window.setSharedStoreValue('modoTransporteAtual', novoModo);
+                        btnModoTransp.innerHTML = novoModo === 'pe'
+                            ? `<span class="mdi mdi-walk" style="font-size:14px; margin-right:4px;"></span> A pé`
+                            : `<span class="mdi mdi-car" style="font-size:14px; margin-right:4px;"></span> De Carro`;
+                        atualizarURLsMapas(true);
+                    });
+                }
 
                 toggleContainer.appendChild(btnModoMapa);
                 toggleContainer.appendChild(btnModoTransp);
@@ -462,6 +493,11 @@ async function(docAlvo) {
                         toggleContainer,
                         iframeAtual.nextSibling
                     );
+
+                    // Se um observer estiver observando, desconecta após injeção bem-sucedida
+                    try {
+                        if (observer && typeof observer.disconnect === 'function') observer.disconnect();
+                    } catch(e) {}
 
                 } else if (
                     retryCount < maxRetries
@@ -478,40 +514,23 @@ async function(docAlvo) {
 
             // Use MutationObserver for resilience if available
 
-            if (
-                typeof MutationObserver !==
-                'undefined'
-            ) {
+            if (typeof MutationObserver !== 'undefined') {
+                let observer = null;
 
-                const observer =
-                    new MutationObserver(
-                        (mutations) => {
-
-                            mutations.forEach(
-                                (mutation) => {
-
-                                    if (
-                                        mutation.type ===
-                                        'childList' &&
-                                        !docAlvo.getElementById(
-                                            'mapa-toggle-container'
-                                        )
-                                    ) {
-
-                                        injectToggleContainer();
-                                    }
-                                }
-                            );
+                observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'childList' && !docAlvo.getElementById('mapa-toggle-container')) {
+                            injectToggleContainer();
                         }
-                    );
+                    });
 
-                observer.observe(
-                    docAlvo.body,
-                    {
-                        childList: true,
-                        subtree: true
+                    // se já foi injetado, desconectar observer para economizar recursos
+                    if (docAlvo.getElementById('mapa-toggle-container')) {
+                        try { observer.disconnect(); } catch(e) {}
                     }
-                );
+                });
+
+                observer.observe(docAlvo.body, { childList: true, subtree: true });
             }
 
             injectToggleContainer();
@@ -711,20 +730,22 @@ async function(enderecoCompleto) {
         const url =
             `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBusca)}&limit=1&email=app.plattransp@gmail.com`;
 
-        const response =
-            await fetch(url, {
-                headers: {
-                    'Accept-Language': 'pt-BR,pt;q=0.9'
-                }
-            });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(url, {
+            signal: controller.signal,
+            headers: {
+                'Accept-Language': 'pt-BR,pt;q=0.9'
+            }
+        });
 
         if (!response.ok) {
             console.warn(`⚠️ Aviso Nominatim: Falha na requisição (Status: ${response.status})`);
             return null;
         }
 
-        const data =
-            await response.json();
+        const data = await response.json();
+        clearTimeout(timeoutId);
 
         if (
             data &&

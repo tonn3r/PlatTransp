@@ -253,7 +253,7 @@ window.iniciarPaginaPesquisa = function() {
             btnReset.innerHTML = '✕ Limpar Filtros';
             btnReset.type = 'button';
             btnReset.style = "background:#fff; color:#e74c3c; border:1px solid #e74c3c; border-radius:4px; height:30px; padding:0 12px; cursor:pointer; font-weight:bold; font-size:11px; vertical-align: middle; display:none;";
-            btnReset.onclick = () => {
+            vincularEventoUnico(btnReset, 'click', () => {
                 $('#id_unidade_selecionada').val('0');
                 $('#unidade-autocomplete').val('');
                 $('#status_selecionado').val('0');
@@ -264,7 +264,7 @@ window.iniciarPaginaPesquisa = function() {
                 paginaAtual = 1;
                 atualizarVisibilidadeBotaoReset();
                 carregarTabelaHistorico();
-            };
+            });
             tdBotao.appendChild(btnReset);
             trPai.appendChild(tdBotao);
         }
@@ -380,8 +380,8 @@ window.iniciarPaginaPesquisa = function() {
             `;
             const bPrev = document.getElementById('btn-pag-prev');
             const bNext = document.getElementById('btn-pag-next');
-            if (bPrev) bPrev.onclick = () => dispararPesquisaPaginada('prev');
-            if (bNext) bNext.onclick = () => dispararPesquisaPaginada('next');
+            if (bPrev) vincularEventoUnico(bPrev, 'click', () => dispararPesquisaPaginada('prev'));
+            if (bNext) vincularEventoUnico(bNext, 'click', () => dispararPesquisaPaginada('next'));
         } else if (barra) { barra.remove(); }
     }
 
@@ -535,6 +535,9 @@ window.iniciarPaginaPesquisa = function() {
                     this.innerHTML = '✅ Copiado sem cabeçalho!';
                     setTimeout(() => { this.innerHTML = originalText; }, 2000);
                 });
+
+                // desconectar observer após a injeção inicial para economizar recursos
+                try { observer.disconnect(); } catch(e) {}
             }
         }
         atualizarBarraPaginacao();
@@ -554,5 +557,5 @@ window.iniciarPaginaPesquisa = function() {
                 processarParametrosURL(); 
             }, 500);
         }
-    }, 200);
+    }, 500);
 };

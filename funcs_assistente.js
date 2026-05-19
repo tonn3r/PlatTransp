@@ -1,15 +1,15 @@
-// --- SECTION: UTILITY FUNCTIONS ---
-window.normalizarTexto = function(texto) {
-    if (!texto) return "";
-    return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/º|ª/g, "O").trim();
-};
+// ==============
+// SECTION: UTILITÁRIOS E HELPERS
+// ==============
 
-// --- SECTION: DOM TARGETING ---
-// Technical comments for getAlvoDocument:
-// - Iframe DOM traversal: Recursively searches through iframe contentDocuments
-// - Looks for elements with IDs 'status_atendimento' or 'mostra_status_pedido'
-// - Handles cross-origin access errors gracefully with try/catch
-// - Returns the document containing status elements or falls back to main document
+if (typeof window.normalizarTexto !== 'function') {
+    window.normalizarTexto = function(texto) {
+        if (!texto) return "";
+        return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/º|ª/g, "O").trim();
+    };
+}
+
+// Percorre iframes até achar o documento com status da ficha (cross-origin ignorado).
 window.getAlvoDocument = function() {
     function buscarDocComStatus(doc) {
         if (!doc) return null;
@@ -29,8 +29,483 @@ window.getAlvoDocument = function() {
         return null;
     }
     const docAlvo = buscarDocComStatus(document);
-    return docAlvo || document; 
+    return docAlvo || document;
 };
+
+function vincularEventoUnico(elemento, evento, handler) {
+    if (!elemento) return;
+    const chave = 'bound' + evento;
+    if (elemento.dataset[chave]) return;
+    elemento.dataset[chave] = 'true';
+    elemento.addEventListener(evento, handler);
+}
+
+function lerValorElemento(el) {
+    if (!el) return '';
+    return (el.value != null && el.value !== '') ? String(el.value).trim() : String(el.innerText || '').trim();
+}
+
+function campoPreenchidoNoDoc(doc, id) {
+    const el = doc.getElementById(id);
+    if (!el) return false;
+    const val = lerValorElemento(el).toUpperCase();
+    return val !== '' && val !== 'NÃO' && val !== 'NAO' && val !== '0' && val !== 'SELECIONE' && val !== 'NENHUMA';
+}
+
+function extrairTextoEtiqueta(doc, rotulos) {
+    const tds = doc.querySelectorAll('td.etiqueta');
+    for (const td of tds) {
+        const texto = td.innerText.trim();
+        if (!rotulos.includes(texto)) continue;
+        const tr = td.parentElement;
+        const nextTr = tr?.nextElementSibling;
+        const tdValor = nextTr?.querySelector('td.texto_dados');
+        if (tdValor) return tdValor.innerText.trim();
+    }
+    return '';
+}
+
+function extrairNomeAluno(doc) {
+    const elNome = doc.querySelector('input[name="nome_aluno"]') || doc.querySelector('input[name="nome"]') || doc.getElementById('nome_aluno');
+    let nome = elNome ? elNome.value.trim() : '';
+    if (!nome) nome = extrairTextoEtiqueta(doc, ['Nome do aluno', 'Nome', 'Candidato']);
+    return nome || 'Não identificado';
+}
+
+function extrairDataNascimento(doc) {
+    const el = doc.getElementById('data_nasc_aluno');
+    if (el) {
+        const dn = lerValorElemento(el);
+        if (dn) return dn;
+    }
+    return extrairTextoEtiqueta(doc, ['Data de nascimento']);
+}
+
+const FAIXAS_ETARIAS_NIVEL = [
+    { nivel: 'EJA', idade: 14, idadeMaxima: 110 }, { nivel: '5º ANO', idade: 10, idadeMaxima: 13 },
+    { nivel: '4º ANO', idade: 9, idadeMaxima: 10 }, { nivel: '3º ANO', idade: 8, idadeMaxima: 9 },
+    { nivel: '2º ANO', idade: 7, idadeMaxima: 8 }, { nivel: '1º ANO', idade: 6, idadeMaxima: 7 },
+    { nivel: 'INFANTIL V', idade: 5, idadeMaxima: 6 }, { nivel: 'INFANTIL IV', idade: 4, idadeMaxima: 5 },
+    { nivel: 'INFANTIL III', idade: 3, idadeMaxima: 4 }, { nivel: 'INFANTIL II', idade: 2, idadeMaxima: 3 },
+    { nivel: 'INFANTIL I', idade: 1, idadeMaxima: 2 }, { nivel: 'BERÇÁRIO FINAL', idade: 1, idadeMaxima: 1 },
+    { nivel: 'BERÇÁRIO INICIAL', idade: 0, idadeMaxima: 1 }
+];
+
+function extrairNivelAluno(doc) {
+    let nivelOriginal = extrairTextoEtiqueta(doc, ['Nível']);
+    if (!nivelOriginal) {
+        doc.querySelectorAll('span[style*="font-size: 16px"][style*="font-weight: bold"]').forEach(span => {
+            const texto = span.innerText.trim().toUpperCase();
+            if (texto && texto !== 'INTEGRAL' && texto !== 'PARCIAL' && texto !== 'NOITE') nivelOriginal = texto;
+        });
+    }
+    let valorSelect = '';
+    const selectNivel = doc.getElementById('nivel');
+    if (selectNivel?.options[selectNivel.selectedIndex]) {
+        valorSelect = selectNivel.options[selectNivel.selectedIndex].text || selectNivel.value;
+        if (!nivelOriginal) nivelOriginal = valorSelect;
+    }
+    if (!nivelOriginal || (nivelOriginal.includes('BERCARIO') && valorSelect === 'BERCARIO INICIAL')) {
+        const dataNascStr = extrairDataNascimento(doc);
+        if (dataNascStr) {
+            const parts = dataNascStr.split('/');
+            if (parts.length === 3) {
+                const nasc = new Date(parts[2], parts[1] - 1, parts[0]);
+                const hoje = new Date();
+                let idade = hoje.getFullYear() - nasc.getFullYear();
+                const m = hoje.getMonth() - nasc.getMonth();
+                if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+                const faixa = FAIXAS_ETARIAS_NIVEL.find(f => idade >= f.idade && idade <= f.idadeMaxima);
+                if (faixa && (!nivelOriginal || (nivelOriginal.includes('BERCARIO') && idade > 1))) {
+                    nivelOriginal = faixa.nivel;
+                }
+            }
+        }
+    }
+    let nivelNorm = window.normalizarTexto(nivelOriginal);
+    nivelNorm = nivelNorm.replace(/([0-9]+)\s*[Oº\.]\s*ANO/g, '$1O ANO');
+    if (nivelNorm.includes('EJA')) nivelNorm = 'EJA';
+    if (nivelNorm.includes('ESPECIAL')) nivelNorm = 'ESPECIAL';
+    return { nivelOriginal, nivelNorm, isBercarioGeral: nivelNorm.includes('BERCARIO') && nivelNorm !== 'BERCARIO INICIAL' && nivelNorm !== 'BERCARIO FINAL' };
+}
+
+function identificarEscolaAtual(doc, baseEscolas) {
+    let idEscola = '';
+    let nomeEscola = 'Não identificada';
+    const inputId = doc.querySelector('input[name="id_unidade"]');
+    if (inputId) {
+        idEscola = inputId.value.trim();
+        const encontrada = baseEscolas.find(e => String(e.id) === String(idEscola));
+        if (encontrada) nomeEscola = encontrada.nome;
+        return { idEscola, nomeEscola, escolaRegistro: encontrada || null };
+    }
+    let latEscola = null;
+    let lonEscola = null;
+    let nomeParseado = '';
+    doc.querySelectorAll('span').forEach(span => {
+        const texto = span.innerText || span.textContent || '';
+        if (!latEscola && (texto.includes('Latitude:') || texto.includes('Longitude:'))) {
+            const mLat = texto.match(/Latitude:\s*([-\d.]+)/);
+            const mLon = texto.match(/Longitude:\s*([-\d.]+)/);
+            if (mLat) latEscola = parseFloat(mLat[1]);
+            if (mLon) lonEscola = parseFloat(mLon[1]);
+        }
+        if (!nomeParseado && span.style.fontSize === '20px' && span.style.fontWeight === 'bold') {
+            nomeParseado = texto.trim();
+        }
+    });
+    if (latEscola && lonEscola && baseEscolas.length) {
+        const porCoord = baseEscolas.find(esc => window.calcularDistanciaHaversine(latEscola, lonEscola, esc.lat, esc.lon) < 100);
+        if (porCoord) return { idEscola: porCoord.id, nomeEscola: porCoord.nome, escolaRegistro: porCoord };
+        if (nomeParseado) {
+            const nomeNorm = window.normalizarTexto(nomeParseado).replace('EMEB', '').replace(',', '').trim();
+            const porNome = baseEscolas.find(e => {
+                const nomeBanco = window.normalizarTexto(e.nome).replace('EMEB', '').replace(',', '').trim();
+                return nomeBanco.includes(nomeNorm) || nomeNorm.includes(nomeBanco);
+            });
+            if (porNome) return { idEscola: porNome.id, nomeEscola: porNome.nome, escolaRegistro: porNome };
+        }
+    }
+    return { idEscola, nomeEscola, escolaRegistro: null };
+}
+
+function buscarMatchRua(ruasDB, idUnidade, cepVal, endRuaNorm, endBairroNorm) {
+    if (!ruasDB?.length) return null;
+    return ruasDB.find(r => {
+        const rCep = r.cep ? r.cep.replace(/\D/g, '') : '';
+        if (r.id_unidade == idUnidade && rCep && cepVal && rCep === cepVal) return true;
+        return r.id_unidade == idUnidade && window.normalizarTexto(r.logradouro) === endRuaNorm && window.normalizarTexto(r.bairro) === endBairroNorm;
+    }) || null;
+}
+
+/** Ler a array ruasData e salvar dados encontrados */
+function analisarHistoricoRua(ruaMatch) {
+    const motivo_rua = ruaMatch?.resultado_motivo || '';
+    return {
+        motivo: motivo_rua,
+        temMatch: !!ruaMatch,
+        ehAreaRural: motivo_rua === 'ÁREA RURAL',
+        ehDificuldadeAcesso: motivo_rua === 'DIFICULDADE DE ACESSO',
+        ehDistanciaMaior1500: motivo_rua === 'DISTÂNCIA MAIOR QUE 1500 METROS',
+        ehDistanciaMenor1500: motivo_rua === 'DISTÂNCIA MENOR QUE 1500 METROS',
+        ehEscolaPorOpcao: motivo_rua === 'ESCOLA POR OPÇÃO'
+    };
+}
+
+function montarUrlPesquisaRua(endRua) {
+    let ruaLimpa = (endRua || '').split(',')[0].trim();
+    const prefixos = /^(RUA|R\.|AVENIDA|AV\.|AV|TRAVESSA|TRV\.|VIELA|PRA[ÇC]A|ESTRADA|ALAMEDA|RODOVIA|LADEIRA|BECO|MARGINAL)\s+/i;
+    ruaLimpa = ruaLimpa.replace(prefixos, '').trim();
+    const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+    const moduloPath = 'modulos/transporte_escolar/';
+    const prefixo = basePath.includes(moduloPath) ? '' : moduloPath;
+    return `${basePath}${prefixo}solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ruaLimpa)}`;
+}
+
+function montarHtmlEncaminhamento(maisRecente) {
+    if (!maisRecente) return '';
+    let finalTexto = '';
+    if (maisRecente.endereco) {
+        finalTexto = ` e endereço <b>${maisRecente.endereco}</b>`;
+    } else if (maisRecente.latitude && maisRecente.longitude) {
+        finalTexto = ` nas coordenadas <b>${maisRecente.latitude}</b>, <b>${maisRecente.longitude}</b>`;
+    }
+    const isDeferido = maisRecente.situacao !== 'NÃO ATENDER';
+    const corPainel = isDeferido ? 'success' : 'danger';
+    const corTexto = isDeferido ? '#27ae60' : '#c0392b';
+    const iconeStatus = isDeferido ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline';
+    const diretrizTexto = isDeferido ? '✓ ATENDER / DEFERIDO' : '⚠️ NÃO ATENDER / INDEFERIR';
+    return `
+        <div class="message-box ${corPainel}" style="margin-bottom: 15px;">
+            <h4 style="margin: 0 0 10px 0; color: ${corTexto}; display: flex; align-items: center; gap: 6px; font-size: 15px;">
+                <span class="mdi ${iconeStatus}" style="font-size: 18px;"></span>
+                <b>${diretrizTexto} (Mapeado no Banco)</b>
+            </h4>
+            <p style="margin-top: 0; margin-bottom: 8px; color: #2c3e50;">Foi encontrado um encaminhamento para esse aluno no ano de <b>${maisRecente.ano}</b>, para a unidade: <b>${maisRecente.unidade}</b>${finalTexto}</p>
+            <table style="width:100%; font-size:13px; border-collapse: collapse; color:#555;">
+                ${maisRecente.unidadeOrigem ? `<tr style="border-bottom: 1px dashed #e1e4e8;"><td style="padding: 4px 0; font-weight:bold; width: 120px;">Escola de Origem:</td><td>${maisRecente.unidadeOrigem}</td></tr>` : ''}
+                ${maisRecente.motivo ? `<tr style="border-bottom: 1px dashed #e1e4e8;"><td style="padding: 4px 0; font-weight:bold;">Motivo/Prioridade:</td><td>${maisRecente.motivo}</td></tr>` : ''}
+            </table>
+            <div style="margin-top: 8px; font-size: 11px; color: #8597a3;">Origem dos dados: ${maisRecente.descricao || 'Desconhecida'}</div>
+        </div>
+    `;
+}
+
+/** Resolve encaminhamento uma vez (db + RA); evita releitura de HISTORICO_MASTER no fluxo. */
+function resolverEncaminhamentoAluno(doc, dbEncaminhamentos) {
+    let raAlunoRaw = '';
+    const inputRa = doc.getElementById('ra_prodesp_search') || document.getElementById('ra_prodesp_search');
+    if (inputRa) raAlunoRaw = inputRa.value || inputRa.innerText || '';
+    if (!raAlunoRaw) {
+        raAlunoRaw = window.getSharedStoreValue?.('raAluno') || window.getSharedStoreValue?.('ra_prodesp_search') || '';
+    }
+    const raAluno = raAlunoRaw.replace(/\D/g, '');
+    let msgEncaminhamentoHtml = '';
+    let maisRecente = null;
+
+    if (raAluno && dbEncaminhamentos) {
+        let lista = dbEncaminhamentos[raAluno];
+        if (!lista && raAluno.length > 5) lista = dbEncaminhamentos[raAluno.slice(0, -1)];
+        if (Array.isArray(lista) && lista.length > 0) {
+            maisRecente = lista.reduce((prev, current) => (prev.ano > current.ano) ? prev : current);
+            msgEncaminhamentoHtml = montarHtmlEncaminhamento(maisRecente);
+        } else {
+            console.log('[ASSISTENTE] RA', raAluno, 'não localizado no banco de encaminhamentos.');
+        }
+    } else if (!raAluno || !dbEncaminhamentos) {
+        console.error('[ASSISTENTE] Falha ao pesquisar encaminhamentos.', {
+            'RA Capturado': raAluno || 'NENHUM RA ENCONTRADO NO DOM',
+            'Banco Carregado?': dbEncaminhamentos ? 'SIM' : 'NÃO'
+        });
+    }
+    return { raAluno, maisRecente, msgEncaminhamentoHtml };
+}
+
+function calcularSugestaoDeficiencia(doc) {
+    const elCadeirante = doc.getElementById('aluno_cadeirante');
+    const isCadeirante = elCadeirante && lerValorElemento(elCadeirante).toUpperCase().includes('SIM');
+    if (campoPreenchidoNoDoc(doc, 'tipo_deficiencia') || campoPreenchidoNoDoc(doc, 'detalhamento_deficiencia') || isCadeirante) return 'ALUNO';
+    if (campoPreenchidoNoDoc(doc, 'descricao_deficiencia_pais_irmao') || campoPreenchidoNoDoc(doc, 'descricao_deficiencia_pais_irmao_outro')) return 'FAMILIA';
+    return null;
+}
+
+function extrairContextoFicha(doc) {
+    const ruasDB = window.ruasData || [];
+    const escolasDB = window.escolasDB || [];
+    const dbEncaminhamentos = obterBancoEncaminhamentos();
+
+    if (!ruasDB.length) {
+        console.warn('[ASSISTENTE] window.ruasData vazio ou ruas.js não carregado.');
+    } else {
+        console.log('[ASSISTENTE] ruas.js carregado. Total:', ruasDB.length);
+    }
+
+    const statusDiv = doc.getElementById('status_atendimento') || doc.getElementById('mostra_status_pedido');
+    const textoStatus = statusDiv ? statusDiv.innerText.toUpperCase() : '';
+    const isMudanca = textoStatus.includes('MUDANÇA') || textoStatus.includes('MUDANCA');
+    const ehAnalise = textoStatus.includes('EM ANÁLISE') || textoStatus.includes('EM ANALISE') ||
+        textoStatus.includes('AGUARDANDO ANÁLISE') || textoStatus.includes('AGUARDANDO ANALISE');
+
+    const elEndereco = doc.getElementById('endereco');
+    const elNumero = doc.getElementById('endereco_numero_residencia');
+    const elBairro = doc.getElementById('endereco_bairro');
+    const endRua = lerValorElemento(elEndereco);
+    const endNum = lerValorElemento(elNumero);
+    const endBairro = lerValorElemento(elBairro);
+    const enderecoCompleto = [endRua, endNum, endBairro].filter(Boolean).join(', ');
+
+    const idUnidadeEl = doc.querySelector('input[name="id_unidade"]') || doc.querySelector('#id_unidade');
+    const idUnidade = idUnidadeEl ? idUnidadeEl.value : '';
+    const cepEl = doc.querySelector('input[name="cep"]') || doc.querySelector('#cep') || doc.querySelector('#endereco_cep');
+    const cepVal = cepEl ? cepEl.value.replace(/\D/g, '') : '';
+
+    const inputMae = doc.querySelector('input[name="nome_mae"]');
+    const inputPai = doc.querySelector('input[name="nome_pai"]');
+    const nomeMae = inputMae ? inputMae.value.trim() : '';
+    const nomePai = inputPai ? inputPai.value.trim() : '';
+    let nomesResponsaveis = [nomeMae, nomePai].filter(Boolean).join('; ou<br>');
+    if (!nomesResponsaveis) nomesResponsaveis = '';
+
+    const idSolicitacao = doc.querySelector('input[name="id_solicitacao"]')?.value || doc.querySelector('input[name="id"]')?.value || '';
+    const escolaAtual = identificarEscolaAtual(doc, escolasDB);
+    const nivel = extrairNivelAluno(doc);
+    const ruaMatch = buscarMatchRua(ruasDB, idUnidade, cepVal, window.normalizarTexto(endRua.split(',')[0]), window.normalizarTexto(endBairro));
+    const historicoRua = analisarHistoricoRua(ruaMatch);
+    if (ruaMatch) console.log('[ASSISTENTE] Match de rua:', historicoRua.motivo);
+
+    let isEspecial = nivel.nivelNorm === 'ESPECIAL';
+    if (escolaAtual.escolaRegistro?.turmas) {
+        isEspecial = isEspecial || escolaAtual.escolaRegistro.turmas.some(t => window.normalizarTexto(t.nivel).includes('ESPECIAL'));
+    }
+
+    const escolasAptas = filtrarEscolasAptas(escolasDB, nivel.nivelNorm, nivel.isBercarioGeral);
+    const urlPesquisaRua = montarUrlPesquisaRua(endRua);
+    const encaminhamento = resolverEncaminhamentoAluno(doc, dbEncaminhamentos);
+
+    return {
+        doc,
+        ruasDB,
+        escolasDB,
+        dbEncaminhamentos,
+        statusDiv,
+        textoStatus,
+        isMudanca,
+        ehAnalise,
+        endRua,
+        endNum,
+        endBairro,
+        enderecoCompleto,
+        nomeRuaTitulo: endRua ? endRua.split(',')[0].trim() : 'Assistente Passo a Passo',
+        idUnidade,
+        cepVal,
+        nomesResponsaveis,
+        nomeAluno: extrairNomeAluno(doc),
+        dataNascimento: extrairDataNascimento(doc),
+        idSolicitacao,
+        ruaMatch,
+        historicoRua,
+        escolasAptas,
+        urlPesquisaRua,
+        encaminhamento,
+        sugestaoDeficienciaHtml: calcularSugestaoDeficiencia(doc),
+        idEscolaAtual: escolaAtual.idEscola,
+        nomeEscolaAtual: escolaAtual.nomeEscola,
+        escolaRegistro: escolaAtual.escolaRegistro,
+        nivelAlunoOriginal: nivel.nivelOriginal,
+        nivelAlunoNorm: nivel.nivelNorm,
+        isBercarioGeral: nivel.isBercarioGeral,
+        isEspecial,
+        iframeMapa: doc.getElementById('map_endereco'),
+        inputDistanciaFicha: doc.querySelector('input[name="distancia_aferida"], #distancia_aferida')
+    };
+}
+
+function filtrarEscolasAptas(baseEscolas, nivelAlunoNorm, isBercarioGeral) {
+    return baseEscolas.filter(esc => {
+        if (!esc.turmas || !Array.isArray(esc.turmas)) return false;
+        const turmasNivel = esc.turmas.filter(turma => {
+            const nivelTurmaNorm = window.normalizarTexto(turma.nivel);
+            if (isBercarioGeral) return nivelTurmaNorm.includes('BERCARIO');
+            if (nivelAlunoNorm === 'ESPECIAL' && nivelTurmaNorm.includes('ESPECIAL')) return true;
+            if (nivelAlunoNorm === 'EJA' && nivelTurmaNorm.includes('EJA')) return true;
+            return nivelTurmaNorm === nivelAlunoNorm;
+        });
+        if (turmasNivel.length > 0) {
+            esc.periodosEncontrados = [...new Set(turmasNivel.map(t => t.periodo))].join(' / ');
+            return true;
+        }
+        return false;
+    });
+}
+
+function montarListaEscolasExibicao(escolasAptas, latAluno, lonAluno, modo, idEscolaAtual, rotaSessao) {
+    let latBase = latAluno;
+    let lonBase = lonAluno;
+    if (modo === 'endereco') {
+        const rota = rotaSessao ?? window.getSharedStoreValue?.('dadosGeraisRota');
+        if (rota?.coordAlunoEnd?.lat) {
+            latBase = rota.coordAlunoEnd.lat;
+            lonBase = rota.coordAlunoEnd.lon;
+        }
+    }
+    const listaCopia = JSON.parse(JSON.stringify(escolasAptas));
+    listaCopia.forEach(esc => {
+        esc.distancia = window.calcularDistanciaHaversine(latBase, lonBase, esc.lat, esc.lon);
+    });
+    listaCopia.sort((a, b) => a.distancia - b.distancia);
+    const indexAtual = listaCopia.findIndex(e => String(e.id) === String(idEscolaAtual));
+    const indexParcial = listaCopia.findIndex(e => e.periodosEncontrados?.includes('PARCIAL'));
+    const indexIntegral = listaCopia.findIndex(e => e.periodosEncontrados?.includes('INTEGRAL'));
+    const prioridades = [0, indexParcial, indexIntegral, indexAtual].filter(idx => idx !== -1);
+    let limiteFinal = 3;
+    prioridades.forEach(idx => {
+        if (idx >= 3 && idx <= 9 && idx + 1 > limiteFinal) limiteFinal = idx + 1;
+    });
+    return listaCopia.slice(0, limiteFinal);
+}
+
+function obterDistanciaSugeridaInput(ctx, modoMapa, rotaSessao) {
+    const rota = rotaSessao ?? window.getSharedStoreValue?.('dadosGeraisRota');
+    let distValue = modoMapa === 'endereco' ? rota?.distanciaEnd : rota?.distanciaCoord;
+    if (distValue == null) distValue = modoMapa === 'endereco' ? rota?.distanciaCoord : rota?.distanciaEnd;
+    if (distValue == null && ctx.inputDistanciaFicha?.value) {
+        distValue = parseInt(ctx.inputDistanciaFicha.value, 10) || null;
+    }
+    return distValue || '';
+}
+
+function separarCoordenadasIframe(matchString) {
+    if (!matchString) return { lat: null, lon: null };
+    const partes = decodeURIComponent(matchString[1]).trim().split(/[\s,]+/);
+    if (partes.length >= 2) return { lat: parseFloat(partes[0].trim()), lon: parseFloat(partes[1].trim()) };
+    return { lat: null, lon: null };
+}
+
+function obterBancoEncaminhamentos() {
+    if (typeof encaminhamentos !== 'undefined') return encaminhamentos;
+    if (typeof window.encaminhamentos !== 'undefined') return window.encaminhamentos;
+    if (typeof window.encaminhamentosDB !== 'undefined') return window.encaminhamentosDB;
+    if (typeof window.encaminhamentosData !== 'undefined') return window.encaminhamentosData;
+    if (typeof HISTORICO_MASTER !== 'undefined') return HISTORICO_MASTER.encaminhamentos;
+    return null;
+}
+
+function preencheAnalise(resultado, resultado_motivo, resultado_detalhes, distancia){
+    if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] Preenchendo análise com:', { resultado, resultado_motivo, resultado_detalhes, distancia });
+    const docFinal = window.getAlvoDocument(); 
+    if (resultado_motivo !== "" && resultado_detalhes !== "" && resultado_motivo ===resultado_detalhes) {resultado_detalhes=""; }
+                //if (distancia === null || distancia === undefined) {distancia = estado.distancia; }
+                //if (resultado_motivo === null || resultado_motivo === undefined) {resultado_motivo = motivoAnalise; } 
+                //if(resultado_detalhes === null || resultado_detalhes === undefined) {resultado_detalhes = textoDetalhes; }  
+                //if(resultado === null || resultado === undefined) {resultado = tipoAcao; }
+                try {
+                    const camposDist = docFinal.querySelectorAll('input[name="distancia_aferida"], #distancia_aferida');
+                    if (distancia !== null && distancia !== undefined) {
+                        camposDist.forEach(campo => {
+                            campo.value = distancia;
+                            campo.setAttribute('value', distancia);
+                        });
+                    }
+                } catch (erro) {}
+
+                try {
+                    if (resultado === 'INDEFERIR') {
+                        const selectMotivo = docFinal.querySelector('select[name="status_motivo"], #status_motivo');
+                        if (!selectMotivo || selectMotivo.type === 'hidden' || window.getComputedStyle(selectMotivo).display === 'none') {
+                            const motivoIndef = resultado_motivo || estado.telaFinal.mensagem;
+                            if (!resultado_detalhes || resultado_detalhes === "encaminhado") {
+                                resultado_detalhes = motivoIndef;
+                            } else if (!resultado_detalhes.includes(motivoIndef)) {
+                                resultado_detalhes = motivoIndef + " - " + resultado_detalhes;
+                            }
+                        }
+                    }
+                    const camposDet = docFinal.querySelectorAll('textarea[name="status_detalhes"], #status_atual_detalhes, textarea[name="motivo_detalhes"]');
+                    camposDet.forEach(campo => {
+                        if(resultado_detalhes !== "") {
+                            campo.value = resultado_detalhes;
+                            campo.innerHTML = resultado_detalhes; 
+                        }
+                    });
+                } catch (erro) {}
+
+                try {
+                    if (resultado_motivo !== "" || resultado_detalhes !== "") {
+                        const selectsMotivo = docFinal.querySelectorAll('select[name="status_motivo"], #status_motivo');
+                        selectsMotivo.forEach((select) => {
+                            for (let i = 0; i < select.options.length; i++) {
+                                const opt = select.options[i];
+                                const txtOpcao = opt.text.toUpperCase();
+                                const valOpcao = opt.value.toUpperCase();
+                                
+                                if (txtOpcao.includes(resultado_motivo) || valOpcao.includes(resultado_motivo)) {
+                                    select.selectedIndex = i;
+                                    try { select.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
+                                    break; 
+                                }
+                            }
+                        });
+                    }
+                } catch (erro) {}
+
+                const modalAssis = document.getElementById('modal-assistente-analise');
+                if (modalAssis) modalAssis.remove();
+
+                const windowFinal = docFinal.defaultView || window;
+                const isFichaAntigaFinal = windowFinal.location.href.includes('ficha_transporte.php') && !windowFinal.location.href.includes('nova_versao');
+                
+                if (isFichaAntigaFinal && typeof windowFinal.ShowModal === 'function') {
+                    if (resultado === 'DEFERIR') {
+                        if (docFinal.getElementById("modal_Deferir")) windowFinal.ShowModal("modal_Deferir");
+                    } else {
+                        if (docFinal.getElementById("modal_Indeferir")) windowFinal.ShowModal("modal_Indeferir");
+                    }
+                }
+}
+
+// ==============
+// SECTION: ESTILOS E UI BASE
+// ==============
 
 window.gerarEstilosAssistente = function(targetDoc) {
     targetDoc = targetDoc || document;
@@ -368,7 +843,29 @@ window.gerarEstilosAssistente = function(targetDoc) {
     targetDoc.head.appendChild(style);
 };
 
-// --- SECTION: ASSISTENTE INITIALIZATION ---
+// Atualiza o input de distância do assistente (arredondamento 50m; nunca aceita texto de modo).
+window.atualizarInputDistancia = function(distancia) {
+    if (distancia === 'endereco' || distancia === 'coordenada') return;
+    const numero = Number(distancia);
+    if (!Number.isFinite(numero) || numero <= 0) return;
+    const valorFinal = Math.round(numero / 50) * 50;
+    const tentarAtualizar = (tentativa = 0) => {
+        const input = document.getElementById('input-assistente-dist');
+        if (!input) {
+            if (tentativa < 10) setTimeout(() => tentarAtualizar(tentativa + 1), 200);
+            return;
+        }
+        input.value = valorFinal;
+    };
+    tentarAtualizar();
+};
+
+window.atualizarListaEscolasDinamicamente = null;
+
+// ==============
+// SECTION: INICIALIZAÇÃO DO BOTÃO DO ASSISTENTE
+// ==============
+
 window.gerenciarBotaoAssistente = function() {
     if (window !== window.top) return;
 
@@ -439,7 +936,7 @@ window.gerenciarBotaoAssistente = function() {
         btn.className = 'fab-assistente assistente-transporte-wrapper';
         btn.innerHTML = `<span class="mdi mdi-lightning-bolt" style="font-size: 18px; margin-right: 4px;"></span> Assistente de Análise`;
         
-        btn.onclick = (e) => {
+        vincularEventoUnico(btn, 'click', (e) => {
             e.preventDefault();
             const modal = document.getElementById('modal-assistente-analise');
             if (modal) {
@@ -447,12 +944,15 @@ window.gerenciarBotaoAssistente = function() {
             } else {
                 window.abrirModalAssistente();
             }
-        };
+        });
         document.body.appendChild(btn); 
     }
 };
 
-// Cache Utilities Persistentes
+// ==============
+// SECTION: CACHE DO ASSISTENTE
+// ==============
+
 window.getCacheAssistente = function(id) {
     try {
         let cache = JSON.parse(localStorage.getItem('plattransp_assistente_cache') || '[]');
@@ -470,28 +970,26 @@ window.setCacheAssistente = function(id, dados) {
     } catch(e) {}
 };
 
+// ==============
+// SECTION: ABERTURA DO MODAL E MÁQUINA DE ESTADOS
+// ==============
+
 window.abrirModalAssistente = async function() {
     if (window.abrindoModalAssistente) return;
     window.abrindoModalAssistente = true;
     
-    const doc = window.getAlvoDocument();
-    console.log('[ASSISTENTE] abrirModalAssistente');
-    
-    // Remover modal anterior se existir para evitar duplicação
+    const ctx = extrairContextoFicha(window.getAlvoDocument());
+    const doc = ctx.doc;
+    if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] abrirModalAssistente');
+
     const modalAnterior = document.getElementById('modal-assistente-analise');
-    if (modalAnterior && modalAnterior.parentNode) {
-        modalAnterior.parentNode.removeChild(modalAnterior);
-    }
-    
-    const idSolicitacaoAtual = doc.querySelector('input[name="id_solicitacao"]')?.value || doc.querySelector('input[name="id"]')?.value || '';
-    
-    console.log('[ASSISTENTE] Lendo dados de ruas.js...');
-    let ruasDB = window.ruasData || [];
-    if (ruasDB.length === 0) {
-        console.warn('[ASSISTENTE] window.ruasData está vazio ou ruas.js não foi carregado corretamente.');
-    } else {
-        console.log('[ASSISTENTE] Dados de ruas.js carregados com sucesso. Total:', ruasDB.length);
-    }
+    if (modalAnterior?.parentNode) modalAnterior.parentNode.removeChild(modalAnterior);
+
+    const idSolicitacaoAtual = ctx.idSolicitacao;
+    const historicoRua = ctx.historicoRua;
+    const escolasAptas = ctx.escolasAptas;
+    const urlPesquisaRua = ctx.urlPesquisaRua;
+    const encaminhamentoResolvido = ctx.encaminhamento;
 
     let cacheSalvo = window.getCacheAssistente(idSolicitacaoAtual);
     if (cacheSalvo && cacheSalvo.ultimoModo) {
@@ -504,108 +1002,24 @@ window.abrirModalAssistente = async function() {
     
     if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
 
-    let isMudanca = false;
-    const statusDiv = doc.getElementById('status_atendimento') || doc.getElementById('mostra_status_pedido');
-    
-    if (statusDiv) {
-        const textoStatus = statusDiv.innerText.toUpperCase();
-        if (textoStatus.includes('MUDANÇA') || textoStatus.includes('MUDANCA')) {
-            isMudanca = true;
-        }
-    }
+    window.MODO_PADRAO = ctx.isMudanca ? 'Endereço' : 'Coordenada';
+    if (!window.MODO_PADRAO) window.MODO_PADRAO = 'Endereço';
+    const isMudanca = ctx.isMudanca;
 
-    // --- SECTION: UNIFIED STATUS & TOGGLE LOGIC ---
-    // Set global MODO_PADRAO based on status
-    if (isMudanca) {
-        window.MODO_PADRAO = "Endereço"; // "EM ANÁLISE (MUDANÇA)" -> "Endereço"
-    } else {
-        window.MODO_PADRAO = "Coordenada"; // "EM ANÁLISE" -> "Coordenada"
-    }
-    // Fallback if status not detected
-    if (!window.MODO_PADRAO) window.MODO_PADRAO = "Endereço";
-
-    const endRua = doc.getElementById('endereco') ? (doc.getElementById('endereco').value || doc.getElementById('endereco').innerText) : '';
-    const endNum = doc.getElementById('endereco_numero_residencia') ? (doc.getElementById('endereco_numero_residencia').value || doc.getElementById('endereco_numero_residencia').innerText) : '';
-    const endBairro = doc.getElementById('endereco_bairro') ? (doc.getElementById('endereco_bairro').value || doc.getElementById('endereco_bairro').innerText) : '';
-    const enderecoCompleto = [endRua, endNum, endBairro].filter(Boolean).join(", "); 
-
-    const idUnidadeEl = doc.querySelector('input[name="id_unidade"]') || doc.querySelector('#id_unidade');
-    const idUnidade = idUnidadeEl ? idUnidadeEl.value : "";
-    const cepEl = doc.querySelector('input[name="cep"]') || doc.querySelector('#cep') || doc.querySelector('#endereco_cep');
-    const cepVal = cepEl ? cepEl.value.replace(/\D/g, '') : "";
-    
-    const endRuaNorm = window.normalizarTexto(endRua.split(',')[0]);
-    const endBairroNorm = window.normalizarTexto(endBairro);
-    
-    let ruaMatch = null;
-    if (ruasDB && ruasDB.length > 0) {
-        console.log(`[ASSISTENTE] Procurando match para idUnidade=${idUnidade}, CEP=${cepVal}, Rua=${endRuaNorm}, Bairro=${endBairroNorm}`);
-        ruaMatch = ruasDB.find(r => {
-            const rCep = r.cep ? r.cep.replace(/\D/g, '') : '';
-            if (r.id_unidade == idUnidade && rCep && cepVal && rCep === cepVal) {
-                console.log('[ASSISTENTE] Match encontrado por CEP!', r);
-                return true;
-            }
-            if (r.id_unidade == idUnidade && window.normalizarTexto(r.logradouro) === endRuaNorm && window.normalizarTexto(r.bairro) === endBairroNorm) {
-                console.log('[ASSISTENTE] Match encontrado por Logradouro + Bairro!', r);
-                return true;
-            }
-            return false;
-        });
-        if (!ruaMatch) console.log('[ASSISTENTE] Nenhum match encontrado no ruas.js para esta solicitação.');
-    }
-
-    const textoStatusParaAnalise = statusDiv ? statusDiv.innerText.toUpperCase() : '';
-    const ehAnaliseInicial = textoStatusParaAnalise.includes('EM ANÁLISE') || 
-                             textoStatusParaAnalise.includes('EM ANALISE') || 
-                             textoStatusParaAnalise.includes('AGUARDANDO ANÁLISE') || 
-                             textoStatusParaAnalise.includes('AGUARDANDO ANALISE');
-
-    const nomeRuaTitulo = endRua ? endRua.split(',')[0].trim() : 'Assistente Passo a Passo';
-
-    const inputMae = doc.querySelector('input[name="nome_mae"]');
-    const inputPai = doc.querySelector('input[name="nome_pai"]');
-    const nomeMae = inputMae ? inputMae.value.trim() : '';
-    const nomePai = inputPai ? inputPai.value.trim() : '';
-    let nomesResponsaveis = [nomeMae, nomePai].filter(Boolean).join(" e ");
-    if (!nomesResponsaveis) nomesResponsaveis = "NÃO INFORMADO";
-
-    const elNome = doc.querySelector('input[name="nome_aluno"]') || doc.querySelector('input[name="nome"]') || doc.getElementById('nome_aluno');
-    let nomeStr = elNome ? elNome.value.trim() : "";
-    if (!nomeStr) {
-        const tds = doc.querySelectorAll('td.etiqueta');
-        for (let td of tds) {
-            if (td.innerText.trim() === 'Nome do aluno' || td.innerText.trim() === 'Nome' || td.innerText.trim() === 'Candidato') {
-                const tr = td.parentElement;
-                const nextTr = tr.nextElementSibling;
-                if (nextTr) {
-                    const tdValor = nextTr.querySelector('td.texto_dados');
-                    if (tdValor) {
-                        nomeStr = tdValor.innerText.trim();
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    if (!nomeStr) nomeStr = "Não identificado";
-
-    function campoPreenchido(id) {
-        const el = doc.getElementById(id);
-        if (!el) return false;
-        const val = (el.value || el.innerText || "").trim().toUpperCase();
-        return val !== "" && val !== "NÃO" && val !== "NAO" && val !== "0" && val !== "SELECIONE" && val !== "NENHUMA";
-    }
-
-    let sugestaoDeficienciaHtml = null;
-    const elCadeirante = doc.getElementById('aluno_cadeirante');
-    const isCadeirante = elCadeirante && (elCadeirante.value || elCadeirante.innerText || "").toUpperCase().includes("SIM");
-
-    if (campoPreenchido('tipo_deficiencia') || campoPreenchido('detalhamento_deficiencia') || isCadeirante) {
-        sugestaoDeficienciaHtml = 'ALUNO';
-    } else if (campoPreenchido('descricao_deficiencia_pais_irmao') || campoPreenchido('descricao_deficiencia_pais_irmao_outro')) {
-        sugestaoDeficienciaHtml = 'FAMILIA';
-    }
+    const enderecoCompleto = ctx.enderecoCompleto;
+    const endRua = ctx.endRua;
+    const ruaMatch = ctx.ruaMatch;
+    const ehAnaliseInicial = ctx.ehAnalise;
+    const nomeRuaTitulo = ctx.nomeRuaTitulo;
+    const nomeStr = ctx.nomeAluno;
+    //const nomesResponsaveis = ctx.nomesResponsaveis;
+    const nomesResponsaveis = (nomeStr && ctx.nomesResponsaveis) 
+    ? nomeStr + '; ou<br>' + ctx.nomesResponsaveis 
+    : ctx.nomesResponsaveis;    const sugestaoDeficienciaHtml = ctx.sugestaoDeficienciaHtml;
+    let idEscolaAtual = ctx.idEscolaAtual;
+    let nivelAlunoOriginal = ctx.nivelAlunoOriginal;
+    let nivelAlunoNorm = ctx.nivelAlunoNorm;
+    let isBercarioGeral = ctx.isBercarioGeral;
 
     const modal = document.createElement('div');
     modal.id = 'modal-assistente-analise';
@@ -626,7 +1040,7 @@ window.abrirModalAssistente = async function() {
     `;
     document.body.appendChild(modal);
     
-    document.getElementById('btn-fechar-assistente').onclick = () => {
+    vincularEventoUnico(document.getElementById('btn-fechar-assistente'), 'click', () => {
         if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
         const btnFinalizar = document.getElementById('btn-aplicar-resultado');
         if (btnFinalizar) {
@@ -634,20 +1048,19 @@ window.abrirModalAssistente = async function() {
         } else {
             modal.style.display = 'none';
         }
-    };
+    });
 
     let estado = {
         ehAnalise: ehAnaliseInicial,
         mudancaOk: null,
         escolaProximaUser: null,
         escolaProximaCalc: null,
-        encaminhamentoOk: null,
+        ehEncaminhado: null,
         isEncaminhamentoDispensado: false,
         distancia: null,
         deficiencia: null, 
         dificuldadeAcesso: null,
         tentouResgate: false,
-        nomeEscolaAtual: "",
         telaFinal: null,
         distanciaSugeridaInput: "",
         distanciasOSRM: {}, 
@@ -661,10 +1074,11 @@ window.abrirModalAssistente = async function() {
         ruaMatch: ruaMatch,
         confirmacaoFeita: false,
         ehMaisProximaParcial: false,
-        isEspecial: false,
+        isEspecial: ctx.isEspecial,
+        nomeEscolaAtual: ctx.nomeEscolaAtual,
         areaRuralProcessada: false,
-        areaRuralEsperaDeficiencia: false,
         deficienciaEspecialProcessada: false,
+        pularDeficiencia: false,
         top3EscolasNomes: ""
     };
     
@@ -690,6 +1104,16 @@ window.abrirModalAssistente = async function() {
     let historico = [];
     let listaExibirBase = [];
 
+    let dadosGeograficosSessao = window.getSharedStoreValue?.('dadosGeograficos');
+    let dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota');
+
+    function gravarDadosGeograficosSessao(valor) {
+        dadosGeograficosSessao = valor;
+        if (typeof window.setSharedStoreValue === 'function') {
+            window.setSharedStoreValue('dadosGeograficos', valor);
+        }
+    }
+
     function salvarHistorico() {
         historico.push(JSON.parse(JSON.stringify(estado)));
     }
@@ -703,16 +1127,18 @@ window.abrirModalAssistente = async function() {
         }
     }
 
-    // --- SECTION: ASSISTENTE STEP RENDERING ---
+    // ==============
+    // SECTION: MÁQUINA DE ESTADOS (renderizarPasso)
+    // ==============
     async function renderizarPasso() {
-        console.log('[ASSISTENTE] renderizarPasso chamado');
+        if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] renderizarPasso');
         const conteudo = document.getElementById('conteudo-assistente');
         if (!conteudo) return; 
         
         const btnVoltar = document.getElementById('btn-voltar-assistente');
         if (btnVoltar) {
             btnVoltar.style.display = historico.length > 0 ? 'flex' : 'none';
-            btnVoltar.onclick = voltarPasso;
+            vincularEventoUnico(btnVoltar, 'click', voltarPasso);
         }
 
         if (estado.telaFinal) {
@@ -725,7 +1151,7 @@ window.abrirModalAssistente = async function() {
                     <div class="school-list-container">
                         <ul class="school-list">
                             <li class="school-item"><b>Endereço:</b> ${enderecoCompleto}</li>
-                            <li class="school-item" style="border-bottom:none; padding-bottom:0; margin-bottom:0;"><b>Responsável(eis):</b> ${nomesResponsaveis}</li>
+                            <li class="school-item" style="border-bottom:none; padding-bottom:0; margin-bottom:0;"><b>Nome:</b> ${nomesResponsaveis}</li>
                         </ul>
                     </div>
                     <div class="action-group">
@@ -733,8 +1159,8 @@ window.abrirModalAssistente = async function() {
                         <button id="btn-mudanca-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não, inválido/ausente</button>
                     </div>
                 `;
-                document.getElementById('btn-mudanca-sim').onclick = () => { salvarHistorico(); estado.mudancaOk = true; renderizarPasso(); };
-                document.getElementById('btn-mudanca-nao').onclick = () => { salvarHistorico(); estado.mudancaOk = false; estado.telaFinal = { titulo: "INDEFERIR", mensagem: "O comprovante de endereço é inválido ou está ausente no caso de mudança." }; renderizarPasso(); };
+                vincularEventoUnico(document.getElementById('btn-mudanca-sim'), 'click', () => { salvarHistorico(); estado.mudancaOk = true; renderizarPasso(); });
+                vincularEventoUnico(document.getElementById('btn-mudanca-nao'), 'click', () => { salvarHistorico(); estado.mudancaOk = false; estado.telaFinal = { titulo: "INDEFERIR", mensagem: "O comprovante de endereço é inválido ou está ausente no caso de mudança." }; renderizarPasso(); });
                 return;
             }
 
@@ -745,10 +1171,8 @@ window.abrirModalAssistente = async function() {
             const tipoAcao = titulo.includes('INDEFERIR') ? 'INDEFERIR' : 'DEFERIR';
             const corTitulo = tipoAcao === 'DEFERIR' ? '#27ae60' : '#c0392b';
 
-            let termoBusca = "";
-            let textoDetalhes = "";
 
-            if (tipoAcao === 'DEFERIR' && estado.encaminhamentoOk === true) {
+            if (tipoAcao === 'DEFERIR' && estado.ehEncaminhado === true) {
                 textoDetalhes = "encaminhado";
             }
 
@@ -760,25 +1184,43 @@ window.abrirModalAssistente = async function() {
                 }
             }
 
-            if (tipoAcao === 'DEFERIR') {
-                if (estado.deficiencia === 'ALUNO') termoBusca = "ALUNO DEFICIENTE";
-                else if (estado.deficiencia === 'FAMILIA') termoBusca = "PAI/MÃE DEFICIENTE";
-                else if (estado.distancia >= 1500) { termoBusca = "DISTÂNCIA MAIOR QUE 1500 METROS"; } 
-                else if (estado.dificuldadeAcesso === true) termoBusca = "DIFICULDADE DE ACESSO";
-                else termoBusca = "ENCAMINHADO PELA SEÇÃO DE MATRICULAS";
-            } else {
-                if (isMudanca && estado.mudancaOk === false) {
-                    termoBusca = ""; 
-                } else if (estado.distancia !== null && estado.distancia < 1500) {
-                    termoBusca = "DISTÂNCIA MENOR QUE 1500 METROS";
-                if (estado.escolaProximaCalc === false || estado.escolaProximaUser === false) {
-                    textoDetalhes = "Além de não atingir a distância mínima, é também escola de opção";
-                }
-                } else {
-                    termoBusca = "ESCOLA POR OPÇÃO";
-                }
-            }
+            // --- CORREÇÃO: Priorizar dados já definidos no estado, depois calcular ---
 
+let motivoAnalise = estado.telaFinal?.motivoAnalise || "";
+let textoDetalhes = estado.telaFinal?.textoDetalhes || "";
+
+// Se não houver termoBusca definido no estado, tentamos calcular baseados no tipo de ação
+if (!motivoAnalise) {
+    if (tipoAcao === 'DEFERIR') {
+        if (estado.deficiencia === 'ALUNO') motivoAnalise = "ALUNO DEFICIENTE";
+        else if (estado.deficiencia === 'FAMILIA') motivoAnalise = "PAI/MÃE DEFICIENTE";
+        else if (estado.distancia !== null && estado.distancia >= 1500) motivoAnalise = "DISTÂNCIA MAIOR QUE 1500 METROS";
+        else if (estado.dificuldadeAcesso === true) motivoAnalise = "DIFICULDADE DE ACESSO";
+        else if (estado.ehAreaRural === true) motivoAnalise = "ÁREA RURAL";
+        else if (estado.ehEncaminhado === true) {
+            motivoAnalise = "ENCAMINHADO PELA SEÇÃO DE MATRICULAS";
+        }
+
+        if (!textoDetalhes && estado.ehEncaminhado === true) {
+            textoDetalhes = "Encaminhado pela Central de Matrículas";
+        }
+    } else {
+        // Lógica de Indeferimento
+        if (isMudanca && estado.mudancaOk === false) {
+            motivoAnalise = ""; 
+        } else if (estado.distancia !== null && estado.distancia < 1500) {
+            motivoAnalise = "DISTÂNCIA MENOR QUE 1500 METROS";
+            if (estado.escolaProximaCalc === false || estado.escolaProximaUser === false) {
+                textoDetalhes = "Além de não atingir a distância mínima, é também escola de opção";
+            }
+        } else {
+            motivoAnalise = "ESCOLA POR OPÇÃO";
+        }
+    }
+}
+
+
+if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] Renderizando tela final:', { tipoAcao, motivoAnalise, textoDetalhes, distancia: estado.distancia });
             conteudo.innerHTML = `
                 <div style="text-align:center; padding:10px;">
                     <h2 style="color:${corTitulo}; margin-top:0; font-size:24px; display:flex; align-items:center; justify-content:center; gap:8px;">
@@ -787,8 +1229,8 @@ window.abrirModalAssistente = async function() {
                     </h2>
                     <div class="message-box ${tipoAcao === 'DEFERIR' ? 'success' : 'danger'}">
                         ${mensagem}
-                        ${termoBusca ? `<br><br><b>Motivo:</b> ${termoBusca}` : ''}
-                        ${textoDetalhes ? `<br><span class="text-warning" style="font-size:12px; display:inline-block; margin-top:5px;"><span class="mdi mdi-script-outline" style="font-size: 14px; margin-right: 4px;"></span> Obs: Aluno encaminhado pela Central de Matrículas</span>` : ''}
+                        ${motivoAnalise && !mensagem.includes(motivoAnalise)? `<br><br><b>Motivo:</b> ${motivoAnalise}` : ''}
+                        ${textoDetalhes ? `<br><span class="text-warning" style="font-size:12px; display:inline-block; margin-top:5px;"><span class="mdi mdi-script-outline" style="font-size: 14px; margin-right: 4px;"></span> Obs: ${textoDetalhes}</span>` : ''}
                     </div>
                 </div>
                 <div class="action-group-col" style="margin-top:20px;">
@@ -798,93 +1240,43 @@ window.abrirModalAssistente = async function() {
                 </div>
             `;
 
-            document.getElementById('btn-aplicar-resultado').onclick = () => {
-                const docFinal = window.getAlvoDocument(); 
-                
-                try {
-                    const camposDist = docFinal.querySelectorAll('input[name="distancia_aferida"], #distancia_aferida');
-                    if (estado.distancia !== null && estado.distancia !== undefined) {
-                        camposDist.forEach(campo => {
-                            campo.value = estado.distancia;
-                            campo.setAttribute('value', estado.distancia);
-                        });
-                    }
-                } catch (erro) {}
+            vincularEventoUnico(document.getElementById('btn-aplicar-resultado'), 'click', () => {
+    const docFinal = window.getAlvoDocument(); 
+    
+    // Tenta ler o campo de distância do HTML caso o estado esteja vazio
+    let valorDistancia = estado.distancia;
+    if (valorDistancia === null || valorDistancia === undefined) {
+        const campo = docFinal.querySelector('input[name="distancia_aferida"], #distancia_aferida, #input-assistente-dist');
+        valorDistancia = campo ? parseInt(campo.value, 10) : null;
+    }
 
-                try {
-                    if (tipoAcao === 'INDEFERIR') {
-                        const selectMotivo = docFinal.querySelector('select[name="status_motivo"], #status_motivo');
-                        if (!selectMotivo || selectMotivo.type === 'hidden' || window.getComputedStyle(selectMotivo).display === 'none') {
-                            const motivoIndef = termoBusca || estado.telaFinal.mensagem;
-                            if (!textoDetalhes || textoDetalhes === "encaminhado") {
-                                textoDetalhes = motivoIndef;
-                            } else if (!textoDetalhes.includes(motivoIndef)) {
-                                textoDetalhes = motivoIndef + " - " + textoDetalhes;
-                            }
-                        }
-                    }
-                    const camposDet = docFinal.querySelectorAll('textarea[name="status_detalhes"], #status_atual_detalhes, textarea[name="motivo_detalhes"]');
-                    camposDet.forEach(campo => {
-                        if(textoDetalhes !== "") {
-                            campo.value = textoDetalhes;
-                            campo.innerHTML = textoDetalhes; 
-                        }
-                    });
-                } catch (erro) {}
-
-                try {
-                    if (termoBusca !== "") {
-                        const selectsMotivo = docFinal.querySelectorAll('select[name="status_motivo"], #status_motivo');
-                        selectsMotivo.forEach((select) => {
-                            for (let i = 0; i < select.options.length; i++) {
-                                const opt = select.options[i];
-                                const txtOpcao = opt.text.toUpperCase();
-                                const valOpcao = opt.value.toUpperCase();
-                                
-                                if (txtOpcao.includes(termoBusca) || valOpcao.includes(termoBusca)) {
-                                    select.selectedIndex = i;
-                                    try { select.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
-                                    break; 
-                                }
-                            }
-                        });
-                    }
-                } catch (erro) {}
-
-                const modalAssis = document.getElementById('modal-assistente-analise');
-                if (modalAssis) modalAssis.remove();
-
-                const windowFinal = docFinal.defaultView || window;
-                const isFichaAntigaFinal = windowFinal.location.href.includes('ficha_transporte.php') && !windowFinal.location.href.includes('nova_versao');
-                
-                if (isFichaAntigaFinal && typeof windowFinal.ShowModal === 'function') {
-                    if (tipoAcao === 'DEFERIR') {
-                        if (docFinal.getElementById("modal_Deferir")) windowFinal.ShowModal("modal_Deferir");
-                    } else {
-                        if (docFinal.getElementById("modal_Indeferir")) windowFinal.ShowModal("modal_Indeferir");
-                    }
-                }
-            };
+    // Agora usa valorDistancia em vez de estado.distancia
+    preencheAnalise(tipoAcao, motivoAnalise, textoDetalhes, valorDistancia);
+});
             return;
         }
 
-        if (estado.ruaMatch && estado.ruaMatch.resultado_motivo === "ÁREA RURAL" && !estado.areaRuralProcessada) {
-            if ((sugestaoDeficienciaHtml === 'ALUNO' || sugestaoDeficienciaHtml === 'FAMILIA') && estado.deficiencia === null) {
-                estado.areaRuralEsperaDeficiencia = true;
+        const temSugestaoDeficiencia = sugestaoDeficienciaHtml === 'ALUNO' || sugestaoDeficienciaHtml === 'FAMILIA';
+        if ((historicoRua.ehAreaRural || historicoRua.ehDificuldadeAcesso) && !estado.areaRuralProcessada) {
+            if (temSugestaoDeficiencia && estado.deficiencia === null) {
+                estado.pularDeficiencia= false;
             } else {
+                estado.pularDeficiencia= true;
                 estado.areaRuralProcessada = true;
                 if (estado.deficiencia === 'ALUNO') {
-                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do aluno.", termoBusca: "ALUNO DEFICIENTE", textoDetalhes: "ALUNO DEFICIENTE" };
+                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do aluno.", motivoAnalise: "ALUNO DEFICIENTE" };
                 } else if (estado.deficiencia === 'FAMILIA') {
-                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do responsável.", termoBusca: "PAI/MÃE DEFICIENTE", textoDetalhes: "PAI/MÃE DEFICIENTE" };
-                } else {
-                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por ser ÁREA RURAL.", termoBusca: "ÁREA RURAL", textoDetalhes: "ÁREA RURAL" };
-                }
+                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do responsável.", motivoAnalise: "PAI/MÃE DEFICIENTE"};
+                } else if (historicoRua.ehAreaRural) {
+                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por ser ÁREA RURAL.", motivoAnalise: "ÁREA RURAL" };
+                } else if(historicoRua.ehDificuldadeAcesso || estado.dificuldadeAcesso === true) {
+                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de DIFICULDADE DE ACESSO.", motivoAnalise: "DIFICULDADE DE ACESSO" };
+                } else {estado.pularDeficiencia= false;}
                 return renderizarPasso();
             }
         }
 
-        if (estado.areaRuralEsperaDeficiencia && estado.deficiencia === null) {
+        if (estado.areaRuralProcessada && estado.pularDeficiencia=== false && estado.deficiencia === null) {
             let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
             let estiloAluno = "background:#27ae60;";
             let estiloFamilia = "background:#2980b9;";
@@ -909,41 +1301,27 @@ window.abrirModalAssistente = async function() {
                 </div>
             `;
             
-            document.getElementById('btn-def-aluno').onclick = () => { 
-                salvarHistorico(); estado.deficiencia = 'ALUNO'; renderizarPasso(); 
-            };
-            document.getElementById('btn-def-familia').onclick = () => { 
-                salvarHistorico(); estado.deficiencia = 'FAMILIA'; renderizarPasso(); 
-            };
-            document.getElementById('btn-def-nao').onclick = () => { 
-                salvarHistorico(); estado.deficiencia = false; renderizarPasso(); 
-            };
+            vincularEventoUnico(document.getElementById('btn-def-aluno'), 'click', () => { salvarHistorico(); estado.deficiencia = 'ALUNO'; renderizarPasso(); });
+            vincularEventoUnico(document.getElementById('btn-def-familia'), 'click', () => { salvarHistorico(); estado.deficiencia = 'FAMILIA'; renderizarPasso(); });
+            vincularEventoUnico(document.getElementById('btn-def-nao'), 'click', () => { salvarHistorico(); estado.deficiencia = false; renderizarPasso(); });
             return;
         }
 
         if (estado.escolaProximaUser === null) {
 
-            let dadosGeograficos = window.getSharedStoreValue?.('dadosGeograficos');
+            let dadosGeograficos = dadosGeograficosSessao;
 
             if (dadosGeograficos && (dadosGeograficos.erro || !dadosGeograficos.geoEndereco_Latit) && !estado.tentouResgate) {
                 estado.tentouResgate = true; 
                 
-                const iframeMap = doc.getElementById('map_endereco');
-                if (iframeMap && iframeMap.src && iframeMap.src.includes('destination=')) {
+                const iframeMap = ctx.iframeMapa;
+                if (iframeMap?.src?.includes('destination=')) {
                     const urlCompleta = iframeMap.src;
-                    const matchOrigin = urlCompleta.match(/origin=([^&]+)/i);
-                    const matchDest = urlCompleta.match(/destination=([^&]+)/i);
-                    const separarCoordenadas = (matchString) => {
-                        if (!matchString) return { lat: null, lon: null };
-                        const pt = decodeURIComponent(matchString[1]).trim().split(/[\s,]+/);
-                        if (pt.length >= 2) return { lat: parseFloat(pt[0].trim()), lon: parseFloat(pt[1].trim()) };
-                        return { lat: null, lon: null };
-                    };
-                    const coordOrigin = separarCoordenadas(matchOrigin);
-                    const coordDest = separarCoordenadas(matchDest);
+                    const coordOrigin = separarCoordenadasIframe(urlCompleta.match(/origin=([^&]+)/i));
+                    const coordDest = separarCoordenadasIframe(urlCompleta.match(/destination=([^&]+)/i));
                     
                     if (coordOrigin.lat && coordDest.lat) {
-                        window.setSharedStoreValue('dadosGeograficos', {
+                        gravarDadosGeograficosSessao({
                             erro: false,
                             urlMaps: urlCompleta,
                             geoEndereco_Latit: coordOrigin.lat,
@@ -956,44 +1334,28 @@ window.abrirModalAssistente = async function() {
                     }
                 }
 
-                const idSolInput = doc.querySelector('input[name="id_solicitacao"]') || doc.querySelector('input[name="id"]');
-                if (idSolInput && idSolInput.value) {
+                if (ctx.idSolicitacao) {
+                    dadosGeograficosSessao = null;
                     if (typeof window.setSharedStore === 'function') {
                         window.setSharedStore({ dadosGeograficos: null });
                     }
                     const windowAlvo = doc.defaultView || window;
                     const baseUrlAberta = windowAlvo.location.href.split('?')[0];
-                    const urlFallback = baseUrlAberta.replace('ficha_transporte.php', 'ficha_transporte_nova_versao.php') + '?id_solicitacao=' + idSolInput.value;
+                    const urlFallback = baseUrlAberta.replace('ficha_transporte.php', 'ficha_transporte_nova_versao.php') + '?id_solicitacao=' + ctx.idSolicitacao;
 
                     if (typeof window.extrairDadosGeograficos === 'function') {
                         window.extrairDadosGeograficos(urlFallback).then(dados => {
-                            window.setSharedStoreValue('dadosGeograficos', dados ? dados : { erro: true });
-                            renderizarPasso(); 
+                            gravarDadosGeograficosSessao(dados ? dados : { erro: true });
+                            renderizarPasso();
                         });
                         return;
                     }
                 }
             }
 
-            const campoDistExistente = doc.querySelector('input[name="distancia_aferida"], #distancia_aferida');
-
-            // Definir estado.distanciaSugeridaInput baseado no modo atual
-            const rota = window.getSharedStoreValue?.('dadosGeraisRota');
-            let mapMode = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-
-            let distValue = mapMode === 'endereco' ? rota?.distanciaEnd : rota?.distanciaCoord;
-
-            // Fallbacks cruzados
-            if (distValue == null) {
-                distValue = mapMode === 'endereco' ? rota?.distanciaCoord : rota?.distanciaEnd;
-            }
-
-            // Só usar campoDistExistente se ambos inválidos
-            if (distValue == null && campoDistExistente && campoDistExistente.value) {
-                distValue = parseInt(campoDistExistente.value) || null;
-            }
-
-            estado.distanciaSugeridaInput = distValue || "";
+            const mapMode = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
+            dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota') || dadosGeraisRotaSessao;
+            estado.distanciaSugeridaInput = obterDistanciaSugeridaInput(ctx, mapMode, dadosGeraisRotaSessao);
             
             const falhouCalculo = dadosGeograficos && 
                                   (dadosGeograficos.erro || (!dadosGeograficos.geoEndereco_Latit && estado.tentouResgate));
@@ -1048,43 +1410,20 @@ window.abrirModalAssistente = async function() {
 
 if (inputDist) {
 
-    setTimeout(() => {
-        inputDist.focus();
-    }, 100);
+    setTimeout(() => { inputDist.focus(); }, 100);
+    vincularEventoUnico(inputDist, 'focus', function () { this.select(); });
+    vincularEventoUnico(inputDist, 'input', function () { this.dataset.editado = 'true'; });
+    vincularEventoUnico(inputDist, 'keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); } });
 
-    inputDist.addEventListener(
-        'focus',
-        function () {
-            this.select();
-        }
-    );
-
-    inputDist.addEventListener(
-        'input',
-        function () {
-            this.dataset.editado = 'true';
-        }
-    );
-
-    inputDist.addEventListener(
-        'keydown',
-        function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-            }
-        }
-    );
-
-    const rota = window.getSharedStoreValue?.('dadosGeraisRota') || window.dadosGeraisRota;
     const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-
+    const rota = dadosGeraisRotaSessao || window.getSharedStoreValue?.('dadosGeraisRota');
     if (rota) {
         const distancia = modoMapa === 'endereco' ? rota.distanciaEnd : rota.distanciaCoord;
-        atualizarInputDistancia(distancia);
+        window.atualizarInputDistancia(distancia);
     }
 }
 
-                document.getElementById('btn-esc-sim').onclick = () => { 
+                vincularEventoUnico(document.getElementById('btn-esc-sim'), 'click', () => { 
                     const dist = parseInt(inputDist.value);
                     if (isNaN(dist) || dist < 0) return alert("Por favor, insira uma distância válida em metros.");
                     salvarHistorico(); 
@@ -1094,21 +1433,28 @@ if (inputDist) {
                         estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (${estado.distancia}m) e os critérios da escola ou encaminhamento estão corretos.` };
                     }
                     renderizarPasso(); 
-                };
+                });
                 
-                document.getElementById('btn-esc-nao').onclick = () => { 
+                vincularEventoUnico(document.getElementById('btn-esc-nao'), 'click', () => { 
                     const dist = parseInt(inputDist.value);
                     if (isNaN(dist) || dist < 0) return alert("Por favor, insira uma distância válida em metros.");
                     salvarHistorico(); 
                     estado.distancia = dist;
                     estado.escolaProximaUser = false; 
                     renderizarPasso(); 
-                };
+                });
                 return;
             }
 
-            dadosGeograficos = window.getSharedStoreValue?.('dadosGeograficos');
-            if (!dadosGeograficos || !dadosGeograficos.geoEndereco_Latit) {
+            dadosGeograficos = dadosGeograficosSessao;
+            if (!dadosGeograficos || (!dadosGeograficos.geoEndereco_Latit && !dadosGeograficos.erro)) {
+                if (!estado.tentativasEsperaGeo) estado.tentativasEsperaGeo = 0;
+                estado.tentativasEsperaGeo++;
+                if (estado.tentativasEsperaGeo > 15) {
+                    gravarDadosGeograficosSessao({ erro: true });
+                    setTimeout(renderizarPasso, 100);
+                    return;
+                }
                 conteudo.innerHTML = `<div style="text-align:center; padding:20px;" class="text-info"><span class="mdi mdi-refresh" style="font-size: 22px; margin-right: 6px;"></span> <b>Calculando escolas mais próximas...</b></div>`;
                 setTimeout(renderizarPasso, 500); 
                 return;
@@ -1117,225 +1463,14 @@ if (inputDist) {
             const latAluno = dadosGeograficos.geoEndereco_Latit;
             const lonAluno = dadosGeograficos.geoEndereco_Longit;
             
-            let idEscolaAtual = "";
-            let nomeEscolaAtualStr = "Não identificada";
-            const inputIdEscola = document.querySelector('input[name="id_unidade"]') || doc.querySelector('input[name="id_unidade"]');
-            
-            if (inputIdEscola) {
-                // --- IDENTIFICAÇÃO PARA ficha_transporte.php ---
-                idEscolaAtual = inputIdEscola.value.trim();
-                if (window.escolasDB) {
-                    const escFound = window.escolasDB.find(e => String(e.id) === String(idEscolaAtual));
-                    if (escFound) nomeEscolaAtualStr = escFound.nome;
-                }
-            } else {
-                // --- FALLBACK PARA ficha_transporte_nova_versao.php ---
-                // Procurar spans com Latitude e Longitude para identificar escola
-                const spans = doc.querySelectorAll('span');
-                let latEscola = null;
-                let lonEscola = null;
-                let nomeEscolaParseado = "";
-                
-                for (let span of spans) {
-                    const texto = span.innerText || span.textContent;
-                    
-                    if (!latEscola && (texto.includes('Latitude:') || texto.includes('Longitude:'))) {
-                        const matchLat = texto.match(/Latitude:\s*([-\d.]+)/);
-                        const matchLon = texto.match(/Longitude:\s*([-\d.]+)/);
-                        if (matchLat) latEscola = parseFloat(matchLat[1]);
-                        if (matchLon) lonEscola = parseFloat(matchLon[1]);
-                    }
-                    if (!nomeEscolaParseado && span.style.fontSize === '20px' && span.style.fontWeight === 'bold') {
-                        nomeEscolaParseado = texto.trim();
-                    }
-                }
-                
-                if (latEscola && lonEscola && window.escolasDB) {
-                    // Comparar coordenadas com base de dados
-                    const escolaPorCoord = window.escolasDB.find(esc => {
-                        const dist = window.calcularDistanciaHaversine(latEscola, lonEscola, esc.lat, esc.lon);
-                        return dist < 100; // Tolerância de 100m
-                    });
-                    
-                    if (escolaPorCoord) {
-                        idEscolaAtual = escolaPorCoord.id;
-                        nomeEscolaAtualStr = escolaPorCoord.nome;
-                    } else if (nomeEscolaParseado && window.escolasDB) {
-                        // Fallback por nome
-                        const nomeNorm = window.normalizarTexto(nomeEscolaParseado).replace('EMEB', '').replace(',', '').trim();
-                        const escolaPorNome = window.escolasDB.find(e => {
-                            const nomeBanco = window.normalizarTexto(e.nome).replace('EMEB', '').replace(',', '').trim();
-                            return nomeBanco.includes(nomeNorm) || nomeNorm.includes(nomeBanco);
-                        });
-                        if (escolaPorNome) {
-                            idEscolaAtual = escolaPorNome.id;
-                            nomeEscolaAtualStr = escolaPorNome.nome;
-                        }
-                    }
-                }
-            }
-            estado.nomeEscolaAtual = nomeEscolaAtualStr;
-
-            const baseEscolas = window.escolasDB || [];
-            let escolaSelecionada = baseEscolas.find(e => String(e.id) === String(idEscolaAtual));
-
+            estado.nomeEscolaAtual = ctx.nomeEscolaAtual;
+            const escolaSelecionada = ctx.escolaRegistro;
             if (escolaSelecionada && !estado.distanciasVerificadasInicialmente) {
                 estado.distanciasVerificadasInicialmente = true;
                 const transporteAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
                 estado.perfilOSRM = transporteAtual === 'carro' ? 'driving' : 'foot';
             }
-
-            mapMode = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-
-            let nivelAlunoOriginal = "";
-            
-            const tds = doc.querySelectorAll('td.etiqueta');
-            for (let td of tds) {
-                if (td.innerText.trim() === 'Nível') {
-                    const tr = td.parentElement;
-                    const nextTr = tr.nextElementSibling;
-                    if (nextTr) {
-                        const tdValor = nextTr.querySelector('td.texto_dados');
-                        if (tdValor) {
-                            nivelAlunoOriginal = tdValor.innerText.trim();
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (!nivelAlunoOriginal) {
-                const spans16 = doc.querySelectorAll('span[style*="font-size: 16px"][style*="font-weight: bold"]');
-                spans16.forEach(span => {
-                    const texto = span.innerText.trim().toUpperCase();
-                    if (texto !== "INTEGRAL" && texto !== "PARCIAL" && texto !== "NOITE" && texto !== "") {
-                        nivelAlunoOriginal = texto;
-                    }
-                });
-            }
-
-            let valorSelect = "";
-            const selectNivel = document.getElementById('nivel') || doc.getElementById('nivel');
-            if (selectNivel && selectNivel.options[selectNivel.selectedIndex]) {
-                valorSelect = selectNivel.options[selectNivel.selectedIndex].text || selectNivel.value;
-                if (!nivelAlunoOriginal) nivelAlunoOriginal = valorSelect;
-            }
-
-            if (!nivelAlunoOriginal || (nivelAlunoOriginal.includes("BERCARIO") && valorSelect === "BERCARIO INICIAL")) {
-                let dataNascStr = "";
-                const elDataNasc = doc.getElementById('data_nasc_aluno');
-                if (elDataNasc) dataNascStr = elDataNasc.value || elDataNasc.innerText;
-                if (!dataNascStr) {
-                     const tdsData = doc.querySelectorAll('td.etiqueta');
-                     for (let td of tdsData) {
-                         if (td.innerText.trim() === 'Data de nascimento') {
-                             const tr = td.parentElement;
-                             const nextTr = tr.nextElementSibling;
-                             if (nextTr) {
-                                 const idx = Array.from(tr.children).indexOf(td);
-                                 const tdValor = nextTr.children[idx];
-                                 if (tdValor) dataNascStr = tdValor.innerText.trim();
-                             }
-                         }
-                     }
-                }
-                if (dataNascStr) {
-                    const parts = dataNascStr.split('/');
-                    if (parts.length === 3) {
-                        const nasc = new Date(parts[2], parts[1] - 1, parts[0]);
-                        const hoje = new Date();
-                        let idade = hoje.getFullYear() - nasc.getFullYear();
-                        const m = hoje.getMonth() - nasc.getMonth();
-                        if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-                        
-                        const faixasEtarias = [
-                            { nivel: "EJA", idade: 14, idadeMaxima: 110 }, { nivel: "5º ANO", idade: 10, idadeMaxima: 13 }, { nivel: "4º ANO", idade: 9, idadeMaxima: 10 }, { nivel: "3º ANO", idade: 8, idadeMaxima: 9 }, { nivel: "2º ANO", idade: 7, idadeMaxima: 8 }, { nivel: "1º ANO", idade: 6, idadeMaxima: 7 }, { nivel: "INFANTIL V", idade: 5, idadeMaxima: 6 }, { nivel: "INFANTIL IV", idade: 4, idadeMaxima: 5 }, { nivel: "INFANTIL III", idade: 3, idadeMaxima: 4 }, { nivel: "INFANTIL II", idade: 2, idadeMaxima: 3 }, { nivel: "INFANTIL I", idade: 1, idadeMaxima: 2 }, { nivel: "BERÇÁRIO FINAL", idade: 1, idadeMaxima: 1 }, { nivel: "BERÇÁRIO INICIAL", idade: 0, idadeMaxima: 1 }
-                        ];
-                        
-                        const faixaEncontrada = faixasEtarias.find(f => idade >= f.idade && idade <= f.idadeMaxima);
-                        if (faixaEncontrada) {
-                            if (!nivelAlunoOriginal || (nivelAlunoOriginal.includes("BERCARIO") && idade > 1)) {
-                                nivelAlunoOriginal = faixaEncontrada.nivel;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            let nivelAlunoNorm = window.normalizarTexto(nivelAlunoOriginal);
-            nivelAlunoNorm = nivelAlunoNorm.replace(/([0-9]+)\s*[Oº\.]\s*ANO/g, "$1O ANO");
-            if (nivelAlunoNorm.includes("EJA")) nivelAlunoNorm = "EJA";
-            if (nivelAlunoNorm.includes("ESPECIAL")) nivelAlunoNorm = "ESPECIAL";
-
-            const isBercarioGeral = nivelAlunoNorm.includes("BERCARIO") && nivelAlunoNorm !== "BERCARIO INICIAL" && nivelAlunoNorm !== "BERCARIO FINAL";
-
-            let escolaAtualTemEspecial = false;
-            if (escolaSelecionada && escolaSelecionada.turmas) {
-                escolaAtualTemEspecial = escolaSelecionada.turmas.some(t => window.normalizarTexto(t.nivel).includes("ESPECIAL"));
-            }
-            estado.isEspecial = nivelAlunoNorm === "ESPECIAL" || escolaAtualTemEspecial;
-
-            const escolasAptas = baseEscolas.filter(esc => {
-                if (!esc.turmas || !Array.isArray(esc.turmas)) return false;
-                const turmasNivel = esc.turmas.filter(turma => {
-                    const nivelTurmaNorm = window.normalizarTexto(turma.nivel);
-                    if (isBercarioGeral) {
-                        return nivelTurmaNorm.includes("BERCARIO");
-                    }
-                    if (nivelAlunoNorm === "ESPECIAL" && nivelTurmaNorm.includes("ESPECIAL")) return true; 
-                    if (nivelAlunoNorm === "EJA" && nivelTurmaNorm.includes("EJA")) return true;
-                    return nivelTurmaNorm === nivelAlunoNorm;
-                });
-                
-                if (turmasNivel.length > 0) {
-                    esc.periodosEncontrados = [...new Set(turmasNivel.map(t => t.periodo))].join(' / ');
-                    return true;
-                }
-                return false;
-            });
-
-            // Função para gerar a lista atualizada baseada na origem correta (GPS ou Nominatim)
-            function obterEscolasAptasExibicao(modo) {
-                let latBase = latAluno;
-                let lonBase = lonAluno;
-                if (modo === 'endereco') {
-                    let rota = window.getSharedStoreValue?.('dadosGeraisRota') || window.dadosGeraisRota;
-                    if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
-                        latBase = rota.coordAlunoEnd.lat;
-                        lonBase = rota.coordAlunoEnd.lon;
-                    }
-                }
-                
-                // Cópia para não sobrescrever distância Haversine nos objetos fixos
-                let listaCopia = JSON.parse(JSON.stringify(escolasAptas));
-
-                listaCopia.forEach(esc => {
-                    esc.distancia = window.calcularDistanciaHaversine(latBase, lonBase, esc.lat, esc.lon);
-                });
-
-                listaCopia.sort((a, b) => a.distancia - b.distancia);
-                
-                let indexAtual = listaCopia.findIndex(e => String(e.id) === String(idEscolaAtual));
-                let indexParcial = listaCopia.findIndex(e => e.periodosEncontrados && e.periodosEncontrados.includes('PARCIAL'));
-                let indexIntegral = listaCopia.findIndex(e => e.periodosEncontrados && e.periodosEncontrados.includes('INTEGRAL'));
-                
-                let idxAtualValid = indexAtual !== -1 ? indexAtual : -1;
-                let idxParcialValid = indexParcial !== -1 ? indexParcial : -1;
-                let idxIntegralValid = indexIntegral !== -1 ? indexIntegral : -1;
-                
-                let limiteFinal = 3; 
-                const prioridades = [0, idxParcialValid, idxIntegralValid, idxAtualValid].filter(idx => idx !== -1);
-                
-                prioridades.forEach(idx => {
-                    if (idx >= 3 && idx <= 9) {
-                        if ((idx + 1) > limiteFinal) {
-                            limiteFinal = idx + 1;
-                        }
-                    }
-                });
-                
-                return listaCopia.slice(0, limiteFinal);
-            }
+            estado.isEspecial = ctx.isEspecial;
 
             // Definir variáveis de modo em escopo mais amplo para uso em atualizarListaEscolasDinamicamente e OSRM
             let mapModeAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
@@ -1343,6 +1478,7 @@ if (inputDist) {
 
             // --- SECTION: SCHOOL LIST MANAGEMENT ---
             const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
+                dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota') || dadosGeraisRotaSessao;
                 if (estado.buscandoOSRM && !forcarRecalculo) {
                     if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
                     estado.buscandoOSRM = false;
@@ -1356,7 +1492,7 @@ if (inputDist) {
                 let chaveListaAtual = mapModeAtual;
 
                 if (forcarRecalculo || !estado.listaEscolasPorModo[chaveListaAtual]) {
-                    listaExibirBase = obterEscolasAptasExibicao(chaveListaAtual);
+                    listaExibirBase = montarListaEscolasExibicao(escolasAptas, latAluno, lonAluno, chaveListaAtual, idEscolaAtual, dadosGeraisRotaSessao);
                     estado.listaEscolasPorModo[chaveListaAtual] = listaExibirBase;
                     persistirEstado();
                 } else {
@@ -1462,8 +1598,15 @@ if (inputDist) {
 
                 // New exception rule for skipping Encaminhamento step
                 const temDeficiencia = (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA');
-                if (ehMaisProxima || ehMaisProximaParcial || (temDeficiencia && ehMaisProximaIntegral && estado.distancia < 3000) || (temDeficiencia && estado.distancia < 1800)) {
+                if (estado.escolaProximaUser === true || (temDeficiencia && ehMaisProximaIntegral && estado.distancia < 3000) || (temDeficiencia && estado.distancia < 1800)) {
                     estado.isEncaminhamentoDispensado = true;
+                }
+                
+                // GARANTIA: Se o usuário clicou que NÃO é a mais próxima, força a exibição do Encaminhamento
+                if (estado.escolaProximaUser === false) {
+                    if (!(temDeficiencia && estado.distancia < 1800)) {
+                        estado.isEncaminhamentoDispensado = false;
+                    }
                 }
 
                 let statusText = "";
@@ -1503,9 +1646,8 @@ if (inputDist) {
                 if (listaOrdenada.length === 0) {
                     listaHtml += `<li class="school-item text-danger">Nenhuma escola encontrada na base.</li>`;
                 } else {
-                    const rota = window.getSharedStoreValue?.('dadosGeraisRota');
-                    const latOrigemLista = (mapModeAtual === 'endereco' && rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd !== 'string') ? rota.coordAlunoEnd.lat : latAluno;
-                    const lonOrigemLista = (mapModeAtual === 'endereco' && rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd !== 'string') ? rota.coordAlunoEnd.lon : lonAluno;
+                    const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
+                    const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
 
                     listaOrdenada.forEach((esc, i) => {
                         const cor = String(esc.id) === String(idEscolaAtual) ? 'selected' : '';
@@ -1514,8 +1656,8 @@ if (inputDist) {
                         let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : "";
                         let urlConfere = "";
                         
-                        if (mapModeAtual === 'endereco' && rota && typeof rota.coordAlunoEnd === 'string') {
-                            let endStrEncode = encodeURIComponent(rota.coordAlunoEnd);
+                        if (mapModeAtual === 'endereco' && dadosGeraisRotaSessao && typeof dadosGeraisRotaSessao.coordAlunoEnd === 'string') {
+                            let endStrEncode = encodeURIComponent(dadosGeraisRotaSessao.coordAlunoEnd);
                             urlConfere = `https://maps.google.com/maps?saddr=${endStrEncode}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;
                         } else {
                             urlConfere = `https://maps.google.com/maps?saddr=${latOrigemLista}+${lonOrigemLista}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`; //nao alterar
@@ -1544,7 +1686,6 @@ if (inputDist) {
                         }
 
                         listaHtml += `<li data-id="${esc.id}" class="school-item ${cor}">
-
                             ${tagAtual}${i + 1}º - ${esc.nome} <span class="badge${classeBadge}">${esc.periodosEncontrados}</span>
                             <div class="school-meta dist-texto">${txtDist}
                             <a href="${urlConfere}" target="_blank" onclick="if(window.copiarCoordenadasEndereco) window.copiarCoordenadasEndereco();" class="link-action">
@@ -1567,26 +1708,23 @@ if (inputDist) {
                 
                 // Verificar se há erros de cálculo e mostrar botão refresh
                 const temErros = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
-                const btnRefresh = document.getElementById('btn-refresh-lista');
-                if (btnRefresh) {
-                    btnRefresh.style.display = temErros ? 'block' : 'none';
+                const btnRefreshEnd = document.getElementById('btn-refresh-lista');
+                if (btnRefreshEnd) {
+                    btnRefreshEnd.style.display = temErros ? 'block' : 'none';
                 }
                 
                 // Verificar se há distâncias OSRM ainda não calculadas e iniciar se necessário
                 let faltaCalcularAgora = listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
                 if (faltaCalcularAgora && typeof window.calcularTrajetoOSRM === 'function' && !estado.buscandoOSRM) {
-                    console.log('[ASSISTENTE] iniciando recálculo OSRM para lista de escolas');
                     estado.buscandoOSRM = true;
-                    
                     if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
                     window.osrmAbortController = new AbortController();
 
                     (async () => {
                         const meuSignal = window.osrmAbortController.signal;
                         try {
-                            const rota = window.getSharedStoreValue?.('dadosGeraisRota');
-                            const latOrigemLista = (mapModeAtual === 'endereco' && rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd !== 'string') ? rota.coordAlunoEnd.lat : latAluno;
-                            const lonOrigemLista = (mapModeAtual === 'endereco' && rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd !== 'string') ? rota.coordAlunoEnd.lon : lonAluno;
+                            const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
+                            const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
 
                             for (let esc of listaExibirBase) {
                                 if (estado.distanciasOSRM[esc.id] === undefined) {
@@ -1604,16 +1742,25 @@ if (inputDist) {
                         } catch (erro) {
                             console.error('[ASSISTENTE] erro no recálculo OSRM:', erro);
                         } finally {
-                            if (!meuSignal.aborted) {
+                            // Garantir que o estado de busca seja sempre resetado
+                            try {
                                 estado.buscandoOSRM = false;
-                                const temErros = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
-                                const btnRefreshEnd = document.getElementById('btn-refresh-lista');
-                                if (btnRefreshEnd) {
-                                    btnRefreshEnd.style.display = temErros ? 'block' : 'none';
+                            } catch (e) {}
+
+                            // limpar global abort controller se existir
+                            try {
+                                if (window.osrmAbortController) {
+                                    window.osrmAbortController = null;
                                 }
-                                if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
-                                    window.atualizarListaEscolasDinamicamente(false);
-                                }
+                            } catch (e) {}
+
+                            const temErrosFinal = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
+                            const btnRefreshEnd = document.getElementById('btn-refresh-lista');
+                            if (btnRefreshEnd) {
+                                btnRefreshEnd.style.display = temErrosFinal ? 'block' : 'none';
+                            }
+                            if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
+                                window.atualizarListaEscolasDinamicamente(false);
                             }
                         }
                     })();
@@ -1621,6 +1768,7 @@ if (inputDist) {
             };
 
             window.atualizarListaEscolasDinamicamente = atualizarListaEscolasDinamicamente;
+            if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] Lista de escolas pronta para modo', mapModeAtual);
 
             if (!estado.ehAnalise) {
                 conteudo.innerHTML = `
@@ -1631,7 +1779,7 @@ if (inputDist) {
 
                 const btnRefresh = document.getElementById('btn-refresh-lista');
                 if (btnRefresh) {
-                    btnRefresh.addEventListener('click', async () => {
+                    vincularEventoUnico(btnRefresh, 'click', async () => {
                         listaExibirBase.forEach(esc => {
                             if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) {
                                 delete estado.distanciasOSRM[esc.id];
@@ -1647,156 +1795,98 @@ if (inputDist) {
                 return;
             }
 
-            // --- SECTION: INPUT SYNC & PROTECTION ---
-            // Update #input-assistente-dist value whenever atualizarListaEscolasDinamicamente is called or a toggle switch is flipped
-            window.atualizarInputDistancia = function(distancia) {
-                console.log('[ASSISTENTE] atualizarInputDistancia:', distancia);
-                const numero = Number(distancia);
-                if (!Number.isFinite(numero) || numero <= 0) {
-                    console.warn('[ASSISTENTE] distância inválida:', distancia);
-                    return;
-                }
-                const valorFinal = Math.round(numero / 50) * 50;
-                const tentarAtualizar = (tentativa = 0) => {
-                    const input = document.getElementById('input-assistente-dist');
-                    if (!input) {
-                        if (tentativa < 10) {
-                            setTimeout(() => tentarAtualizar(tentativa + 1), 200);
-                        }
-                        return;
-                    }
-                    input.value = valorFinal;
-                    console.log('[ASSISTENTE] input atualizado:', valorFinal);
-                };
-                tentarAtualizar();
-            };
-
             conteudo.innerHTML = `
-    <h3 class="section-title text-info">
-        <span class="mdi mdi-graph" style="font-size: 22px; margin-right: 6px;"></span> Verificação de Escola
-    </h3>
-    <p>Verifique se a escola matriculada é a mais próxima do endereço do aluno.</p>
-    
-    <div id="container-lista-escolas">
-    </div>
-    
-    <hr class="divider">
+                <h3 class="section-title text-info">
+                    <span class="mdi mdi-graph" style="font-size: 22px; margin-right: 6px;"></span> Verificação de Escola
+                </h3>
+                <p>Verifique se a escola matriculada é a mais próxima do endereço do aluno.</p>
+                
+                <div id="container-lista-escolas">
+                </div>
+                
+                <hr class="divider">
 
-    <h3 class="section-title text-warning">
-        <span class="mdi mdi-map-marker-radius-outline" style="font-size: 22px; margin-right: 6px;"></span> Aferição de Distância
-    </h3>
+                <h3 class="section-title text-warning">
+                    <span class="mdi mdi-map-marker-radius-outline" style="font-size: 22px; margin-right: 6px;"></span> Aferição de Distância
+                </h3>
 
-    <div class="input-group">
-        <input
-            type="number"
-            id="input-assistente-dist"
-            class="input-field"
-            value="${estado.distanciaSugeridaInput}"
-            required
-        >
-        <label for="input-assistente-dist" class="input-label">Qual é a distância aferida (em metros)?</label>
-    </div>
+                <div class="input-group">
+                    <input type="number" id="input-assistente-dist" class="input-field" value="${estado.distanciaSugeridaInput}" required>
+                    <label for="input-assistente-dist" class="input-label">Qual é a distância aferida (em metros)?</label>
+                </div>
 
-    <div class="action-group">
-        <button id="btn-esc-sim" class="btn btn-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Está na mais próxima</button>
+                <div class="action-group">
+                    <button id="btn-esc-sim" class="btn btn-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Está na mais próxima</button>
+                    <button id="btn-esc-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não é a mais próxima</button>
+                </div>
+            `;
 
-        <button id="btn-esc-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não é a mais próxima</button>
-    </div>
-`;
-
-await atualizarListaEscolasDinamicamente();
-// Atualizar input com a distância correta do modo atual
-const rotaAtual = window.getSharedStoreValue?.('dadosGeraisRota');
-const modoMapaAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-if (rotaAtual) {
-    const distancia = modoMapaAtual === 'endereco' ? rotaAtual.distanciaEnd : rotaAtual.distanciaCoord;
-    if (typeof window.atualizarInputDistancia === 'function') {
-        window.atualizarInputDistancia(distancia);
-    }
-}
-
-
-            // Add event listeners for refresh button
-const btnRefresh = document.getElementById('btn-refresh-lista');
-
-if (btnRefresh) {
-    btnRefresh.addEventListener('click', async () => {
-        listaExibirBase.forEach(esc => {
-            if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) {
-                delete estado.distanciasOSRM[esc.id];
+            await atualizarListaEscolasDinamicamente();
+            
+            dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota') || dadosGeraisRotaSessao;
+            const modoMapaAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
+            if (dadosGeraisRotaSessao) {
+                const distancia = modoMapaAtual === 'endereco' ? dadosGeraisRotaSessao.distanciaEnd : dadosGeraisRotaSessao.distanciaCoord;
+                if (typeof window.atualizarInputDistancia === 'function') {
+                    window.atualizarInputDistancia(distancia);
+                }
             }
-        });
-        persistirEstado();
-        if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-        estado.buscandoOSRM = false;
-        btnRefresh.style.display = 'none';
-        await atualizarListaEscolasDinamicamente(false);
-    });
-}
 
-            const inputDist =
-    document.getElementById(
-        'input-assistente-dist'
-    );
+            const btnRefresh = document.getElementById('btn-refresh-lista');
+            if (btnRefresh) {
+                vincularEventoUnico(btnRefresh, 'click', async () => {
+                    listaExibirBase.forEach(esc => {
+                        if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) {
+                            delete estado.distanciasOSRM[esc.id];
+                        }
+                    });
+                    persistirEstado();
+                    if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+                    estado.buscandoOSRM = false;
+                    btnRefresh.style.display = 'none';
+                    await atualizarListaEscolasDinamicamente(false);
+                });
+            }
 
-if (inputDist) {
+            const inputDist = document.getElementById('input-assistente-dist');
+            if (inputDist) {
+                setTimeout(() => { inputDist.focus(); }, 100);
+                vincularEventoUnico(inputDist, 'focus', function () { this.select(); });
+                vincularEventoUnico(inputDist, 'input', function () { this.dataset.editado = 'true'; });
+                vincularEventoUnico(inputDist, 'keydown', function(e) { 
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (window.destaqueSimGlobal) {
+                            const b = document.getElementById('btn-esc-sim'); if (b) b.click();
+                        } else {
+                            const b = document.getElementById('btn-esc-nao'); if (b) b.click();
+                        }
+                    } 
+                });
+            }
 
-    setTimeout(() => {
-        inputDist.focus();
-    }, 100);
-
-    inputDist.addEventListener(
-        'focus',
-        function () {
-            this.select();
-        }
-    );
-
-    inputDist.addEventListener(
-        'input',
-        function () {
-            this.dataset.editado = 'true';
-        }
-    );
-
-    const rota = window.getSharedStoreValue?.('dadosGeraisRota') || window.dadosGeraisRota;
-    const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-
-    if (rota) {
-        const distancia = modoMapa === 'endereco' ? rota.distanciaEnd : rota.distanciaCoord;
-        atualizarInputDistancia(distancia);
-    }
-}
-            inputDist.addEventListener('keydown', function(e) { 
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (window.destaqueSimGlobal) document.getElementById('btn-esc-sim').click();
-                    else document.getElementById('btn-esc-nao').click();
-                } 
-            });
-
-            document.getElementById('btn-esc-sim').onclick = () => { 
+            vincularEventoUnico(document.getElementById('btn-esc-sim'), 'click', () => { 
                 if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
                 const dist = parseInt(inputDist.value);
                 if (isNaN(dist) || dist < 0) return alert("Por favor, insira uma distância válida em metros.");
                 salvarHistorico(); 
                 estado.distancia = dist;
-                    estado.escolaProximaUser = true; 
+                estado.escolaProximaUser = true; 
                 if (estado.distancia >= 1500) {
                     estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (${estado.distancia}m) e os critérios da escola ou encaminhamento estão corretos.` };
                 }
                 renderizarPasso(); 
-            };
+            });
             
-            document.getElementById('btn-esc-nao').onclick = () => { 
+            vincularEventoUnico(document.getElementById('btn-esc-nao'), 'click', () => { 
                 if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
                 const dist = parseInt(inputDist.value);
                 if (isNaN(dist) || dist < 0) return alert("Por favor, insira uma distância válida em metros.");
                 salvarHistorico(); 
                 estado.distancia = dist;
-                    estado.escolaProximaUser = false; 
+                estado.escolaProximaUser = false; 
                 renderizarPasso(); 
-            };
+            });
 
             return;
         }
@@ -1812,13 +1902,12 @@ if (inputDist) {
                 }
             }
             
-            if (!pergunta && estado.ruaMatch) {
-                const mot = estado.ruaMatch.resultado_motivo;
-                if (mot === "DISTÂNCIA MAIOR QUE 1500 METROS" && estado.distancia < 1500) {
+            if (!pergunta && historicoRua.temMatch) {
+                if (historicoRua.ehDistanciaMaior1500 && estado.distancia < 1500) {
                     pergunta = "Confirma essa distância? Essa rua costuma ser atendida por DISTANCIA MAIOR QUE 1500 METROS.";
-                } else if (mot === "DISTÂNCIA MENOR QUE 1500 METROS" && estado.distancia >= 1500) {
+                } else if (historicoRua.ehDistanciaMenor1500 && estado.distancia >= 1500) {
                     pergunta = "Confirma essa distância? Essa rua costuma ser indeferida por DISTANCIA MENOR QUE 1500 METROS.";
-                } else if (mot === "ESCOLA POR OPÇÃO" && estado.escolaProximaUser === true && !estado.escolaProximaCalc) {
+                } else if (historicoRua.ehEscolaPorOpcao && estado.escolaProximaUser === true && !estado.escolaProximaCalc) {
                     pergunta = "Confirma que a escola é a mais próxima? Essa rua costuma ser indeferida como ESCOLA POR OPÇÃO e a calculadora indica que existem opções mais próximas.";
                 }
             }
@@ -1834,14 +1923,8 @@ if (inputDist) {
                             <button id="btn-confirma-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não, corrigir</button>
                         </div>
                     `;
-                    document.getElementById('btn-confirma-sim').onclick = () => {
-                        salvarHistorico();
-                        estado.confirmacaoFeita = true;
-                        renderizarPasso();
-                    };
-                    document.getElementById('btn-confirma-nao').onclick = () => {
-                        voltarPasso();
-                    };
+                    vincularEventoUnico(document.getElementById('btn-confirma-sim'), 'click', () => { salvarHistorico(); estado.confirmacaoFeita = true; renderizarPasso(); });
+                    vincularEventoUnico(document.getElementById('btn-confirma-nao'), 'click', () => { voltarPasso(); });
                     return;
                 } else {
                     estado.confirmacaoFeita = true;
@@ -1884,62 +1967,36 @@ if (inputDist) {
                 </div>
             `;
             
-            document.getElementById('btn-def-aluno').onclick = () => { 
-                salvarHistorico(); 
-                estado.deficiencia = 'ALUNO'; 
-                if (!estado.isEspecial && estado.escolaProximaUser === true) {
-                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do aluno." };
-                }
-                renderizarPasso(); 
-            };
-            document.getElementById('btn-def-familia').onclick = () => { 
-                salvarHistorico(); 
-                estado.deficiencia = 'FAMILIA'; 
-                if (!estado.isEspecial && estado.escolaProximaUser === true) {
-                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do responsável." };
-                }
-                renderizarPasso(); 
-            };
-            document.getElementById('btn-def-nao').onclick = () => { 
-                salvarHistorico(); 
-                estado.deficiencia = false; 
-                renderizarPasso(); 
-            };
+            vincularEventoUnico(document.getElementById('btn-def-aluno'), 'click', () => { salvarHistorico(); estado.deficiencia = 'ALUNO'; if (!estado.isEspecial && estado.escolaProximaUser === true) { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do aluno." }; } renderizarPasso(); });
+            vincularEventoUnico(document.getElementById('btn-def-familia'), 'click', () => { salvarHistorico(); estado.deficiencia = 'FAMILIA'; if (!estado.isEspecial && estado.escolaProximaUser === true) { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do responsável." }; } renderizarPasso(); });
+            vincularEventoUnico(document.getElementById('btn-def-nao'), 'click', () => { salvarHistorico(); estado.deficiencia = false; renderizarPasso(); });
             return;
         }
 
         if (estado.deficiencia === 'ALUNO' && estado.isEspecial && !estado.deficienciaEspecialProcessada) {
             estado.deficienciaEspecialProcessada = true;
-            estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido automaticamente: Aluno Especial + Deficiência.", termoBusca: "ALUNO DEFICIENTE", textoDetalhes: "ALUNO DEFICIENTE" };
+            estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido automaticamente: Aluno Especial + Deficiência.", motivoAnalise: "ALUNO DEFICIENTE", textoDetalhes: "ALUNO DEFICIENTE" };
             return renderizarPasso();
         }
 
         if (estado.distancia < 1500 && estado.deficiencia === false && estado.dificuldadeAcesso === null) {
-            
-            let ruaLimpa = endRua.split(',')[0].trim();
-            const prefixos = /^(RUA|R\.|AVENIDA|AV\.|AV|TRAVESSA|TRV\.|VIELA|PRA[ÇC]A|ESTRADA|ALAMEDA|RODOVIA|LADEIRA|BECO|MARGINAL)\s+/i;
-            ruaLimpa = ruaLimpa.replace(prefixos, '').trim(); 
-            
-            const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
-            // Verifica se a basePath já termina ou contém o caminho do módulo
-            const moduloPath = "modulos/transporte_escolar/";
-            const prefixo = basePath.includes(moduloPath) ? "" : moduloPath;
-            const urlPesquisaRua = `${basePath}${prefixo}solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ruaLimpa)}`;
 
-            if (estado.ruaMatch && estado.ruaMatch.resultado_motivo === "DIFICULDADE DE ACESSO" && estado.escolaProximaUser === true) {
+            if (historicoRua.ehDificuldadeAcesso && estado.escolaProximaUser === true && estado.distancia > 350) {
                 estado.dificuldadeAcesso = true;
-                estado.telaFinal = { 
-                    titulo: "DEFERIR", 
-                    mensagem: "Essa rua costuma ser atendida por DIFICULDADE DE ACESSO.", 
-                    termoBusca: "DIFICULDADE DE ACESSO", 
+                estado.telaFinal = {
+                    titulo: "DEFERIR",
+                    mensagem: "Essa rua costuma ser atendida por DIFICULDADE DE ACESSO.",
+                    motivoAnalise: "DIFICULDADE DE ACESSO",
                     textoDetalhes: "Essa rua costuma ser atendida por DIFICULDADE DE ACESSO.",
                     urlPesquisaRua: urlPesquisaRua
                 };
                 return renderizarPasso();
             }
 
-            let MsgDificuldadeAcesso = ""
-            if (!estado.ruaMatch || !estado.ruaMatch.resultado_motivo === "DIFICULDADE DE ACESSO") {MsgDificuldadeAcesso = "<b>Esse local não está cadastrado para atendimento por dificuldade de acesso. </b>";}
+            let MsgDificuldadeAcesso = "";
+            if (!ruaMatch || !ruaMatch.resultado_motivo === "DIFICULDADE DE ACESSO") {
+                MsgDificuldadeAcesso = "<b>Esse local não está cadastrado para atendimento por dificuldade de acesso. </b>";
+            }
                 
             conteudo.innerHTML = `
                 <h3 class="section-title text-warning">
@@ -1949,21 +2006,21 @@ if (inputDist) {
                 <p>${MsgDificuldadeAcesso}O trajeto da residência até a escola possui alguma dificuldade de acesso excepcional?</p>
                 <p>São consideradas dificuldade de acesso:</p>
                 <ul>
-  <li>Rodovias;</li>
-  <li>Estradas de terra;</li>
-  <li>Vias sem nenhum tipo de calçada;</li>
-  <li>Locais que proíbam expressamente a passagem de pedestres.</li>
-</ul>
-<p>Não são motivos para dificuldade de acesso:</p>
-<ul>
-<li>Becos e vielas;</li>
-<li>Favelas;</li>
-<li>Escadas, rampas e passarelas;</li>
-<li>Assaltos e problemas de segurança pública;</li>
-<li>Presença de moradores de rua ou usuários de drogas;</li>
-<li>Ruas íngremes;</li>
-<li>Calçadas desniveladas.</li>
-</ul>
+                  <li>Rodovias;</li>
+                  <li>Estradas de terra;</li>
+                  <li>Vias sem nenhum tipo de calçada;</li>
+                  <li>Locais que proíbam expressamente a passagem de pedestres.</li>
+                </ul>
+                <p>Não são motivos para dificuldade de acesso:</p>
+                <ul>
+                <li>Becos e vielas;</li>
+                <li>Favelas;</li>
+                <li>Escadas, rampas e passarelas;</li>
+                <li>Assaltos e problemas de segurança pública;</li>
+                <li>Presença de moradores de rua ou usuários de drogas;</li>
+                <li>Ruas íngremes;</li>
+                <li>Calçadas desniveladas.</li>
+                </ul>
                 <div style="text-align:center; margin-bottom:15px;">
                     <a href="${urlPesquisaRua}" target="_blank" class="btn btn-outline" style="text-decoration:none;">
                         <span class="mdi mdi-map-search" style="font-size: 16px; margin-right: 4px;"></span> Ver atendimentos da rua
@@ -1976,22 +2033,8 @@ if (inputDist) {
                 </div>
             `;
             
-            document.getElementById('btn-dif-sim').onclick = () => { 
-                salvarHistorico(); 
-                estado.dificuldadeAcesso = true; 
-                if (estado.escolaProximaUser === false) {
-                    renderizarPasso();
-                } else {
-                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido devido a Dificuldade de Acesso comprovada na rota." };
-                    renderizarPasso(); 
-                }
-            };
-            document.getElementById('btn-dif-nao').onclick = () => { 
-                salvarHistorico(); 
-                estado.dificuldadeAcesso = false; 
-                estado.telaFinal = { titulo: "INDEFERIR", mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções." };
-                renderizarPasso(); 
-            };
+            vincularEventoUnico(document.getElementById('btn-dif-sim'), 'click', () => { salvarHistorico(); estado.dificuldadeAcesso = true; if (estado.escolaProximaUser === false) { renderizarPasso(); } else { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido devido a Dificuldade de Acesso comprovada na rota." }; renderizarPasso(); } });
+            vincularEventoUnico(document.getElementById('btn-dif-nao'), 'click', () => { salvarHistorico(); estado.dificuldadeAcesso = false; estado.telaFinal = { titulo: "INDEFERIR", mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções." }; renderizarPasso(); });
             return;
         }
 
@@ -2013,10 +2056,9 @@ if (inputDist) {
             msgExcecao = msgExcecao + "foi confirmada dificuldade de acesso, o que garante o direito ao transporte escolar independentemente da distância.";
         }
 
-        if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGarantida) && estado.encaminhamentoOk === null) {
+        if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGarantida) && estado.ehEncaminhado === null) {
             if (estado.isEncaminhamentoDispensado) {
                 estado.telaFinal = { titulo: "DEFERIR", mensagem: msgExcecao };
-                console.log("[ASSISTENTE] encaminhamento dispensado, exceção=${excecaoGarantida}, estado.dificuldadeAcesso=${estado.dificuldadeAcesso}, estado.deficiencia=${estado.deficiencia}, distância=${estado.distancia}m, escolaProximaUser=${estado.escolaProximaUser}");
                 renderizarPasso();
                 return;
             }
@@ -2026,10 +2068,9 @@ if (inputDist) {
             const isFichaAntiga = docHref.includes('ficha_transporte.php') && !docHref.includes('nova_versao');
 
             let msgCopiado = "";
-            let dataNasc = "Não informada";
-            const elDataNasc = doc.getElementById('data_nasc_aluno');
-            if (elDataNasc) {
-                const dn = elDataNasc.value || elDataNasc.innerText;
+            let dataNasc = ctx.dataNascimento || 'Não informada';
+            if (dataNasc && dataNasc !== 'Não informada') {
+                const dn = dataNasc;
                 if (dn) {
                     dataNasc = dn.trim();
                     try {
@@ -2043,6 +2084,8 @@ if (inputDist) {
                     } catch(e) {}
                 }
             }
+
+            const msgEncaminhamentoHtml = encaminhamentoResolvido.msgEncaminhamentoHtml;
 
             let infoExtraHtml = "";
             if (isFichaAntiga) {
@@ -2061,6 +2104,7 @@ if (inputDist) {
             }
 
             conteudo.innerHTML = `
+                ${msgEncaminhamentoHtml}
                 <h3 class="section-title text-primary">
                     <span class="mdi mdi-swap-horizontal-variant" style="font-size: 22px; margin-right: 6px;"></span> Encaminhamento por falta de vaga
                 </h3>
@@ -2073,18 +2117,8 @@ if (inputDist) {
                     <button id="btn-enc-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não possui</button>
                 </div>
             `;
-            document.getElementById('btn-enc-sim').onclick = () => { 
-                salvarHistorico(); 
-                estado.encaminhamentoOk = true; 
-                estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (${estado.distancia}m) ou possui exceção válida, e os critérios de encaminhamento estão corretos.` };
-                renderizarPasso(); 
-            };
-            document.getElementById('btn-enc-nao').onclick = () => { 
-                salvarHistorico(); 
-                estado.encaminhamentoOk = false;
-                estado.telaFinal = { titulo: "INDEFERIR", mensagem: "O aluno não está na escola mais próxima e NÃO possui encaminhamento justificado por falta de vaga." }; 
-                renderizarPasso(); 
-            };
+            vincularEventoUnico(document.getElementById('btn-enc-sim'), 'click', () => { salvarHistorico(); estado.ehEncaminhado = true; estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (${estado.distancia}m) ou possui exceção válida, e os critérios de encaminhamento estão corretos.` }; renderizarPasso(); });
+            vincularEventoUnico(document.getElementById('btn-enc-nao'), 'click', () => { salvarHistorico(); estado.ehEncaminhado = false; estado.telaFinal = { titulo: "INDEFERIR", mensagem: "O aluno não está na escola mais próxima e NÃO possui encaminhamento justificado por falta de vaga." }; renderizarPasso(); });
             return;
         }
     }

@@ -1588,19 +1588,6 @@ window.ruasData = [
   {
     "nome_unidade": "Angelo Ceroni, EMEB Padre",
     "id_unidade": "16",
-    "cep": "09771220",
-    "logradouro": "RUA ERNESTA PELOSINI",
-    "bairro": "NOVA PETROPOLIS",
-    "curso": "FUND",
-    "resultado": "DEFERIDO",
-    "resultado_motivo": "DIFICULDADE DE ACESSO",
-    "distancia_media": "1625",
-    "distancia_minima": "1500",
-    "distancia_maxima": "1800"
-  },
-  {
-    "nome_unidade": "Angelo Ceroni, EMEB Padre",
-    "id_unidade": "16",
     "cep": "09784255",
     "logradouro": "RUA ESPERANCA",
     "bairro": "VILA SAO PEDRO",

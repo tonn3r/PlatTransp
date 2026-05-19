@@ -6,7 +6,9 @@
 
     async function verificarAtualizacao() {
         try {
-            const response = await fetch(URL_VERSAO + "?t=" + new Date().getTime());
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const response = await fetch(URL_VERSAO + "?t=" + new Date().getTime(), { signal: controller.signal });
             
             if (!response.ok) {
                 console.warn("Addon PlatTransp: Não foi possível checar a versão (Erro " + response.status + ").");
@@ -14,6 +16,7 @@
             }
 
             const dados = await response.json();
+            clearTimeout(timeoutId);
             
             if (dados.version !== VERSAO_ATUAL) {
                 if (!document.getElementById('alerta-atualizacao-addon')) {
@@ -44,9 +47,10 @@
     // Função global que interrompe qualquer cálculo OSRM a decorrer
     window.cancelarProcessamentosAssistente = function() {
         if (window.osrmAbortController) {
-            window.osrmAbortController.abort();
+            try { window.osrmAbortController.abort(); } catch(e) {}
         }
-        window.osrmAbortController = new AbortController();
+        // limpar referência para evitar controllers pendentes
+        window.osrmAbortController = null;
     };
 
     function monitorarCicloDeVidaModal() {
@@ -96,11 +100,18 @@
         }
     }
 
-    setInterval(() => {
-        if (typeof window.gerenciarBotaoAssistente === 'function') {
-            window.gerenciarBotaoAssistente();
-        }
-        monitorarCicloDeVidaModal();
-    }, 1000);
+    if (!window._plattransp_monitor_interval_set) {
+        window._plattransp_monitor_interval_set = true;
+        setInterval(() => {
+            try {
+                if (typeof window.gerenciarBotaoAssistente === 'function') {
+                    window.gerenciarBotaoAssistente();
+                }
+                monitorarCicloDeVidaModal();
+            } catch (e) {
+                console.error('Erro em monitor loop:', e);
+            }
+        }, 3000);
+    }
 
 })();
