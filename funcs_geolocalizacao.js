@@ -1,3 +1,35 @@
+window.calcularProximidadeRapida = function(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+
+    // Fator de correção de longitude fixo para a latitude de São Bernardo do Campo (~ -23.65°)
+    // Equaliza a distorção métrica Leste/Oeste sem precisar de funções trigonométricas pesadas
+    const FATOR_LON = 0.916;
+
+    const dLat = lat1 - lat2;
+    const dLon = (lon1 - lon2) * FATOR_LON;
+
+    // Retorna a distância euclidiana ao quadrado.
+    // Evitar a extração da Raiz Quadrada (Math.sqrt) economiza muito processamento do computador.
+    return (dLat * dLat) + (dLon * dLon);
+};
+window.calcularDistanciaHaversine = function(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return Math.round((R * c) * 1000);
+};
 window.copiarCoordenadasEndereco = function() {
     const rota = window.getSharedStoreValue?.('dadosGeraisRota');
 
@@ -556,14 +588,58 @@ async function(docAlvo) {
     }
 };
 
-// --- SECTION: OSRM ROUTING CALCULATION ---
-// Technical comments for OSRM wrappers:
-// - Coordinate calculation logic: Uses OSRM API with profile ('foot' or 'driving')
-// - URL format: https://router.project-osrm.org/route/v1/{profile}/{lon},{lat};{lon},{lat}?overview=false
-// - Returns distance in meters, rounded to nearest integer
-// - Handles AbortController signals for cancellation
-// - Gracefully returns null on errors or invalid coordinates
+// --- SECTION: HELPER PARA CONTROLE DE COTAS E LIMITES (ANTI-COBRANÇA) ---
+function verificarEIncrementarCotaGoogle(apiKey, nomeChave) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const chaveStorageCount = `gmaps_count_${apiKey}_${hoje}`;
+    const chaveStorageBloqueio = `gmaps_blocked_${apiKey}_${hoje}`;
 
+    if (localStorage.getItem(chaveStorageBloqueio) === 'true') {
+        return false;
+    }
+
+    let requisicoesHoje = parseInt(localStorage.getItem(chaveStorageCount) || '0', 10);
+    const LIMITE_DIARIO_SEGURO = 400; 
+
+    if (requisicoesHoje >= LIMITE_DIARIO_SEGURO) {
+        localStorage.setItem(chaveStorageBloqueio, 'true');
+        console.warn(`🛑 Limite diário de segurança atingido para a ${nomeChave}. Uso bloqueado para evitar cobrança.`);
+        return false;
+    }
+
+    localStorage.setItem(chaveStorageCount, (requisicoesHoje + 1).toString());
+    return true;
+}
+
+function marcarChaveComoBloqueada(apiKey) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    localStorage.setItem(`gmaps_blocked_${apiKey}_${hoje}`, 'true');
+}
+
+// Auxiliar para carregar de forma assíncrona o script SDK do Google Maps sem duplicar tags
+function carregarSDKGoogleMaps(apiKey) {
+    return new Promise((resolve) => {
+        if (window.google && window.google.maps) {
+            resolve(true);
+            return;
+        }
+        
+        // Remove scripts antigos do Google instalados anteriormente para evitar colisões
+        const scripts = document.querySelectorAll('script[src*="maps.googleapis.com/maps/api/js"]');
+        scripts.forEach(s => s.remove());
+        window.google = undefined;
+
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.head.appendChild(script);
+    });
+}
+
+// --- SECTION: GOOGLE MAPS / OSRM ROUTING CALCULATION ---
 window.calcularTrajetoOSRM =
 async function(
     latOrigin,
@@ -581,6 +657,69 @@ async function(
         !lonDest
     ) return null;
 
+    const apiKeyGoogle = "AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8";
+    const apiKeyGoogle2 = "AIzaSyBUvko37UZpzfwS9rS3pfexlsptYqQZW78";
+
+    // Mapeamento de perfis para o SDK
+    const googleMode = profile === 'foot' ? 'WALKING' : 'DRIVING';
+    
+    const chavesDisponiveis = [
+        { key: apiKeyGoogle, label: "Chave Google 1" },
+        { key: apiKeyGoogle2, label: "Chave Google 2" }
+    ];
+    
+    let dadosRoteamento = null;
+    let googleSucesso = false;
+
+    for (const item of chavesDisponiveis) {
+        if (!verificarEIncrementarCotaGoogle(item.key, item.label)) {
+            continue; 
+        }
+
+        const carregouSDK = await carregarSDKGoogleMaps(item.key);
+        if (!carregouSDK) {
+            console.error(`❌ Erro ao carregar o SDK do Google Maps usando a ${item.label}`);
+            continue;
+        }
+
+        try {
+            const resultadoDirecao = await new Promise((resolve, reject) => {
+                const directionsService = new google.maps.DirectionsService();
+                directionsService.route({
+                    origin: new google.maps.LatLng(latOrigin, lonOrigin),
+                    destination: new google.maps.LatLng(latDest, lonDest),
+                    travelMode: google.maps.TravelMode[googleMode]
+                }, (response, status) => {
+                    if (status === 'OK') {
+                        resolve(response.routes[0].legs[0].distance.value);
+                    } else {
+                        reject(status);
+                    }
+                });
+            });
+
+            dadosRoteamento = Math.round(resultadoDirecao);
+            console.info(`✅ Roteamento obtido via ${item.label}: ${dadosRoteamento} metros`);
+            googleSucesso = true;
+            break; 
+
+        } catch (statusErro) {
+            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED') {
+                console.warn(`🛑 ${item.label} rejeitada pelo Google (${statusErro}). Forçando bloqueio diário.`);
+                marcarChaveComoBloqueada(item.key);
+            } else {
+                console.error(`❌ Erro operacional na ${item.label}: Status ${statusErro}`);
+            }
+        }
+    }
+
+    if (googleSucesso && dadosRoteamento !== null) {
+        return dadosRoteamento;
+    }
+
+    console.warn("⚠️ Ambas as chaves do Google falharam ou atingiram os limites. Acionando Fallback OSRM.");
+
+    // --- FALLBACK ORIGINAL OSRM ---
     try {
 
         const url =
@@ -598,6 +737,7 @@ async function(
             );
 
         if (!response.ok) {
+            console.error(`❌ OSRM retornou HTTP ${response.status} ao calcular rota (${profile}).`);
             return null;
         }
 
@@ -609,10 +749,9 @@ async function(
             data.routes &&
             data.routes.length > 0
         ) {
-
-            return Math.round(
-                data.routes[0].distance
-            );
+            const distanciaOsrm = Math.round(data.routes[0].distance);
+            console.info(`✅ Roteamento obtido via OSRM: ${distanciaOsrm} metros`);
+            return distanciaOsrm;
         }
 
     } catch (e) {
@@ -631,6 +770,7 @@ async function(
     return null;
 };
 
+// --- SECTION: GOOGLE MAPS / NOMINATIM GEOCODING ---
 window.obterCoordenadasPorEndereco =
 async function(enderecoCompleto) {
 
@@ -709,23 +849,82 @@ async function(enderecoCompleto) {
         return enderecoCorrigido;
     }
 
-    try {
+    let enderecoBusca =
+        substituirAbreviacoes(
+            enderecoCompleto
+        );
 
-        let enderecoBusca =
-            substituirAbreviacoes(
-                enderecoCompleto
-            );
+    if (
+        enderecoBusca &&
+        !enderecoBusca
+            .toUpperCase()
+            .includes("BERNARDO")
+    ) {
 
-        if (
-            enderecoBusca &&
-            !enderecoBusca
-                .toUpperCase()
-                .includes("BERNARDO")
-        ) {
+        enderecoBusca +=
+            ", São Bernardo do Campo - SP";
+    }
 
-            enderecoBusca +=
-                ", São Bernardo do Campo - SP";
+    const apiKeyGoogle = "AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8";
+    const apiKeyGoogle2 = "AIzaSyBUvko37UZpzfwS9rS3pfexlsptYqQZW78";
+    
+    const chavesDisponiveis = [
+        { key: apiKeyGoogle, label: "Chave Google 1" },
+        { key: apiKeyGoogle2, label: "Chave Google 2" }
+    ];
+
+    let coordenadasResultado = null;
+    let googleSucesso = false;
+
+    for (const item of chavesDisponiveis) {
+        if (!verificarEIncrementarCotaGoogle(item.key, item.label)) {
+            continue;
         }
+
+        const carregouSDK = await carregarSDKGoogleMaps(item.key);
+        if (!carregouSDK) {
+            console.error(`❌ Erro ao carregar o SDK do Google Maps usando a ${item.label}`);
+            continue;
+        }
+
+        try {
+            const localizacaoGeocode = await new Promise((resolve, reject) => {
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ address: enderecoBusca }, (results, status) => {
+                    if (status === 'OK' && results.length > 0) {
+                        resolve({
+                            lat: parseFloat(results[0].geometry.location.lat()),
+                            lon: parseFloat(results[0].geometry.location.lng())
+                        });
+                    } else {
+                        reject(status);
+                    }
+                });
+            });
+
+            coordenadasResultado = localizacaoGeocode;
+            console.info(`✅ Geocoding obtido via ${item.label}: ${coordenadasResultado.lat}, ${coordenadasResultado.lon}`);
+            googleSucesso = true;
+            break;
+
+        } catch (statusErro) {
+            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED') {
+                console.warn(`🛑 Geocoding na ${item.label} bloqueado por limite/permissão (${statusErro}).`);
+                marcarChaveComoBloqueada(item.key);
+            } else {
+                console.error(`❌ Erro operacional de Geocoding na ${item.label}: Status ${statusErro}`);
+            }
+        }
+    }
+
+    if (googleSucesso && coordenadasResultado !== null) {
+        return coordenadasResultado;
+    }
+
+    console.warn("⚠️ Geocodificação do Google falhou em ambas as chaves. Acionando Fallback Nominatim.");
+
+    // --- FALLBACK ORIGINAL NOMINATIM ---
+    try {
 
         const url =
             `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBusca)}&limit=1&email=app.plattransp@gmail.com`;
@@ -740,7 +939,7 @@ async function(enderecoCompleto) {
         });
 
         if (!response.ok) {
-            console.warn(`⚠️ Aviso Nominatim: Falha na requisição (Status: ${response.status})`);
+            console.warn(`⚠️ Piso Nominatim: Falha na requisição (Status: ${response.status})`);
             return null;
         }
 
@@ -751,15 +950,12 @@ async function(enderecoCompleto) {
             data &&
             data.length > 0
         ) {
-
-            return {
-                lat: parseFloat(
-                    data[0].lat
-                ),
-                lon: parseFloat(
-                    data[0].lon
-                )
+            const resultadoNominatim = {
+                lat: parseFloat(data[0].lat),
+                lon: parseFloat(data[0].lon)
             };
+            console.info(`✅ Geocoding obtido via Nominatim: ${resultadoNominatim.lat}, ${resultadoNominatim.lon}`);
+            return resultadoNominatim;
         }
 
     } catch(e) {

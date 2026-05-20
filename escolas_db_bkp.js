@@ -25,22 +25,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ABASC",
-        "nome_abreviado_unidade": "ABASC",
-        "cie_prodesp_unidade": "7475",
-        "nome_prodesp_sed": "ABASC MÃO AMIGA",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "664",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "crechemaoamiga@abasc.com.br",
-            "administrativo@abasc.com.br",
-            "centrodeapoiomaoamiga@gmail.com"
-        ],
-        "telefones": [
-            "4336-3416",
-            "4822-2885"
         ]
     },
     {
@@ -65,16 +49,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ABASC II",
-        "nome_abreviado_unidade": "ABASC 2",
-        "cie_prodesp_unidade": "9461",
-        "nome_prodesp_sed": "ABASC- ASSOCIAÇÃO BRASILEIRA DE AÇÃO SOCIAL CRISTÃ - MÃO AMIGA II",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "672",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "crecheriachogrande@abasc.com.br"
         ]
     },
     {
@@ -99,19 +73,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL I",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ABASC III",
-        "nome_abreviado_unidade": "ABASC 3",
-        "cie_prodesp_unidade": "10540",
-        "nome_prodesp_sed": "ABASC III – Associação Brasileira de Ação Social Cristã",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "684",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "administrativo@abasc.com.br"
-        ],
-        "telefones": [
-            "48222885"
         ]
     },
     {
@@ -132,22 +93,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ABEF",
-        "nome_abreviado_unidade": "ABEF",
-        "cie_prodesp_unidade": "7427",
-        "nome_prodesp_sed": "ABEF - ASSOCIACAO BENEFICENTE FIDELIDADE",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "663",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "abefidelidade@gmail.com",
-            "abefidelidade@yahoo.com.br",
-            "izatera@msn.com"
-        ],
-        "telefones": [
-            "1197130-2462",
-            "98994-4739"
         ]
     },
     {
@@ -176,20 +121,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "3",
-        "nome_unidade_SOMAR": "Afonso Monteiro da Cruz - EMEB",
-        "nome_abreviado_unidade": "Afonso Monteiro",
-        "cie_prodesp_unidade": "430110",
-        "nome_prodesp_sed": "AFONSO MONTEIRO DA CRUZ EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "392",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "afonso.cruz@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4347-7586"
         ]
     },
     {
@@ -214,19 +145,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Agostinho dos Santos - EMEB",
-        "nome_abreviado_unidade": "Agostinho dos S",
-        "cie_prodesp_unidade": "448552",
-        "nome_prodesp_sed": "AGOSTINHO DOS SANTOS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "538",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "agostinho.santos@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4335-5304"
         ]
     },
     {
@@ -251,19 +169,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Aldino Pinotti - EMEB",
-        "nome_abreviado_unidade": "Aldino Pinotti",
-        "cie_prodesp_unidade": "51056",
-        "nome_prodesp_sed": "ALDINO PINOTTI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "2",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "aldino@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4332-7537"
         ]
     },
     {
@@ -296,19 +201,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Aldino Pinotti, Prefeito - EMEB",
-        "nome_abreviado_unidade": "Aldino Prefeito",
-        "cie_prodesp_unidade": "217645",
-        "nome_prodesp_sed": "ALDINO PINOTTI PREFEITO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "3",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "aldino.prefeito@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4330-2374"
         ]
     },
     {
@@ -341,19 +233,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Alfredo Scarpelli - EMEB",
-        "nome_abreviado_unidade": "Alfredo Scarpelli",
-        "cie_prodesp_unidade": "282017",
-        "nome_prodesp_sed": "ALFREDO SCARPELLI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "144",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "alfredo.scarpelli@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-5196"
         ]
     },
     {
@@ -378,19 +257,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Alice do Lago Gonçalves Salvador, Professora - EMEB",
-        "nome_abreviado_unidade": "Alice do Lago",
-        "cie_prodesp_unidade": "96568",
-        "nome_prodesp_sed": "ALICE DO LAGO GONCALVES SALVADOR PROFESSORA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "4",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "alice.lago@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4345-1847"
         ]
     },
     {
@@ -423,19 +289,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Aluísio de Azevedo - EMEB",
-        "nome_abreviado_unidade": "Aluisio de Azevedo",
-        "cie_prodesp_unidade": "50748",
-        "nome_prodesp_sed": "ALUISIO DE AZEVEDO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "5",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "aluisio.azevedo@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4341-4511"
         ]
     },
     {
@@ -472,19 +325,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Alzira Martins de Mendonça, Professora - EMEB",
-        "nome_abreviado_unidade": "Alzira M Mendonca",
-        "cie_prodesp_unidade": "587965",
-        "nome_prodesp_sed": "ALZIRA MARTINS DE MENDONCA PROFESSORA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "588",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "alzira.mendonca@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "2630-5220"
         ]
     },
     {
@@ -509,20 +349,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "15",
-        "nome_unidade_SOMAR": "Ana Henriqueta Clark Marim, Professora - EMEB",
-        "nome_abreviado_unidade": "Ana Henriqueta",
-        "cie_prodesp_unidade": "61888",
-        "nome_prodesp_sed": "ANA HENRIQUETA CLARK MARIM PROFESSORA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "6",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "ana.henriqueta@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4122-1506"
         ]
     },
     {
@@ -547,19 +373,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Ana Maria Poppovic - EMEB",
-        "nome_abreviado_unidade": "Ana M Poppovic",
-        "cie_prodesp_unidade": "87907",
-        "nome_prodesp_sed": "ANA MARIA POPPOVIC EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "7",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "ana.maria.poppovic@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-6498"
         ]
     },
     {
@@ -596,19 +409,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "André Ferreira, Professor - EMEB",
-        "nome_abreviado_unidade": "Andre Ferreira",
-        "cie_prodesp_unidade": "278476",
-        "nome_prodesp_sed": "ANDRE FERREIRA PROFESSOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "8",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "andre.ferreira@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-0232"
         ]
     },
     {
@@ -625,19 +425,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ÂNGELA BASO",
-        "nome_abreviado_unidade": "Angela Baso CC",
-        "cie_prodesp_unidade": "452828",
-        "nome_prodesp_sed": "ANGELA BASO AGOSTIN CRECHE",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "568",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "crecheangela@institutodomdecio.org.br"
-        ],
-        "telefones": [
-            "4338-3737"
         ]
     },
     {
@@ -670,19 +457,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Ângelo Ceroni, Padre - EMEB",
-        "nome_abreviado_unidade": "Angelo Ceroni",
-        "cie_prodesp_unidade": "246448",
-        "nome_prodesp_sed": "ANGELO CERONI PADRE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "10",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "angelo.ceroni@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4330-8613"
         ]
     },
     {
@@ -707,19 +481,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Anísio Teixeira - EMEB",
-        "nome_abreviado_unidade": "Anisio Teixeira",
-        "cie_prodesp_unidade": "82843",
-        "nome_prodesp_sed": "ANISIO TEIXEIRA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "11",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "anisio.teixeira@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-4838"
         ]
     },
     {
@@ -752,19 +513,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Annita Magrini Guedes, Professora - EMEB",
-        "nome_abreviado_unidade": "Annita Magrini",
-        "cie_prodesp_unidade": "217657",
-        "nome_prodesp_sed": "ANNITA MAGRINI GUEDES PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "12",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "annita.magrini@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4330-5658"
         ]
     },
     {
@@ -789,19 +537,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Antônio de Lima - EMEB",
-        "nome_abreviado_unidade": "Antonio de Lima",
-        "cie_prodesp_unidade": "91017",
-        "nome_prodesp_sed": "ANTONIO DE LIMA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "13",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "antonio.lima@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-4183"
         ]
     },
     {
@@ -834,20 +569,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "5",
-        "nome_unidade_SOMAR": "Antônio dos Santos Farias - EMEB",
-        "nome_abreviado_unidade": "Antonio S Farias",
-        "cie_prodesp_unidade": "441703",
-        "nome_prodesp_sed": "ANTONIO DOS SANTOS FARIAS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "425",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "antonio.farias@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-3034"
         ]
     },
     {
@@ -872,19 +593,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Antônio José Mantuan - EMEB",
-        "nome_abreviado_unidade": "Antonio Mantoan",
-        "cie_prodesp_unidade": "229970",
-        "nome_prodesp_sed": "ANTONIO JOSE MANTUAN EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "14",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "antonio.mantuan@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-7666"
         ]
     },
     {
@@ -909,19 +617,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Antônio Pereira Coutinho - EMEB",
-        "nome_abreviado_unidade": "Antonio P Coutinho",
-        "cie_prodesp_unidade": "95345",
-        "nome_prodesp_sed": "ANTONIO PEREIRA COUTINHO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "15",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "antonio.pereira.coutinho@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4358-2046"
         ]
     },
     {
@@ -954,19 +649,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Ari Lacerda Rodrigues - EMEB",
-        "nome_abreviado_unidade": "Ari Lacerda",
-        "cie_prodesp_unidade": "281992",
-        "nome_prodesp_sed": "ARI LACERDA RODRIGUES EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "16",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "ari.lacerda@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4342-2444"
         ]
     },
     {
@@ -991,19 +673,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Ariano Suassuna - EMEB",
-        "nome_abreviado_unidade": "Ariano Suassuna",
-        "cie_prodesp_unidade": "4035",
-        "nome_prodesp_sed": "ARIANO SUASSUNA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "589",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "ariano.suassuna@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "2630-5286"
         ]
     },
     {
@@ -1028,20 +697,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "11",
-        "nome_unidade_SOMAR": "Arlindo Ferreira - EMEB",
-        "nome_abreviado_unidade": "Arlindo Ferreira",
-        "cie_prodesp_unidade": "430055",
-        "nome_prodesp_sed": "ARLINDO FERREIRA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "452",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "arlindo.ferreira@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4173-2377"
         ]
     },
     {
@@ -1078,19 +733,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Arlindo Miguel Teixeira - EMEB",
-        "nome_abreviado_unidade": "Arlindo Miguel",
-        "cie_prodesp_unidade": "242020",
-        "nome_prodesp_sed": "ARLINDO MIGUEL TEIXEIRA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "17",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "arlindo.miguel@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-4395"
         ]
     },
     {
@@ -1119,19 +761,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Armando Zoboli - EMEB",
-        "nome_abreviado_unidade": "Armando Zoboli",
-        "cie_prodesp_unidade": "385323",
-        "nome_prodesp_sed": "ARMANDO ZOBOLI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "391",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "armando.zoboli@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-5282"
         ]
     },
     {
@@ -1156,19 +785,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL I",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ASSISBRAC I",
-        "nome_abreviado_unidade": "Assisbrac 1",
-        "cie_prodesp_unidade": "291959",
-        "nome_prodesp_sed": "ASSIST SOCIAL BENEF DE RESGATE AO AMPARO A CRIANCA",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "269",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "assisbrac@assisbrac.org.br"
-        ],
-        "telefones": [
-            "4392-7492"
         ]
     },
     {
@@ -1197,20 +813,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ASSISBRAC II",
-        "nome_abreviado_unidade": "Assisbrac 2",
-        "cie_prodesp_unidade": "7252",
-        "nome_prodesp_sed": "Creche Parceira ASSISBRAC II",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "659",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "assisbrac@assisbrac.org.br"
-        ],
-        "telefones": [
-            "4335-0719",
-            "4348-7144"
         ]
     },
     {
@@ -1235,19 +837,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ASSISBRAC III",
-        "nome_abreviado_unidade": "Assisbrac 3",
-        "cie_prodesp_unidade": "385852",
-        "nome_prodesp_sed": "ASSISBRAC III",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "450",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "crecheassisbrac3@gmail.com"
-        ],
-        "telefones": [
-            "4337-9152"
         ]
     },
     {
@@ -1272,20 +861,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "8",
-        "nome_unidade_SOMAR": "Áureo Cruz, Professor - EMEB",
-        "nome_abreviado_unidade": "Aureo Cruz",
-        "cie_prodesp_unidade": "61839",
-        "nome_prodesp_sed": "AUREO CRUZ PROFESSOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "18",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "aureo.cruz@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-8477"
         ]
     },
     {
@@ -1306,19 +881,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ABAS - BELENZINHO",
-        "nome_abreviado_unidade": "Belenzinho ABAS CC",
-        "cie_prodesp_unidade": "385748",
-        "nome_prodesp_sed": "BELENZINHO ASSOCIACAO DE ASSISTENCIA SOCIAL",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "273",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "abasbelenzinho@gmail.com"
-        ],
-        "telefones": [
-            "4121-5470"
         ]
     },
     {
@@ -1351,19 +913,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Belmiro Soares da Cunha - EMEB",
-        "nome_abreviado_unidade": "Belmiro S Cunha",
-        "cie_prodesp_unidade": "82351",
-        "nome_prodesp_sed": "BELMIRO SOARES DA CUNHA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "64",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "belmiro.soares@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4356-5732"
         ]
     },
     {
@@ -1396,20 +945,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "2",
-        "nome_unidade_SOMAR": "Benedito José de Morais - EMEB",
-        "nome_abreviado_unidade": "Benedito Jose",
-        "cie_prodesp_unidade": "82454",
-        "nome_prodesp_sed": "BENEDITO JOSE DE MORAIS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "19",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "benedito.morais@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4338-7722"
         ]
     },
     {
@@ -1438,19 +973,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Bernardo Pedroso - EMEB",
-        "nome_abreviado_unidade": "Bernardo Pedroso",
-        "cie_prodesp_unidade": "82855",
-        "nome_prodesp_sed": "BERNARDO PEDROSO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "20",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "bernardo.pedroso@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4123-8192"
         ]
     },
     {
@@ -1479,20 +1001,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "16",
-        "nome_unidade_SOMAR": "Creche Parceira BETEL",
-        "nome_abreviado_unidade": "Betel ASPAS CC",
-        "cie_prodesp_unidade": "292285",
-        "nome_prodesp_sed": "ASSOCIACAO PRESBITERIANA DE ASSISTENCIA SOCIAL",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "268",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "aspas.betel@uol.com.br"
-        ],
-        "telefones": [
-            "4335-5791"
         ]
     },
     {
@@ -1529,19 +1037,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Bosko Preradovic - EMEB",
-        "nome_abreviado_unidade": "Bosko Preradovic",
-        "cie_prodesp_unidade": "282005",
-        "nome_prodesp_sed": "BOSKO PRERADOVIC EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "21",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "bosko.preradovic@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4358-5205"
         ]
     },
     {
@@ -1574,19 +1069,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Bruno Massone - EMEB",
-        "nome_abreviado_unidade": "Bruno Massone",
-        "cie_prodesp_unidade": "200189",
-        "nome_prodesp_sed": "BRUNO MASSONE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "42",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "bruno.massone@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4101-7766"
         ]
     },
     {
@@ -1611,19 +1093,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Caetano de Campos - EMEB",
-        "nome_abreviado_unidade": "Caetano Campos",
-        "cie_prodesp_unidade": "50842",
-        "nome_prodesp_sed": "CAETANO DE CAMPOS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "22",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "caetano.campos@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-4858"
         ]
     },
     {
@@ -1648,19 +1117,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Cândido Portinari - EMEB",
-        "nome_abreviado_unidade": "Candido Portinari",
-        "cie_prodesp_unidade": "51100",
-        "nome_prodesp_sed": "CANDIDO PORTINARI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "23",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "candido.portinari@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4125-4040"
         ]
     },
     {
@@ -1685,20 +1141,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "19",
-        "nome_unidade_SOMAR": "Carlos Gomes - EMEB",
-        "nome_abreviado_unidade": "Carlos Gomes",
-        "cie_prodesp_unidade": "50738",
-        "nome_prodesp_sed": "CARLOS GOMES EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "24",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "carlos.gomes@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-8376"
         ]
     },
     {
@@ -1731,20 +1173,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Carmen Tabet de Oliveira Marques, Professora - EMEB",
-        "nome_abreviado_unidade": "Carmen Tabet",
-        "cie_prodesp_unidade": "246438",
-        "nome_prodesp_sed": "CARMEN TABET DE OLIVEIRA MARQUES PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "25",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "carmen.tabet@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "43540933",
-            "4101-9151"
         ]
     },
     {
@@ -1781,20 +1209,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Carolina Maria de Jesus - EMEB",
-        "nome_abreviado_unidade": "Carolina M Jesus",
-        "cie_prodesp_unidade": "4322",
-        "nome_prodesp_sed": "CAROLINA MARIA DE JESUS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "587",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "carolina.jesus@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "2630-5202",
-            "26305209"
         ]
     },
     {
@@ -1819,19 +1233,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira MENINO JESUS",
-        "nome_abreviado_unidade": "Menino Jesus CC",
-        "cie_prodesp_unidade": "294627",
-        "nome_prodesp_sed": "MENINO JESUS CASA DAS CRIANCAS",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "264",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "ccmj@csjbbrasil.org.br"
-        ],
-        "telefones": [
-            "4341-6006"
         ]
     },
     {
@@ -1864,19 +1265,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Cassiano Faria, Professor - EMEB",
-        "nome_abreviado_unidade": "Cassiano Faria",
-        "cie_prodesp_unidade": "217669",
-        "nome_prodesp_sed": "CASSIANO FARIA PROF EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "26",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "cassiano.faria@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4339-2585"
         ]
     },
     {
@@ -1901,19 +1289,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Cassiano Ricardo - EMEB",
-        "nome_abreviado_unidade": "Cassiano Ricardo",
-        "cie_prodesp_unidade": "50817",
-        "nome_prodesp_sed": "CASSIANO RICARDO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "27",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "cassiano.ricardo@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4343-5952"
         ]
     },
     {
@@ -1938,19 +1313,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Castro Alves - EMEB",
-        "nome_abreviado_unidade": "Castro Alves",
-        "cie_prodesp_unidade": "50982",
-        "nome_prodesp_sed": "CASTRO ALVES EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "28",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "castro.alves@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4122-5666"
         ]
     },
     {
@@ -1975,19 +1337,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Cecília Meireles - EMEB",
-        "nome_abreviado_unidade": "Cecilia Meireles",
-        "cie_prodesp_unidade": "51135",
-        "nome_prodesp_sed": "CECILIA MEIRELES EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "29",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "cecilia.meireles@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4122-4900"
         ]
     },
     {
@@ -2016,20 +1365,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "18",
-        "nome_unidade_SOMAR": "Cecília Oliveira Turbay, Professora - EMEB",
-        "nome_abreviado_unidade": "Cecilia Turbay",
-        "cie_prodesp_unidade": "229969",
-        "nome_prodesp_sed": "CECILIA OLIVEIRA TURBAY PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "30",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "cecilia.turbay@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4354-9127"
         ]
     },
     {
@@ -2078,21 +1413,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "terreno": "6",
-        "nome_unidade_SOMAR": "Celso Augusto Daniel - EMEB",
-        "nome_abreviado_unidade": "Celso A Daniel",
-        "cie_prodesp_unidade": "475439",
-        "nome_prodesp_sed": "CELSO AUGUSTO DANIEL EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "540",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "ceu.celsodaniel@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4352-0434",
-            "4352-3929"
         ]
     },
     {
@@ -2125,19 +1445,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Cícero Porfírio dos Santos/Gilberto Lazzuri - EMEB",
-        "nome_abreviado_unidade": "Cicero Porfirio",
-        "cie_prodesp_unidade": "225095",
-        "nome_prodesp_sed": "CÍCERO PORFÍRIO DOS SANTOS/GILBERTO LAZZURI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "32",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "cicero.porfirio@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4358-1598"
         ]
     },
     {
@@ -2174,19 +1481,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Claudemir Gomes do Vale, Professor - EMEB",
-        "nome_abreviado_unidade": "Claudemir Gomes",
-        "cie_prodesp_unidade": "82338",
-        "nome_prodesp_sed": "CLAUDEMIR GOMES DO VALE PROF EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "106",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "claudemir.gomes@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4338-6511"
         ]
     },
     {
@@ -2211,20 +1505,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "5",
-        "nome_unidade_SOMAR": "Cléia Maria Teures de Souza - EMEB",
-        "nome_abreviado_unidade": "Cleia MTeures",
-        "cie_prodesp_unidade": "95357",
-        "nome_prodesp_sed": "CLEIA MARIA TEURES DE SOUZA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "426",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "cleia.teures@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4336-1127"
         ]
     },
     {
@@ -2249,19 +1529,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Coelho Neto - EMEB",
-        "nome_abreviado_unidade": "Coelho Neto",
-        "cie_prodesp_unidade": "50775",
-        "nome_prodesp_sed": "COELHO NETO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "34",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "coelho.neto@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4343-8383"
         ]
     },
     {
@@ -2290,19 +1557,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Cora Coralina - EMEB",
-        "nome_abreviado_unidade": "Cora Coralina",
-        "cie_prodesp_unidade": "91029",
-        "nome_prodesp_sed": "CORA CORALINA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "35",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "cora.coralina@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-8242"
         ]
     },
     {
@@ -2331,20 +1585,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira LAR DA CRIANÇA EMMANUEL",
-        "nome_abreviado_unidade": "Lar Emmanuel CC",
-        "cie_prodesp_unidade": "291812",
-        "nome_prodesp_sed": "LAR DA CRIANCA EMMANUEL UNIDADE I",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "270",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "lardacriancaemmanuel@gmail.com",
-            "lardacriancaemmanuel@terra.com.br"
-        ],
-        "telefones": [
-            "4109-8938"
         ]
     },
     {
@@ -2365,21 +1605,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira PADRE DEHON",
-        "nome_abreviado_unidade": "Dehon Padre CC",
-        "cie_prodesp_unidade": "385918",
-        "nome_prodesp_sed": "DEHON PADRE CRECHE NUCLEO MARISA",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "449",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "crechepedehon@imsjt.org.br",
-            "crechepedehon@crechepedehon.org.br"
-        ],
-        "telefones": [
-            "4101-7857",
-            "98433-8609"
         ]
     },
     {
@@ -2404,19 +1629,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Di Cavalcanti - EMEB",
-        "nome_abreviado_unidade": "Di Cavalcanti",
-        "cie_prodesp_unidade": "50970",
-        "nome_prodesp_sed": "DI CAVALCANTI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "36",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "di.cavalcanti@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-0678"
         ]
     },
     {
@@ -2445,20 +1657,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "15",
-        "nome_unidade_SOMAR": "Dolores de Toledo de Matteo, Professora - EMEB",
-        "nome_abreviado_unidade": "Dolores Toledo",
-        "cie_prodesp_unidade": "229994",
-        "nome_prodesp_sed": "DOLORES DE TOLEDO DE MATTEO PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "37",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "dolores.matteo@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4123-9568"
         ]
     },
     {
@@ -2479,19 +1677,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Dora e Maurício Galante - EMEB",
-        "nome_abreviado_unidade": "Dora e Mauricio",
-        "cie_prodesp_unidade": "229982",
-        "nome_prodesp_sed": "DORA E MAURICIO GALANTE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "38",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "dora.mauricio@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-2001"
         ]
     },
     {
@@ -2524,19 +1709,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Edson Danillo Dotto - EMEB",
-        "nome_abreviado_unidade": "Edson Danilo",
-        "cie_prodesp_unidade": "242056",
-        "nome_prodesp_sed": "EDSON DANILLO DOTTO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "39",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "edson.danillo@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4334-1019"
         ]
     },
     {
@@ -2557,20 +1729,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira EL ELION",
-        "nome_abreviado_unidade": "El Elion CC 1",
-        "cie_prodesp_unidade": "6490",
-        "nome_prodesp_sed": "CRECHE EL ELION",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "652",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "crecheeducacionalelelion@gmail.com"
-        ],
-        "telefones": [
-            "4472-3771",
-            "940469577"
         ]
     },
     {
@@ -2595,22 +1753,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira EL ELION II",
-        "nome_abreviado_unidade": "El Elion CC 2",
-        "cie_prodesp_unidade": "7437",
-        "nome_prodesp_sed": "EDIFICANDO VIDAS II",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "665",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "crecheelion.unidade2@gmail.com",
-            "brunazucchino@gmail.com",
-            "kleyton.cw@gmail.com"
-        ],
-        "telefones": [
-            "1599853-6105",
-            "99978-5180"
         ]
     },
     {
@@ -2635,12 +1777,7 @@ window.escolasDB = [
                 "nivel": "INFANTIL I",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "1",
-        "nome_abreviado_unidade": "Eliane Quinonero",
-        "cie_prodesp_unidade": "<>",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "0"
+        ]
     },
     {
         "id": "51",
@@ -2676,19 +1813,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Ermínia Paggi, Professora - EMEB",
-        "nome_abreviado_unidade": "Erminia Paggi",
-        "cie_prodesp_unidade": "227997",
-        "nome_prodesp_sed": "ERMINIA PAGGI PROFESSORA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "40",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "erminia.paggi@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4345-1680"
         ]
     },
     {
@@ -2709,19 +1833,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ESPAÇO SOLIDÁRIO I",
-        "nome_abreviado_unidade": "Esp Solidario 1",
-        "cie_prodesp_unidade": "6457",
-        "nome_prodesp_sed": "ESPAÇO SOLIDÁRIO ASSOCIAÇÃO ASSISTENCIAL",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "656",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "solidario.espaco@gmail.com"
-        ],
-        "telefones": [
-            "41035974"
         ]
     },
     {
@@ -2746,19 +1857,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ESPAÇO SOLIDÁRIO II",
-        "nome_abreviado_unidade": "Esp Solidario 2",
-        "cie_prodesp_unidade": "6946",
-        "nome_prodesp_sed": "ESPACO SOLIDARIO ASSOCIACAO ASSISTENCIAL II",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "658",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "espacosolidario.unidade2@outlook.com"
-        ],
-        "telefones": [
-            "2598-7022"
         ]
     },
     {
@@ -2783,21 +1881,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "16",
-        "nome_unidade_SOMAR": "Creche Parceira ESPAÇO SOLIDÁRIO III",
-        "nome_abreviado_unidade": "Esp Solidario 3",
-        "cie_prodesp_unidade": "8036",
-        "nome_prodesp_sed": "ESPACO SOLIDARIO ASSOCIACAO ASSISTENCIAL III",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "669",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "espaco.solidario3@emeb.saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4339-7779",
-            "964637415"
         ]
     },
     {
@@ -2822,20 +1905,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira JARDIM DE ESPERANÇA",
-        "nome_abreviado_unidade": "Esperanca CC",
-        "cie_prodesp_unidade": "291900",
-        "nome_prodesp_sed": "JARDIM DE ESPERANCA INSTITUICAO ASSISTENCIAL EDUCACIONAL",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "280",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "mara@jardimdeesperanca.org.br",
-            "jardimdeesperanca@jardimdeesperanca.org.br"
-        ],
-        "telefones": [
-            "4173-3230"
         ]
     },
     {
@@ -2860,19 +1929,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Euclides da Cunha - EMEB",
-        "nome_abreviado_unidade": "Euclides Cunha",
-        "cie_prodesp_unidade": "51068",
-        "nome_prodesp_sed": "EUCLIDES DA CUNHA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "43",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "euclides.cunha@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-3677"
         ]
     },
     {
@@ -2897,19 +1953,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Fernando Pessoa - EMEB",
-        "nome_abreviado_unidade": "Fernando Pessoa",
-        "cie_prodesp_unidade": "99326",
-        "nome_prodesp_sed": "FERNANDO PESSOA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "44",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "fernando.pessoa@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4358-1845"
         ]
     },
     {
@@ -2942,19 +1985,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Fiorente Elena, Padre - EMEB",
-        "nome_abreviado_unidade": "Fiorente Elena",
-        "cie_prodesp_unidade": "217505",
-        "nome_prodesp_sed": "FIORENTE ELENA PADRE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "45",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "fiorente.elena@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-0886"
         ]
     },
     {
@@ -2991,19 +2021,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Flamínio Araújo de Castro Rangel, Estudante - EMEB",
-        "nome_abreviado_unidade": "Flaminio Rangel",
-        "cie_prodesp_unidade": "278518",
-        "nome_prodesp_sed": "FLAMINIO ARAUJO DE CASTRO RANGEL ESTUDANTE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "46",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "flaminio.araujo@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4351-3022"
         ]
     },
     {
@@ -3036,19 +2053,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Florestan Fernandes, Professor - EMEB",
-        "nome_abreviado_unidade": "Florestan Fernandes",
-        "cie_prodesp_unidade": "217517",
-        "nome_prodesp_sed": "FLORESTAN FERNANDES PROFESSOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "47",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "florestan.fernandes@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-0720"
         ]
     },
     {
@@ -3073,19 +2077,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Francisco Beltran Batistini, Paquito - EMEB",
-        "nome_abreviado_unidade": "Francisco Beltran",
-        "cie_prodesp_unidade": "111120",
-        "nome_prodesp_sed": "FRANCISCO BELTRAN BATISTINI PAQUITO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "48",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "francisco.beltran@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4358-0225"
         ]
     },
     {
@@ -3114,20 +2105,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "17",
-        "nome_unidade_SOMAR": "Francisco Diassis Gomes Teixeira - EMEB",
-        "nome_abreviado_unidade": "Francisco Diassis",
-        "cie_prodesp_unidade": "448564",
-        "nome_prodesp_sed": "FRANCISCO DIASSIS GOMES TEIXEIRA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "547",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "francisco.diassis@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4332-6442"
         ]
     },
     {
@@ -3152,19 +2129,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Francisco Miele - EMEB",
-        "nome_abreviado_unidade": "Francisco Miele",
-        "cie_prodesp_unidade": "91662",
-        "nome_prodesp_sed": "FRANCISCO MIELE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "49",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "francisco.miele@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4351-2599"
         ]
     },
     {
@@ -3193,16 +2157,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira FUTURO FELIZ II",
-        "nome_abreviado_unidade": "Futuro Feliz 2",
-        "cie_prodesp_unidade": "9424",
-        "nome_prodesp_sed": "CEI FUTURO FELIZ II",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "671",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "ceifuturofelizunidade2@gmail.com"
         ]
     },
     {
@@ -3227,20 +2181,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "14",
-        "nome_unidade_SOMAR": "Creche Parceira FUTURO FELIZ III",
-        "nome_abreviado_unidade": "Futuro Feliz 3",
-        "cie_prodesp_unidade": "292230",
-        "nome_prodesp_sed": "FUTURO FELIZ III",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "279",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "ceifuturofeliz23@gmail.com"
-        ],
-        "telefones": [
-            "4330-1712"
         ]
     },
     {
@@ -3265,19 +2205,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira FUTURO FELIZ V",
-        "nome_abreviado_unidade": "Futuro Feliz 5",
-        "cie_prodesp_unidade": "10036",
-        "nome_prodesp_sed": "CEI FUTURO FELIZ V - ASSOCIAÇÃO A PALAVRA DE DEUS",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "675",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "administrativo@abasc.com.br"
-        ],
-        "telefones": [
-            "43341457"
         ]
     },
     {
@@ -3306,22 +2233,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira FUTURO FELIZ",
-        "nome_abreviado_unidade": "Futuro Feliz 1",
-        "cie_prodesp_unidade": "7435",
-        "nome_prodesp_sed": "CEI FUTURO FELIZ",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "662",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "ceifuturofeliz20@gmail.com",
-            "crecherubemalves2019@gmail.com",
-            "associacao.apd@gmail.com"
-        ],
-        "telefones": [
-            "4334-1457",
-            "95958-8022"
         ]
     },
     {
@@ -3342,19 +2253,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Geraldo de Melo Ferreira - EMEB",
-        "nome_abreviado_unidade": "Geraldo Melo",
-        "cie_prodesp_unidade": "230017",
-        "nome_prodesp_sed": "GERALDO DE MELO FERREIRA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "50",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "geraldo.melo@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4330-1758"
         ]
     },
     {
@@ -3387,19 +2285,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Geraldo Hypólito, Professor - EMEB",
-        "nome_abreviado_unidade": "Geraldo Hypolito",
-        "cie_prodesp_unidade": "217670",
-        "nome_prodesp_sed": "GERALDO HYPOLITO PROFESSOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "51",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "geraldo.hypolito@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4330-5961"
         ]
     },
     {
@@ -3424,20 +2309,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "13",
-        "nome_unidade_SOMAR": "Gervásio Paz Folha, Vereador - EMEB",
-        "nome_abreviado_unidade": "Gervasio Paz",
-        "cie_prodesp_unidade": "430079",
-        "nome_prodesp_sed": "GERVASIO PAZ FOLHA VEREADOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "393",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "gervasio.folha@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4173-3869"
         ]
     },
     {
@@ -3458,19 +2329,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Gildo dos Santos - EMEB",
-        "nome_abreviado_unidade": "Gildo dos Santos",
-        "cie_prodesp_unidade": "229908",
-        "nome_prodesp_sed": "GILDO DOS SANTOS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "52",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "gildo.santos@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-9340"
         ]
     },
     {
@@ -3503,19 +2361,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Gofredo Teixeira da Silva Telles - EMEB",
-        "nome_abreviado_unidade": "Gofredo Teixeira",
-        "cie_prodesp_unidade": "217682",
-        "nome_prodesp_sed": "GOFREDO TEIXEIRA DA SILVA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "53",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "gofredo.teixeira@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4123-0644"
         ]
     },
     {
@@ -3540,19 +2385,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Gonçalves Dias - EMEB",
-        "nome_abreviado_unidade": "Goncalves Dias",
-        "cie_prodesp_unidade": "50866",
-        "nome_prodesp_sed": "GONCALVES DIAS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "54",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "goncalves.dias@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-3576"
         ]
     },
     {
@@ -3577,20 +2409,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Graciliano Ramos - EMEB",
-        "nome_abreviado_unidade": "Graciliano Ramos",
-        "cie_prodesp_unidade": "50805",
-        "nome_prodesp_sed": "GRACILIANO RAMOS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "55",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "graciliano.ramos@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4101-6090",
-            "4101-7089"
         ]
     },
     {
@@ -3615,19 +2433,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Guilherme de Almeida - EMEB",
-        "nome_abreviado_unidade": "Guilherme Almeida",
-        "cie_prodesp_unidade": "50830",
-        "nome_prodesp_sed": "GUILHERME DE ALMEIDA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "423",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "guilherme.almeida@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4351-6716"
         ]
     },
     {
@@ -3656,19 +2461,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Heitor Villa-Lobos - EMEB",
-        "nome_abreviado_unidade": "Heitor Villa Lobos",
-        "cie_prodesp_unidade": "50891",
-        "nome_prodesp_sed": "HEITOR VILLA LOBOS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "56",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "heitor.villalobos@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4396-4077"
         ]
     },
     {
@@ -3713,19 +2505,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Helena Zanfelici da Silva - EMEB",
-        "nome_abreviado_unidade": "Helena Zanfelici",
-        "cie_prodesp_unidade": "93919",
-        "nome_prodesp_sed": "HELENA ZANFELICI DA SILVA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "57",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "helena.zanfelici@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4101-8120"
         ]
     },
     {
@@ -3754,20 +2533,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira ALDEIAS INFANTIS",
-        "nome_abreviado_unidade": "Aldeias SOS CC",
-        "cie_prodesp_unidade": "292540",
-        "nome_prodesp_sed": "ALDEIAS INFANTIS SOS BRASIL",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "286",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "maria.tracatto@aldeiasinfantis.org.br",
-            "dayane.feitosa@aldeiasinfantis.org.br"
-        ],
-        "telefones": [
-            "4354-0272"
         ]
     },
     {
@@ -3796,20 +2561,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "18",
-        "nome_unidade_SOMAR": "Hilda Batazoli Teixeira, Professora - EMEB",
-        "nome_abreviado_unidade": "Hilda Batazoli",
-        "cie_prodesp_unidade": "5383",
-        "nome_prodesp_sed": "HILDA BATAZOLI TEIXEIRA PROFESSORA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "582",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "riacho.grande@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4101-8817"
         ]
     },
     {
@@ -3834,19 +2585,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Hygino Baptista de Lima - EMEB",
-        "nome_abreviado_unidade": "Hygino Baptista",
-        "cie_prodesp_unidade": "85807",
-        "nome_prodesp_sed": "HYGINO BAPTISTA DE LIMA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "58",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "hygino.baptista@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-7133"
         ]
     },
     {
@@ -3883,20 +2621,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "terreno": "4",
-        "nome_unidade_SOMAR": "Isidoro Battistin - EMEB",
-        "nome_abreviado_unidade": "Isidoro Battistin",
-        "cie_prodesp_unidade": "281980",
-        "nome_prodesp_sed": "ISIDORO BATTISTIN EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "59",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "isidoro.battistin@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4336-2062"
         ]
     },
     {
@@ -3929,20 +2653,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Ítalo Damiani - EMEB",
-        "nome_abreviado_unidade": "Italo Damiani",
-        "cie_prodesp_unidade": "217499",
-        "nome_prodesp_sed": "ITALO DAMIANI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "60",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "italo.damiani@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "2630-5284",
-            "4397-5900 /4101-6840"
         ]
     },
     {
@@ -3967,19 +2677,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Ivaneide Nogueira, Professora - EMEB",
-        "nome_abreviado_unidade": "Ivaneide Nogueira",
-        "cie_prodesp_unidade": "61840",
-        "nome_prodesp_sed": "IVANEIDE NOGUEIRA PROFESSORA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "61",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "ivaneide.nogueira@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-3538"
         ]
     },
     {
@@ -4004,20 +2701,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "10",
-        "nome_unidade_SOMAR": "Jacob Zampieri - EMEB",
-        "nome_abreviado_unidade": "Jacob Zampieri",
-        "cie_prodesp_unidade": "430080",
-        "nome_prodesp_sed": "JACOB ZAMPIERI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "394",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "jacob.zampieri@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-1404"
         ]
     },
     {
@@ -4050,19 +2733,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Jandira Maria Casonato, Professora - EMEB",
-        "nome_abreviado_unidade": "Jandira M Casonato",
-        "cie_prodesp_unidade": "217529",
-        "nome_prodesp_sed": "JANDIRA MARIA CASONATO PROFESSORA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "62",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "jandira.casonato@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4123-0451"
         ]
     },
     {
@@ -4099,19 +2769,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Janete Mally Betti Simões, Professora - EMEB",
-        "nome_abreviado_unidade": "Janete Mally",
-        "cie_prodesp_unidade": "278524",
-        "nome_prodesp_sed": "JANETE MALLY BETTI SIMOES PROFESSORA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "63",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "janete.mally@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4125-0595"
         ]
     },
     {
@@ -4132,19 +2789,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira JÊSUE FRANTZ I",
-        "nome_abreviado_unidade": "Jesue Frantz 1 CC",
-        "cie_prodesp_unidade": "292333",
-        "nome_prodesp_sed": "JESUE FRANTZ LAR ESCOLA",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "267",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "rosemeire.jangrossi@lejf.org.br"
-        ],
-        "telefones": [
-            "4178-4422"
         ]
     },
     {
@@ -4165,20 +2809,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira JÊSUE FRANTZ II",
-        "nome_abreviado_unidade": "Jesue Frantz 2 CC",
-        "cie_prodesp_unidade": "6256",
-        "nome_prodesp_sed": "CRECHE PARCEIRA JÊSUE FRANTZ II",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "653",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "dayse.felix@lejf.org.br",
-            "marli.rodriguez@lejf.org.br"
-        ],
-        "telefones": [
-            "4057-1107"
         ]
     },
     {
@@ -4199,19 +2829,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira JÊSUE FRANTZ III",
-        "nome_abreviado_unidade": "Jesue Frantz 3 CC",
-        "cie_prodesp_unidade": "6248",
-        "nome_prodesp_sed": "CRECHE PARCEIRA JÊSUE FRANTZ III",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "655",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "roberta.pereira@lejf.org.br"
-        ],
-        "telefones": [
-            "4317-2704"
         ]
     },
     {
@@ -4236,19 +2853,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL I",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira JÊSUE FRANTZ IV",
-        "nome_abreviado_unidade": "Jesue Frantz 4 CC",
-        "cie_prodesp_unidade": "7915",
-        "nome_prodesp_sed": "INSTITUTO JESUE EDUCAÇÃO INFANTIL - IV",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "667",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "marli.rodriguez@lejf.org.br"
-        ],
-        "telefones": [
-            "0"
         ]
     },
     {
@@ -4269,20 +2873,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira SÃO PEDRO III - CRECHE JESUS BAMBINO",
-        "nome_abreviado_unidade": "Jesus Bambino CC",
-        "cie_prodesp_unidade": "6597",
-        "nome_prodesp_sed": "OBRAS SOCIAIS SÃO PEDRO APÓSTOLO III (CRECHE JESUS BAMBINO)",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "581",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "osspajesusbambino@gmail.com"
-        ],
-        "telefones": [
-            "4357-7335",
-            "4358-2244"
         ]
     },
     {
@@ -4303,20 +2893,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira JESUS DE NAZARETH I",
-        "nome_abreviado_unidade": "Jesus Naz 1 CC",
-        "cie_prodesp_unidade": "291808",
-        "nome_prodesp_sed": "JESUS DE NAZARETH CRECHE",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "262",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "crechejesusdenazarethum@gmail.com"
-        ],
-        "telefones": [
-            "4358-2298",
-            "4358-3006"
         ]
     },
     {
@@ -4341,20 +2917,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira JESUS DE NAZARETH II",
-        "nome_abreviado_unidade": "Jesus Naz 2 CC",
-        "cie_prodesp_unidade": "6562",
-        "nome_prodesp_sed": "CRECHE JESUS DE NAZARETH II",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "282",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "crechenazarethdois@gmail.com",
-            "crechejesusdenazarethdois@yahoo.com.br"
-        ],
-        "telefones": [
-            "4357-9481"
         ]
     },
     {
@@ -4383,19 +2945,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Jorge Marcos de Oliveira - O bispo dos trabalhadores, Dom - EMEB",
-        "nome_abreviado_unidade": "Dom Jorge",
-        "cie_prodesp_unidade": "77537",
-        "nome_prodesp_sed": "JORGE MARCOS DE OLIVEIRA DOM EMEB O BISPO DOS TRABALHADORES",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "66",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "jorge.marcos@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4339-4088"
         ]
     },
     {
@@ -4428,19 +2977,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José Arnaud da Silva - EMEB",
-        "nome_abreviado_unidade": "Jose Arnaud",
-        "cie_prodesp_unidade": "447024",
-        "nome_prodesp_sed": "JOSE ARNAUD DA SILVA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "539",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "jose.arnaud@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4358-2333"
         ]
     },
     {
@@ -4465,19 +3001,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José Augusto Oliveira Santos - EMEB",
-        "nome_abreviado_unidade": "Jose Augusto",
-        "cie_prodesp_unidade": "229945",
-        "nome_prodesp_sed": "JOSE AUGUSTO OLIVEIRA SANTOS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "67",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "jose.augusto@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-5533"
         ]
     },
     {
@@ -4534,19 +3057,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José Avilez, Vereador - EMEB",
-        "nome_abreviado_unidade": "Jose Avilez",
-        "cie_prodesp_unidade": "82296",
-        "nome_prodesp_sed": "JOSE AVILEZ VEREADOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "147",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "jose.avilez@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4396-8337"
         ]
     },
     {
@@ -4579,19 +3089,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José Cataldi - EMEB",
-        "nome_abreviado_unidade": "Jose Cataldi",
-        "cie_prodesp_unidade": "82417",
-        "nome_prodesp_sed": "JOSE CATALDI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "9",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "jose.cataldi@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4347-8702"
         ]
     },
     {
@@ -4616,19 +3113,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José de Alencar - EMEB",
-        "nome_abreviado_unidade": "Jose Alencar",
-        "cie_prodesp_unidade": "50763",
-        "nome_prodesp_sed": "JOSE DE ALENCAR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "68",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "jose.alencar@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4351-1899"
         ]
     },
     {
@@ -4653,19 +3137,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José de Anchieta - EMEB",
-        "nome_abreviado_unidade": "Jose Anchieta",
-        "cie_prodesp_unidade": "50799",
-        "nome_prodesp_sed": "JOSE DE ANCHIETA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "69",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "jose.anchieta@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-3794"
         ]
     },
     {
@@ -4698,19 +3169,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José Ferraz de Magalhães Castro, Doutor - EMEB",
-        "nome_abreviado_unidade": "Jose Ferraz",
-        "cie_prodesp_unidade": "217542",
-        "nome_prodesp_sed": "JOSE FERRAZ DE MAGALHAES CASTRO DR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "70",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "jose.ferraz@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4398-7175"
         ]
     },
     {
@@ -4743,20 +3201,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "9",
-        "nome_unidade_SOMAR": "José Getúlio Escobar Bueno, Professor - EMEB",
-        "nome_abreviado_unidade": "Jose Getulio",
-        "cie_prodesp_unidade": "217530",
-        "nome_prodesp_sed": "JOSE GETULIO ESCOBAR BUENO PROF EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "71",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "jose.getulio@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4341-5844"
         ]
     },
     {
@@ -4793,19 +3237,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "José Ibiapino Franklin - EMEB",
-        "nome_abreviado_unidade": "Jose Ibiapino",
-        "cie_prodesp_unidade": "217554",
-        "nome_prodesp_sed": "JOSE IBIAPINO FRANKLIN EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "72",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "jose.ibiapino@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-3522"
         ]
     },
     {
@@ -4838,19 +3269,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José Luiz Jucá - EMEB",
-        "nome_abreviado_unidade": "Jose L Juca",
-        "cie_prodesp_unidade": "281967",
-        "nome_prodesp_sed": "JOSE LUIZ JUCA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "73",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "jose.juca@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-2727"
         ]
     },
     {
@@ -4875,19 +3293,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José Maurício, Padre - EMEB",
-        "nome_abreviado_unidade": "Jose Mauricio",
-        "cie_prodesp_unidade": "82831",
-        "nome_prodesp_sed": "JOSE MAURICIO PADRE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "74",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "jose.mauricio@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4392-2972"
         ]
     },
     {
@@ -4912,19 +3317,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "José Roberto Preto - EMEB",
-        "nome_abreviado_unidade": "Jose Roberto Preto",
-        "cie_prodesp_unidade": "430122",
-        "nome_prodesp_sed": "JOSE ROBERTO PRETO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "397",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "jose.roberto@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-5777"
         ]
     },
     {
@@ -4945,19 +3337,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Josué de Castro - EMEB",
-        "nome_abreviado_unidade": "Josue Castro",
-        "cie_prodesp_unidade": "230005",
-        "nome_prodesp_sed": "JOSUE DE CASTRO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "75",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "josue.castro@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4122-4019"
         ]
     },
     {
@@ -4990,19 +3369,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Júlio Atlas, Escritor - EMEB",
-        "nome_abreviado_unidade": "Julio Atlas",
-        "cie_prodesp_unidade": "217566",
-        "nome_prodesp_sed": "JULIO ATLAS ESCRITOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "76",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "julio.atlas@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-6618"
         ]
     },
     {
@@ -5047,20 +3413,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Júlio de Grammont - EMEB",
-        "nome_abreviado_unidade": "Julio Grammont",
-        "cie_prodesp_unidade": "192338",
-        "nome_prodesp_sed": "JULIO DE GRAMMONT EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "31",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "julio.grammont@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "2630-7775",
-            "26307780"
         ]
     },
     {
@@ -5105,21 +3457,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "17",
-        "nome_unidade_SOMAR": "Karolina Zofia Lewandowska - EMEB",
-        "nome_abreviado_unidade": "Karolina Zofia",
-        "cie_prodesp_unidade": "448059",
-        "nome_prodesp_sed": "KAROLINA ZOFIA LEWANDOWSKA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "401",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "karolina.zofia@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-6992",
-            "voip 5202"
         ]
     },
     {
@@ -5152,19 +3489,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Kazue Fuzinaka, Professora - EMEB",
-        "nome_abreviado_unidade": "Kazue Fuzinaka",
-        "cie_prodesp_unidade": "217694",
-        "nome_prodesp_sed": "KAZUE FUZINAKA PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "77",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "kazue.fuzinaka@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4368-3278"
         ]
     },
     {
@@ -5189,19 +3513,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira LAPIDAR",
-        "nome_abreviado_unidade": "Lapidar CC",
-        "cie_prodesp_unidade": "7890",
-        "nome_prodesp_sed": "ASSOCIACAO LAPIDAR",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "668",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "organizacaolapidar@gmail.com"
-        ],
-        "telefones": [
-            "4396-5656"
         ]
     },
     {
@@ -5226,19 +3537,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Lauro Gomes - EMEB",
-        "nome_abreviado_unidade": "Lauro Gomes",
-        "cie_prodesp_unidade": "51073",
-        "nome_prodesp_sed": "LAURO GOMES EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "79",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "lauro.gomes@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4368-1865"
         ]
     },
     {
@@ -5275,19 +3573,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Leo Commissari, Padre - EMEB",
-        "nome_abreviado_unidade": "Leo Comissari",
-        "cie_prodesp_unidade": "242068",
-        "nome_prodesp_sed": "LEO COMMISSARI PADRE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "80",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "leo.commissari@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-4208"
         ]
     },
     {
@@ -5312,19 +3597,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Leonardo Nunes, Padre - EMEB",
-        "nome_abreviado_unidade": "Leonardo Nunes",
-        "cie_prodesp_unidade": "51007",
-        "nome_prodesp_sed": "LEONARDO NUNES PADRE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "81",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "leonardo.nunes@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4125-4747"
         ]
     },
     {
@@ -5357,19 +3629,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Lopes Trovão - EMEB",
-        "nome_abreviado_unidade": "Lopes Trovao",
-        "cie_prodesp_unidade": "278531",
-        "nome_prodesp_sed": "LOPES TROVAO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "83",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "lopes.trovao@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4343-8080"
         ]
     },
     {
@@ -5414,19 +3673,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Lorenzo Enrico Felice Lorenzetti - EMEB",
-        "nome_abreviado_unidade": "Lorenzo Lorenzetti",
-        "cie_prodesp_unidade": "99348",
-        "nome_prodesp_sed": "LORENZO ENRICO FELICE LORENZETTI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "84",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "lorenzo.lorenzetti@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4354-9007"
         ]
     },
     {
@@ -5447,20 +3693,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira LOS ANGELES",
-        "nome_abreviado_unidade": "L Angeles CC",
-        "cie_prodesp_unidade": "6538",
-        "nome_prodesp_sed": "INSTITUTO DOM DÉCIO PEREIRA – CRECHE PARQUE LOS ANGELES",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "569",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "crechelosangeles@institutodomdecio.org.br",
-            "domdeciosbc2@gmail.com"
-        ],
-        "telefones": [
-            "4342-1770"
         ]
     },
     {
@@ -5485,19 +3717,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Lourenço Filho - EMEB",
-        "nome_abreviado_unidade": "Lourenco Filho",
-        "cie_prodesp_unidade": "50787",
-        "nome_prodesp_sed": "LOURENCO FILHO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "85",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "lourenco.filho@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4341-6722"
         ]
     },
     {
@@ -5522,19 +3741,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Luana Lino de Souza - EMEB",
-        "nome_abreviado_unidade": "Luana Lino",
-        "cie_prodesp_unidade": "230066",
-        "nome_prodesp_sed": "LUANA LINO DE SOUZA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "86",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "luana.lino@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4358-5985"
         ]
     },
     {
@@ -5575,19 +3781,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Luiz Gushiken - EMEB",
-        "nome_abreviado_unidade": "Luis Gushiken",
-        "cie_prodesp_unidade": "565573",
-        "nome_prodesp_sed": "LUIZ GUSHIKEN EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "571",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "ceu.luizgushiken@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4122-1341"
         ]
     },
     {
@@ -5644,20 +3837,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Luiza Maria de Farias - EMEB",
-        "nome_abreviado_unidade": "Luiza M Farias",
-        "cie_prodesp_unidade": "585580",
-        "nome_prodesp_sed": "LUIZA MARIA DE FARIAS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "573",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "ceu.luizamaria@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4332-6850",
-            "4177-2861"
         ]
     },
     {
@@ -5678,19 +3857,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Manoel de Barros - EMEB",
-        "nome_abreviado_unidade": "Manoel Barros",
-        "cie_prodesp_unidade": "4321",
-        "nome_prodesp_sed": "MANOEL DE BARROS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "586",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "manoel.barros@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4347-7809"
         ]
     },
     {
@@ -5711,19 +3877,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Manoel Torres de Oliveira - EMEB",
-        "nome_abreviado_unidade": "Manoel Torres",
-        "cie_prodesp_unidade": "230078",
-        "nome_prodesp_sed": "MANOEL TORRES DE OLIVEIRA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "87",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "manoel.torres@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-0485"
         ]
     },
     {
@@ -5752,19 +3905,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Manuel da Nóbrega, Padre - EMEB",
-        "nome_abreviado_unidade": "Manuel da Nobrega",
-        "cie_prodesp_unidade": "50829",
-        "nome_prodesp_sed": "MANUEL DA NOBREGA PADRE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "88",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "manuel.nobrega@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-0985"
         ]
     },
     {
@@ -5793,19 +3933,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Marcelo Peres Ribeiro - EMEB",
-        "nome_abreviado_unidade": "Marcelo Peres",
-        "cie_prodesp_unidade": "430134",
-        "nome_prodesp_sed": "MARCELO PERES RIBEIRO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "396",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "vila.ferreira@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4352-1367"
         ]
     },
     {
@@ -5842,20 +3969,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "4",
-        "nome_unidade_SOMAR": "Marcelo Roberto Dias - EMEB",
-        "nome_abreviado_unidade": "Marcelo Roberto Dias",
-        "cie_prodesp_unidade": "77513",
-        "nome_prodesp_sed": "MARCELO ROBERTO DIAS EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "89",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "marcelo.roberto@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-2741"
         ]
     },
     {
@@ -5880,20 +3993,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Marcos José Ribeiro - EMEB",
-        "nome_abreviado_unidade": "Marcos J Ribeiro",
-        "cie_prodesp_unidade": "4062",
-        "nome_prodesp_sed": "MARCOS JOSE RIBEIRO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "583",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "marcos.ribeiro@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "2630-5212",
-            "2630-5216"
         ]
     },
     {
@@ -5930,20 +4029,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "terreno": "19",
-        "nome_unidade_SOMAR": "Marcos Rogério da Rosa - EMEB",
-        "nome_abreviado_unidade": "Marcos Rogerio",
-        "cie_prodesp_unidade": "227924",
-        "nome_prodesp_sed": "MARCOS ROGERIO DA ROSA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "90",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "marcos.rogerio@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4352-4993"
         ]
     },
     {
@@ -5964,19 +4049,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira MARGARIDA",
-        "nome_abreviado_unidade": "Margarida CC",
-        "cie_prodesp_unidade": "385839",
-        "nome_prodesp_sed": "MARGARIDA CRECHE",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "387",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "crechemargarida@padreleo.org.br"
-        ],
-        "telefones": [
-            "43354853"
         ]
     },
     {
@@ -5997,19 +4069,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Maria Adelaide Rossi - EMEB",
-        "nome_abreviado_unidade": "Maria Ad. Rossi",
-        "cie_prodesp_unidade": "452427",
-        "nome_prodesp_sed": "MARIA ADELAIDE ROSSI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "459",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "adelaide.rossi@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4330-3988"
         ]
     },
     {
@@ -6042,19 +4101,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Maria Adelaide - EMEB",
-        "nome_abreviado_unidade": "Maria Adelaide",
-        "cie_prodesp_unidade": "217700",
-        "nome_prodesp_sed": "MARIA ADELAIDE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "91",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "maria.adelaide@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4330-5014"
         ]
     },
     {
@@ -6083,20 +4129,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira LAR MARIA AMÉLIA",
-        "nome_abreviado_unidade": "Maria Amelia CC",
-        "cie_prodesp_unidade": "291985",
-        "nome_prodesp_sed": "LAR MARIA AMELIA ASSOCIACAO ASSISTENCIAL",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "283",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "crechelarmariaamelia@gmail.com",
-            "lar.maria@emeb.saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4343-4848"
         ]
     },
     {
@@ -6121,20 +4153,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "9",
-        "nome_unidade_SOMAR": "Maria Anselma Vieira, Irmã - EMEB",
-        "nome_abreviado_unidade": "Maria Anselma",
-        "cie_prodesp_unidade": "229957",
-        "nome_prodesp_sed": "MARIA ANSELMA VIEIRA IRMA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "92",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "maria.anselma@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4341-5733"
         ]
     },
     {
@@ -6159,19 +4177,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Maria José Mattar Jorge, Professora - EMEB",
-        "nome_abreviado_unidade": "Maria J Mattar",
-        "cie_prodesp_unidade": "217712",
-        "nome_prodesp_sed": "MARIA JOSE MATTAR JORGE PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "94",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "mattar.jorge@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4122-3063 / 43306910"
         ]
     },
     {
@@ -6208,19 +4213,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Maria Justina de Camargo, Professora - EMEB",
-        "nome_abreviado_unidade": "Maria Justina",
-        "cie_prodesp_unidade": "217578",
-        "nome_prodesp_sed": "MARIA JUSTINA DE CAMARGO PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "95",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "maria.justina@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4343-8933"
         ]
     },
     {
@@ -6257,19 +4249,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Maria Rosa Barbosa - EMEB",
-        "nome_abreviado_unidade": "Maria Rosa Barbosa",
-        "cie_prodesp_unidade": "278543",
-        "nome_prodesp_sed": "MARIA ROSA BARBOSA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "96",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "maria.rosa.barbosa@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4358-2930"
         ]
     },
     {
@@ -6302,19 +4281,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Maria Therezinha Besana, Professora - EMEB",
-        "nome_abreviado_unidade": "Maria T Besana",
-        "cie_prodesp_unidade": "278488",
-        "nome_prodesp_sed": "MARIA THEREZINHA BESANA PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "97",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "maria.therezinha.besana@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4123-3357"
         ]
     },
     {
@@ -6339,19 +4305,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Mariana Benvinda da Costa - EMEB",
-        "nome_abreviado_unidade": "Mariana Benvinda",
-        "cie_prodesp_unidade": "77525",
-        "nome_prodesp_sed": "MARIANA BENVINDA DA COSTA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "98",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "mariana.benvinda@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-3997"
         ]
     },
     {
@@ -6380,19 +4333,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Mariana Neves Interliche - EMEB",
-        "nome_abreviado_unidade": "Mariana N Interliche",
-        "cie_prodesp_unidade": "95333",
-        "nome_prodesp_sed": "MARIANA NEVES INTERLICHE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "99",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "mariana.neves@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-5619"
         ]
     },
     {
@@ -6429,19 +4369,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Marineida Meneghelli de Lucca, Professora - EMEB",
-        "nome_abreviado_unidade": "Marineida Meneghelli",
-        "cie_prodesp_unidade": "282923",
-        "nome_prodesp_sed": "MARINEIDA MENEGHELLI DE LUCCA PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "100",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "marineida@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-6410"
         ]
     },
     {
@@ -6486,19 +4413,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Mário de Andrade - EMEB",
-        "nome_abreviado_unidade": "Mario de Andrade",
-        "cie_prodesp_unidade": "50945",
-        "nome_prodesp_sed": "MARIO DE ANDRADE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "101",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "mario.andrade@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4177-1824"
         ]
     },
     {
@@ -6531,19 +4445,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Mário Martins de Almeida - EMEB",
-        "nome_abreviado_unidade": "Mario Martins",
-        "cie_prodesp_unidade": "217724",
-        "nome_prodesp_sed": "MARIO MARTINS DE ALMEIDA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "102",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "mario.martins@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-9001 4127-0798"
         ]
     },
     {
@@ -6576,20 +4477,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "3",
-        "nome_unidade_SOMAR": "Marly Buissa Chiedde - EMEB",
-        "nome_abreviado_unidade": "Marly Buissa",
-        "cie_prodesp_unidade": "79085",
-        "nome_prodesp_sed": "MARLY BUISSA CHIEDDE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "103",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "marly.buissa@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4396-5566"
         ]
     },
     {
@@ -6614,19 +4501,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Maurício Caetano de Castro I - EMEB",
-        "nome_abreviado_unidade": "Mauricio Caetano 1",
-        "cie_prodesp_unidade": "95369",
-        "nome_prodesp_sed": "MAURICIO CAETANO DE CASTRO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "105",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "mauricio.ccastro@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-5804"
         ]
     },
     {
@@ -6659,20 +4533,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "7",
-        "nome_unidade_SOMAR": "Maurício Caetano de Castro II - EMEB",
-        "nome_abreviado_unidade": "Mauricio Caetano 2",
-        "cie_prodesp_unidade": "278497",
-        "nome_prodesp_sed": "MAURICIO CAETANO DE CASTRO II EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "104",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "mauricio.ccastro2@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4351-5499"
         ]
     },
     {
@@ -6701,19 +4561,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Monteiro Lobato - EMEB",
-        "nome_abreviado_unidade": "Monteiro Lobato",
-        "cie_prodesp_unidade": "51081",
-        "nome_prodesp_sed": "MONTEIRO LOBATO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "107",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "monteiro.lobato@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4125-5959"
         ]
     },
     {
@@ -6738,19 +4585,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Moysés Cheid - EMEB",
-        "nome_abreviado_unidade": "Moyses Cheid",
-        "cie_prodesp_unidade": "99338",
-        "nome_prodesp_sed": "MOYSES CHEID EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "108",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "moyses.cheid@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4392-2389"
         ]
     },
     {
@@ -6783,19 +4617,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Nádia Aparecida Issa Pina, Professora - EMEB",
-        "nome_abreviado_unidade": "Nadia Issa Pina",
-        "cie_prodesp_unidade": "281979",
-        "nome_prodesp_sed": "NADIA APARECIDA ISSA PINA PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "109",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "nadia.pina@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4122-4672"
         ]
     },
     {
@@ -6828,19 +4649,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Natalina Cuzziol Ferro - EMEB",
-        "nome_abreviado_unidade": "Natalina Cuzziol",
-        "cie_prodesp_unidade": "282029",
-        "nome_prodesp_sed": "NATALINA CUZZIOL FERRO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "142",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "natalina.cuzziol@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4396-6339"
         ]
     },
     {
@@ -6881,19 +4689,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Nazareth, Jardim - EMEB",
-        "nome_abreviado_unidade": "Jd Nazareth",
-        "cie_prodesp_unidade": "5379",
-        "nome_prodesp_sed": "NAZARETH, JARDIM EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "585",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "jardim.nazareth@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4332-3632"
         ]
     },
     {
@@ -6914,19 +4709,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Neusa Bassetto - EMEBB",
-        "nome_abreviado_unidade": "Neusa Basseto",
-        "cie_prodesp_unidade": "79091",
-        "nome_prodesp_sed": "NEUSA BASSETTO EMEBB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "110",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "neusa.bassetto@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4362-2035"
         ]
     },
     {
@@ -6955,7 +4737,7 @@ window.escolasDB = [
                 "nivel": "4º ANO",
                 "periodo": "PARCIAL"
             },
-            {
+	    {
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             },
@@ -6963,19 +4745,6 @@ window.escolasDB = [
                 "nivel": "ESPECIAL",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Neusa Macellaro Callado Moraes, Professora - EMEB",
-        "nome_abreviado_unidade": "Neusa Macellaro",
-        "cie_prodesp_unidade": "227936",
-        "nome_prodesp_sed": "NEUSA MACELLARO CALLADO MORAES PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "427",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "neusa.macellaro@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4352-5753"
         ]
     },
     {
@@ -7008,20 +4777,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "2",
-        "nome_unidade_SOMAR": "Nilo Campos Gomes, Professor - EMEB",
-        "nome_abreviado_unidade": "Nilo Campos",
-        "cie_prodesp_unidade": "282911",
-        "nome_prodesp_sed": "NILO CAMPOS GOMES PROF EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "113",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "nilo.campos@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-5428"
         ]
     },
     {
@@ -7046,20 +4801,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira SÃO PEDRO APÓSTOLO I",
-        "nome_abreviado_unidade": "Sao Jose CC",
-        "cie_prodesp_unidade": "291882",
-        "nome_prodesp_sed": "SAO PEDRO APOSTOLO OBRAS SOCIAIS",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "271",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "osspasaojose@hotmail.com",
-            "osspasaojose@gmail.com"
-        ],
-        "telefones": [
-            "4178-3736"
         ]
     },
     {
@@ -7088,20 +4829,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira SÃO PEDRO II - MARIA IMACULADA",
-        "nome_abreviado_unidade": "Maria Imaculada CC",
-        "cie_prodesp_unidade": "7496",
-        "nome_prodesp_sed": "OBRAS SOCIAIS SÃO PEDRO APOSTOLO II",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "666",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "osspamariaimaculada@gmail.com"
-        ],
-        "telefones": [
-            "4358-3311",
-            "98380-3377"
         ]
     },
     {
@@ -7146,19 +4873,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Octávio Edgard de Oliveira - EMEB",
-        "nome_abreviado_unidade": "Octavio Edgard",
-        "cie_prodesp_unidade": "217591",
-        "nome_prodesp_sed": "OCTAVIO EDGARD DE OLIVEIRA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "114",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "octavio.edgard@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-5549"
         ]
     },
     {
@@ -7191,19 +4905,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Odemir Furlan, Deputado - EMEB",
-        "nome_abreviado_unidade": "Odemir Furlan",
-        "cie_prodesp_unidade": "217585",
-        "nome_prodesp_sed": "ODEMIR FURLAN DEPUTADO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "115",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "odemir.furlan@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4347-0888"
         ]
     },
     {
@@ -7240,19 +4941,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Odete - Maria Ramos Pinto, Irmã - EMEB",
-        "nome_abreviado_unidade": "Odete M Ramos",
-        "cie_prodesp_unidade": "385273",
-        "nome_prodesp_sed": "ODETE MARIA RAMOS PINTO IRMA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "399",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "irma.odete@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4338-6289"
         ]
     },
     {
@@ -7277,19 +4965,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Odette Edith Périgo de Lima - EMEB",
-        "nome_abreviado_unidade": "Odette Edith Perigo",
-        "cie_prodesp_unidade": "95370",
-        "nome_prodesp_sed": "ODETTE EDITH PERIGO DE LIMA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "116",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "odette.lima@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4121-6870"
         ]
     },
     {
@@ -7318,19 +4993,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Olavo Bilac - EMEB",
-        "nome_abreviado_unidade": "Olavo Bilac",
-        "cie_prodesp_unidade": "50969",
-        "nome_prodesp_sed": "OLAVO BILAC EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "117",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "olavo.bilac@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4362-3576"
         ]
     },
     {
@@ -7367,19 +5029,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Olegário José Godoy - Sorocabinha - EMEB",
-        "nome_abreviado_unidade": "Olegario Jose",
-        "cie_prodesp_unidade": "448072",
-        "nome_prodesp_sed": "OLEGÁRIO JOSÉ GODOY SOROCABINHA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "542",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "olegario.godoy@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4335-2141"
         ]
     },
     {
@@ -7404,19 +5053,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Ondina Ignêz de Oliveira - EMEB",
-        "nome_abreviado_unidade": "Ondina Ignez",
-        "cie_prodesp_unidade": "91674",
-        "nome_prodesp_sed": "ONDINA IGNEZ DE OLIVEIRA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "118",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "ondina.ignez@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-2977"
         ]
     },
     {
@@ -7449,19 +5085,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Otílio de Oliveira, Professor - EMEB",
-        "nome_abreviado_unidade": "Otilio de Oliveira",
-        "cie_prodesp_unidade": "217736",
-        "nome_prodesp_sed": "OTILIO DE OLIVEIRA PROF EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "119",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "otilio.oliveira@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4362-4544"
         ]
     },
     {
@@ -7486,20 +5109,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "12",
-        "nome_unidade_SOMAR": "Paschoal Carlos Magno - EMEB",
-        "nome_abreviado_unidade": "Paschoal C Magno",
-        "cie_prodesp_unidade": "50885",
-        "nome_prodesp_sed": "PASCHOAL CARLOS MAGNO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "121",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "paschoal.cmagno@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-2502"
         ]
     },
     {
@@ -7540,19 +5149,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Paulo Freire, Professor - EMEB",
-        "nome_abreviado_unidade": "Paulo Freire",
-        "cie_prodesp_unidade": "246451",
-        "nome_prodesp_sed": "PAULO FREIRE PROFESSOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "145",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "paulo.freire@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4354-0773"
         ]
     },
     {
@@ -7577,19 +5173,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Paulo Morando - EMEB",
-        "nome_abreviado_unidade": "Paulo Morando",
-        "cie_prodesp_unidade": "212097",
-        "nome_prodesp_sed": "PAULO MORANDO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "122",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "paulo.morando@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4357-4994"
         ]
     },
     {
@@ -7622,20 +5205,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "13",
-        "nome_unidade_SOMAR": "Paulo Teixeira de Camargo, Professor - EMEB",
-        "nome_abreviado_unidade": "Paulo Teixeira",
-        "cie_prodesp_unidade": "217608",
-        "nome_prodesp_sed": "PAULO TEIXEIRA DE CAMARGO PROF EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "123",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "paulo.teixeira@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-4944"
         ]
     },
     {
@@ -7668,19 +5237,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Pedra de Carvalho, Professora - EMEB",
-        "nome_abreviado_unidade": "Pedra de Carvalho",
-        "cie_prodesp_unidade": "8906",
-        "nome_prodesp_sed": "PROFESSORA PEDRA DE CARVALHO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "670",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "pedra.carvalho@emeb.saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4390-0308"
         ]
     },
     {
@@ -7713,19 +5269,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Pedro Augusto Gomes Cardim, Professor - EMEB",
-        "nome_abreviado_unidade": "Gomes Cardim",
-        "cie_prodesp_unidade": "217612",
-        "nome_prodesp_sed": "PEDRO AUGUSTO GOMES CARDIM PROF EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "124",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "gomes.cardim@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-8700"
         ]
     },
     {
@@ -7754,19 +5297,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Pedro Morassi - EMEB",
-        "nome_abreviado_unidade": "Pedro Morassi",
-        "cie_prodesp_unidade": "50854",
-        "nome_prodesp_sed": "PEDRO MORASSI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "125",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "pedro.morassi@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4347-7222"
         ]
     },
     {
@@ -7783,19 +5313,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira SOCIEDADE FRATERNITAS PELICANO",
-        "nome_abreviado_unidade": "Pelicano CC",
-        "cie_prodesp_unidade": "292461",
-        "nome_prodesp_sed": "SOCIEDADE FRATERNITAS DE SAO BERNARDO DO CAMPO",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "287",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "fraternitas@terra.com.br"
-        ],
-        "telefones": [
-            "4337-5995"
         ]
     },
     {
@@ -7820,19 +5337,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL I",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira PROJETO CRIANÇA I",
-        "nome_abreviado_unidade": "Proj Crianca 1",
-        "cie_prodesp_unidade": "10321",
-        "nome_prodesp_sed": "Associacao Projeto Crianca",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "682",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "adm.graoesperanca1@gmail.com"
-        ],
-        "telefones": [
-            "6021-5853"
         ]
     },
     {
@@ -7869,20 +5373,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "terreno": "12",
-        "nome_unidade_SOMAR": "Ramiro Gonçalez Fernandes, Professor - EMEB",
-        "nome_abreviado_unidade": "Ramiro Goncalez",
-        "cie_prodesp_unidade": "278506",
-        "nome_prodesp_sed": "RAMIRO GONCALEZ FERNANDES EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "126",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "ramiro.goncalez@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-3235"
         ]
     },
     {
@@ -7903,16 +5393,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "1",
-        "nome_unidade_SOMAR": "Regina Dulce Donadelli Pinto - EMEB",
-        "nome_abreviado_unidade": "Regina Dulce",
-        "cie_prodesp_unidade": "10917",
-        "nome_prodesp_sed": "REGINA DULCE DONADELLI PINTO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "588",
-        "email": [
-            "dulce.donadelli@saobernardo.sp.gov.br"
         ]
     },
     {
@@ -7953,21 +5433,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "1",
-        "nome_unidade_SOMAR": "Regina Rocco Casa I - EMEB",
-        "nome_abreviado_unidade": "Regina Rocco 1",
-        "cie_prodesp_unidade": "469750",
-        "nome_prodesp_sed": "REGINA ROCCO BLOCO I EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "574",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "ceu.reginarocco1@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "2630-9500",
-            "41257041 - 43305594"
         ]
     },
     {
@@ -8000,20 +5465,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "PARCIAL"
             }
-        ],
-        "terreno": "1",
-        "nome_unidade_SOMAR": "Regina Rocco Casa II - EMEB",
-        "nome_abreviado_unidade": "Regina Rocco 2",
-        "cie_prodesp_unidade": "469762",
-        "nome_prodesp_sed": "REGINA ROCCO BLOCO II EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "572",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "ceu.reginarocco2@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4330-4691"
         ]
     },
     {
@@ -8042,19 +5493,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Roberto Montanheiro, Pastor - EMEB",
-        "nome_abreviado_unidade": "Roberto Montanheiro",
-        "cie_prodesp_unidade": "230029",
-        "nome_prodesp_sed": "ROBERTO MONTANHEIRO PASTOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "127",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "roberto.montanheiro@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4367-4716"
         ]
     },
     {
@@ -8071,19 +5509,6 @@ window.escolasDB = [
                 "nivel": "ESPECIAL",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Rolando Ramacciotti - EMEBE",
-        "nome_abreviado_unidade": "Rolando Ramaccioti",
-        "cie_prodesp_unidade": "79078",
-        "nome_prodesp_sed": "ROLANDO RAMACCIOTTI EMEBE",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "128",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "rolando.ramacciotti@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4123-4108"
         ]
     },
     {
@@ -8104,19 +5529,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Rosa de Pacce dos Santos, Professora - EMEB",
-        "nome_abreviado_unidade": "Rosa de Pacce",
-        "cie_prodesp_unidade": "229891",
-        "nome_prodesp_sed": "ROSA DE PACCE DOS SANTOS PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "129",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "rosa.pacce@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4351-4629"
         ]
     },
     {
@@ -8145,19 +5557,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Rui Barbosa - EMEB",
-        "nome_abreviado_unidade": "Rui Barbosa",
-        "cie_prodesp_unidade": "50994",
-        "nome_prodesp_sed": "RUI BARBOSA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "130",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "rui.barbosa@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4125-5222"
         ]
     },
     {
@@ -8186,19 +5585,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Sadao Higuchi - EMEB",
-        "nome_abreviado_unidade": "Sadao Higuchi",
-        "cie_prodesp_unidade": "430092",
-        "nome_prodesp_sed": "SADAO HIGUCHI EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "390",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "sadao.higuchi@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4341-7841"
         ]
     },
     {
@@ -8231,19 +5617,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Salvador Gori, Professor - EMEB",
-        "nome_abreviado_unidade": "Salvador Gori",
-        "cie_prodesp_unidade": "217621",
-        "nome_prodesp_sed": "SALVADOR GORI PROF EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "131",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "salvador.gori@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4392-3974"
         ]
     },
     {
@@ -8268,20 +5641,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "3",
-        "nome_unidade_SOMAR": "Sandra Cruz Martins Freitas, Professora - EMEB",
-        "nome_abreviado_unidade": "Sandra Cruz",
-        "cie_prodesp_unidade": "229921",
-        "nome_prodesp_sed": "SANDRA CRUZ MARTINS FREITAS PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "132",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "sandra.mfreitas@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4347-6963"
         ]
     },
     {
@@ -8306,22 +5665,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL I",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "14",
-        "nome_unidade_SOMAR": "Creche Parceira SANTA CLARA",
-        "nome_abreviado_unidade": "Santa Clara CC",
-        "cie_prodesp_unidade": "6465",
-        "nome_prodesp_sed": "CRECHE SANTA CLARA - INSTITUTO DOM DÉCIO PEREIRA",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "657",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "crechesantaclara@institutodomdecio.org.br",
-            "creche.domdecio3@emeb.saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4330-5148",
-            "4338-3737"
         ]
     },
     {
@@ -8346,20 +5689,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira SANTA TERESINHA",
-        "nome_abreviado_unidade": "Sta Terezinha",
-        "cie_prodesp_unidade": "9590",
-        "nome_prodesp_sed": "CRECHE SANTA TERESINHA - INSTITUTO DOM DECIO PEREIRA",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "673",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "crechesantateresinha@institutodomdecio.org.br"
-        ],
-        "telefones": [
-            "41098967",
-            "987170569"
         ]
     },
     {
@@ -8384,19 +5713,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Santos Dumont - EMEB",
-        "nome_abreviado_unidade": "Santos Dumont",
-        "cie_prodesp_unidade": "51111",
-        "nome_prodesp_sed": "SANTOS DUMONT EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "134",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "santos.dumont@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4122-4611"
         ]
     },
     {
@@ -8417,20 +5733,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira SHEKINAH I",
-        "nome_abreviado_unidade": "Shekinah 1 - CC",
-        "cie_prodesp_unidade": "6255",
-        "nome_prodesp_sed": "CRECHE PEQUENINOS DO FUTURO I",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "654",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "monica@ab-shekinah.org.br",
-            "assistente@ab-shekinah.org.br"
-        ],
-        "telefones": [
-            "2758-0779"
         ]
     },
     {
@@ -8451,21 +5753,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira SHEKINAH II",
-        "nome_abreviado_unidade": "Shekinah 2 CC",
-        "cie_prodesp_unidade": "291869",
-        "nome_prodesp_sed": "CRECHE PEQUENINOS DO FUTURO - UNIDADE II",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "420",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "direcao@ab-shekinah.org.br",
-            "coordenacao@ab-shekinah.org.br"
-        ],
-        "telefones": [
-            "4361-1569",
-            "2758-0778"
         ]
     },
     {
@@ -8486,19 +5773,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Sônia Regina Hernandez de Lima, Professora - EMEB",
-        "nome_abreviado_unidade": "Sonia Regina",
-        "cie_prodesp_unidade": "282030",
-        "nome_prodesp_sed": "SONIA REGINA HERNANDEZ DE LIMA PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "137",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "sonia.regina@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4101-7011"
         ]
     },
     {
@@ -8535,19 +5809,6 @@ window.escolasDB = [
                 "nivel": "EJA",
                 "periodo": "NOITE"
             }
-        ],
-        "nome_unidade_SOMAR": "Suzete Aparecida de Campos, Professora - EMEB",
-        "nome_abreviado_unidade": "Suzete Aparecida",
-        "cie_prodesp_unidade": "242073",
-        "nome_prodesp_sed": "SUZETE APARECIDA DE CAMPOS PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "138",
-        "transporte_grupo_atendimento": "G4",
-        "email": [
-            "suzete.aparecida@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4397-5010"
         ]
     },
     {
@@ -8580,20 +5841,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "10",
-        "nome_unidade_SOMAR": "Sylvia Marilena Fantacini Zanetti, Professora - EMEB",
-        "nome_abreviado_unidade": "Sylvia Zanetti",
-        "cie_prodesp_unidade": "81991",
-        "nome_prodesp_sed": "SYLVIA MARILENA FANTACINI ZANETTI PROFA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "139",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "sylvia.marilena@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4361-8630"
         ]
     },
     {
@@ -8622,20 +5869,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "7",
-        "nome_unidade_SOMAR": "Tarsila do Amaral - EMEB",
-        "nome_abreviado_unidade": "Tarsila Amaral",
-        "cie_prodesp_unidade": "430067",
-        "nome_prodesp_sed": "TARSILA DO AMARAL EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "395",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "tarsila.amaral@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4104-4319"
         ]
     },
     {
@@ -8668,19 +5901,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Teotônio Vilela, Senador - EMEB",
-        "nome_abreviado_unidade": "Teotonio Vilela",
-        "cie_prodesp_unidade": "282935",
-        "nome_prodesp_sed": "TEOTONIO VILELA SENADOR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "140",
-        "transporte_grupo_atendimento": "G6",
-        "email": [
-            "teotonio.vilela@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4109-2910"
         ]
     },
     {
@@ -8705,19 +5925,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Tereza Delta - EMEB",
-        "nome_abreviado_unidade": "Tereza Delta",
-        "cie_prodesp_unidade": "90748",
-        "nome_prodesp_sed": "TEREZA DELTA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "141",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "tereza.delta@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4347-6180"
         ]
     },
     {
@@ -8742,19 +5949,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Thales de Andrade - EMEB",
-        "nome_abreviado_unidade": "Thales de Andrade",
-        "cie_prodesp_unidade": "50751",
-        "nome_prodesp_sed": "THALES DE ANDRADE EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "143",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "thales.andrade@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4343-6354"
         ]
     },
     {
@@ -8779,20 +5973,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "8",
-        "nome_unidade_SOMAR": "Valderez Avelino de Souza - EMEB",
-        "nome_abreviado_unidade": "Valderez Avelino",
-        "cie_prodesp_unidade": "229878",
-        "nome_prodesp_sed": "VALDEREZ AVELINO DE SOUZA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "146",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "valderez.avelino@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4351-4600"
         ]
     },
     {
@@ -8821,19 +6001,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Valter Carmona - EMEB",
-        "nome_abreviado_unidade": "Valter Carmona",
-        "cie_prodesp_unidade": "4324",
-        "nome_prodesp_sed": "VALTER CARMONA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "584",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "valter.carmona@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "26305210"
         ]
     },
     {
@@ -8858,20 +6025,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "11",
-        "nome_unidade_SOMAR": "Vicente de Carvalho - EMEB",
-        "nome_abreviado_unidade": "Vicente Carvalho",
-        "cie_prodesp_unidade": "50878",
-        "nome_prodesp_sed": "VICENTE DE CARVALHO EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "148",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "vicente.carvalho@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4178-7433"
         ]
     },
     {
@@ -8904,19 +6057,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Vicente Zammite Mammana, Doutor - EMEB",
-        "nome_abreviado_unidade": "Vicente Zammite",
-        "cie_prodesp_unidade": "217633",
-        "nome_prodesp_sed": "VICENTE ZAMMITE MAMMANA DR EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "149",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "vicente.zammite@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4341-8559"
         ]
     },
     {
@@ -8937,19 +6077,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Creche Parceira LAR MADRE VINCENZA",
-        "nome_abreviado_unidade": "Madre Vicenza CC",
-        "cie_prodesp_unidade": "292138",
-        "nome_prodesp_sed": "ASSOCIAÇÃO EDUCATIVA MADRE VINCENZA",
-        "conveniada": "1",
-        "id_unidade_SOMAR": "413",
-        "transporte_grupo_atendimento": "G1",
-        "email": [
-            "vincenzamadre@gmail.com"
-        ],
-        "telefones": [
-            "4125-6381"
         ]
     },
     {
@@ -8974,19 +6101,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Vinícius de Moraes - EMEB",
-        "nome_abreviado_unidade": "Vinicius Morais",
-        "cie_prodesp_unidade": "50957",
-        "nome_prodesp_sed": "VINICIUS DE MORAES EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "150",
-        "transporte_grupo_atendimento": "G5",
-        "email": [
-            "vinicius.moraes@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4127-5355"
         ]
     },
     {
@@ -9019,19 +6133,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Viriato Correia - EMEB",
-        "nome_abreviado_unidade": "Viriato Correia",
-        "cie_prodesp_unidade": "217748",
-        "nome_prodesp_sed": "VIRIATO CORREIA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "151",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "viriato.correia@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4368-2289"
         ]
     },
     {
@@ -9056,19 +6157,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL V",
                 "periodo": "PARCIAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Vital Brasil - EMEB",
-        "nome_abreviado_unidade": "Vital Brasil",
-        "cie_prodesp_unidade": "51020",
-        "nome_prodesp_sed": "VITAL BRASIL EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "152",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "vital.brasil@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4368-2533"
         ]
     },
     {
@@ -9101,19 +6189,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Waldemar Canciani, Professor - EMEB",
-        "nome_abreviado_unidade": "Waldemar Canciani",
-        "cie_prodesp_unidade": "242044",
-        "nome_prodesp_sed": "WALDEMAR CANCIANI PROF EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "153",
-        "transporte_grupo_atendimento": "G2",
-        "email": [
-            "waldemar.canciani@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4337-9264"
         ]
     },
     {
@@ -9138,19 +6213,6 @@ window.escolasDB = [
                 "nivel": "INFANTIL II",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "nome_unidade_SOMAR": "Zoraida Aparecida Ramos, Professora - EMEB",
-        "nome_abreviado_unidade": "Zoraida Aparecida",
-        "cie_prodesp_unidade": "430109",
-        "nome_prodesp_sed": "ZORAIDA APARECIDA RAMOS PROFESSORA EMEB",
-        "conveniada": "0",
-        "id_unidade_SOMAR": "400",
-        "transporte_grupo_atendimento": "G3",
-        "email": [
-            "zoraida.ramos@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "4337-9925"
         ]
     },
     {
@@ -9183,16 +6245,6 @@ window.escolasDB = [
                 "nivel": "5º ANO",
                 "periodo": "INTEGRAL"
             }
-        ],
-        "terreno": "6",
-        "nome_abreviado_unidade": "Tres Marias",
-        "id_unidade_SOMAR": "",
-        "email": [
-            "tres.marias@saobernardo.sp.gov.br"
-        ],
-        "telefones": [
-            "2363-3772",
-            "2363-3773"
         ]
     }
-];
+]

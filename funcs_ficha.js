@@ -1,22 +1,3 @@
-window.calcularDistanciaHaversine = function(lat1, lon1, lat2, lon2) {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) *
-        Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return Math.round((R * c) * 1000);
-};
-
 window.normalizarTexto = function(texto) {
     if (!texto) return "";
 
@@ -214,6 +195,16 @@ window.iniciarPaginaFicha = function() {
     const inputRaProdesp = document.getElementById('ra_prodesp_search');
     if (inputRaProdesp && typeof window.setSharedStoreValue === 'function') {
         window.setSharedStoreValue('raAluno', inputRaProdesp.value.trim());
+    }
+
+    const statusDiv = document.getElementById('status_atendimento') || document.getElementById('mostra_status_pedido');
+    const textoStatus = statusDiv ? (statusDiv.innerText || '').toUpperCase() : '';
+    const textoStatusSemAcento = textoStatus.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const isEmAnalise = textoStatusSemAcento.includes('EM ANALISE');
+
+    if (typeof window.setSharedStoreValue === 'function') {
+        window.setSharedStoreValue('statusFicha', textoStatus);
+        window.setSharedStoreValue('statusFichaEmAnalise', isEmAnalise);
     }
 
     if (
@@ -566,6 +557,18 @@ window.realizarCalculosIniciaisDistancia = async function() {
         !dadosGeo ||
         !dadosGeo.geoEscola_Latit
     ) return;
+
+    const isEmAnalise = window.getSharedStoreValue?.('statusFichaEmAnalise');
+    if (!isEmAnalise) {
+        console.info('[ASSISTENTE] Ficha não está em análise. Pulando chamadas de geolocalização.');
+        window.setSharedStore({
+            distanciaCoord: null,
+            distanciaEnd: null,
+            DistDiferentesEntreMapas: false,
+            perfilOSRM: 'foot'
+        });
+        return;
+    }
 
     let coordEndereco =
         await window.obterCoordenadasPorEndereco(

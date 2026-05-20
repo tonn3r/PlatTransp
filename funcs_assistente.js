@@ -390,7 +390,7 @@ function montarListaEscolasExibicao(escolasAptas, latAluno, lonAluno, modo, idEs
     }
     const listaCopia = JSON.parse(JSON.stringify(escolasAptas));
     listaCopia.forEach(esc => {
-        esc.distancia = window.calcularDistanciaHaversine(latBase, lonBase, esc.lat, esc.lon);
+        esc.distancia = window.calcularProximidadeRapida(latBase, lonBase, esc.lat, esc.lon);
     });
     listaCopia.sort((a, b) => a.distancia - b.distancia);
     const indexAtual = listaCopia.findIndex(e => String(e.id) === String(idEscolaAtual));
@@ -1617,74 +1617,87 @@ if (inputDist) {
                 const limparNome = (n) => (typeof n === 'string' ? n.split(',')[0].trim() : n);
 
                 const calcularOpcoesMaisProx = (threshold) => {
-                    const th = (threshold !== undefined && threshold !== null) ? Number(threshold) : (distInputUser !== null ? Number(distInputUser) : null);
-                    if (estado.escolaProximaUser === true || th === null || Number.isNaN(th)) {
-                        return { texto: '', count: 0, items: [] };
-                    }
+    const th = (threshold !== undefined && threshold !== null) ? Number(threshold) : (distInputUser !== null ? Number(distInputUser) : null);
+    if (estado.escolaProximaUser === true || th === null || Number.isNaN(th)) {
+        return { texto: '', count: 0, items: [] };
+    }
 
-                    const idxAtual = listaOrdenada.findIndex(e => String(e.id) === String(idEscolaAtual));
-                    if (idxAtual <= 0) {
-                        return { texto: '', count: 0, items: [] };
-                    }
+    const idxAtual = listaOrdenada.findIndex(e => String(e.id) === String(idEscolaAtual));
+    if (idxAtual <= 0) {
+        return { texto: '', count: 0, items: [] };
+    }
 
-                    const escolaAtual = listaOrdenada[idxAtual];
-                    const distAtual = (estado.distanciasOSRM[escolaAtual.id] !== undefined && estado.distanciasOSRM[escolaAtual.id] !== 'Erro')
-                        ? Number(estado.distanciasOSRM[escolaAtual.id])
-                        : Number(escolaAtual.distancia);
+    // Função auxiliar interna para forçar o arredondamento de 50 em 50 metros
+    const arredondar50 = (val) => Math.round(Number(val) / 50) * 50;
 
-                    const candidatas = listaOrdenada.slice(0, idxAtual).map(esc => {
-                        const distEsc = (estado.distanciasOSRM[esc.id] !== undefined && estado.distanciasOSRM[esc.id] !== 'Erro')
-                            ? Number(estado.distanciasOSRM[esc.id])
-                            : Number((esc.distancia / 50) *50);
-                        return { esc, distEsc };
-                    }).filter(o => (o.distEsc < th && o.distEsc <= distAtual));
+    const escolaAtual = listaOrdenada[idxAtual];
+    const distAtualRaw = (estado.distanciasOSRM[escolaAtual.id] !== undefined && estado.distanciasOSRM[escolaAtual.id] !== 'Erro')
+        ? Number(estado.distanciasOSRM[escolaAtual.id])
+        : Number(escolaAtual.distancia);
+    const distAtual = arredondar50(distAtualRaw);
 
-                    if (!candidatas.length) {
-                        return { texto: '', count: 0, items: [] };
-                    }
+    const candidatas = listaOrdenada.slice(0, idxAtual).map(esc => {
+        const distEscRaw = (estado.distanciasOSRM[esc.id] !== undefined && estado.distanciasOSRM[esc.id] !== 'Erro')
+            ? Number(estado.distanciasOSRM[esc.id])
+            : Number(esc.distancia);
+        const distEsc = arredondar50(distEscRaw);
+        return { esc, distEsc };
+    }).filter(o => (o.distEsc < th && o.distEsc <= distAtual));
 
-                    let selecionadas = candidatas.slice(0, 3).map(o => o.esc);
-                    if (candidatas.length > 3) {
-                        const distTerceiro = (estado.distanciasOSRM[selecionadas[2].id] !== undefined && estado.distanciasOSRM[selecionadas[2].id] !== 'Erro')
-                            ? Number(estado.distanciasOSRM[selecionadas[2].id])
-                            : Number(selecionadas[2].distancia);
-                        const distQuarto = (estado.distanciasOSRM[candidatas[3].esc.id] !== undefined && estado.distanciasOSRM[candidatas[3].esc.id] !== 'Erro')
-                            ? Number(estado.distanciasOSRM[candidatas[3].esc.id])
-                            : Number(candidatas[3].esc.distancia);
-                        if (Number(distTerceiro) === Number(distQuarto)) {
-                            selecionadas.push(candidatas[3].esc);
-                        }
-                    }
+    if (!candidatas.length) {
+        return { texto: '', count: 0, items: [] };
+    }
 
-                    const items = selecionadas.map(esc => {
-                        const distEsc = (estado.distanciasOSRM[esc.id] !== undefined && estado.distanciasOSRM[esc.id] !== 'Erro')
-                            ? Number(estado.distanciasOSRM[esc.id])
-                            : Number((esc.distancia / 50) *50);
-                        return { nome_unidade: limparNome(esc.nome), distancia: Math.round(distEsc), id: esc.id };
-                    });
+    let selecionadas = candidatas.slice(0, 3).map(o => o.esc);
+    if (candidatas.length > 3) {
+        const distTerceiroRaw = (estado.distanciasOSRM[selecionadas[2].id] !== undefined && estado.distanciasOSRM[selecionadas[2].id] !== 'Erro')
+            ? Number(estado.distanciasOSRM[selecionadas[2].id])
+            : Number(selecionadas[2].distancia);
+        const distTerceiro = arredondar50(distTerceiroRaw);
 
-                    const texto = items.reduce((acc, it, index) => {
-                        const parte = `${it.nome_unidade} (${it.distancia})`;
-                        if (index === 0) return parte;
-                        if (index === items.length - 1) return `${acc} e ${parte}`;
-                        return `${acc}, ${parte}`;
-                    }, '');
+        const distQuartoRaw = (estado.distanciasOSRM[candidatas[3].esc.id] !== undefined && estado.distanciasOSRM[candidatas[3].esc.id] !== 'Erro')
+            ? Number(estado.distanciasOSRM[candidatas[3].esc.id])
+            : Number(candidatas[3].esc.distancia);
+        const distQuarto = arredondar50(distQuartoRaw);
 
-                    return { texto, count: items.length, items };
-                };
+        if (distTerceiro === distQuarto) {
+            selecionadas.push(candidatas[3].esc);
+        }
+    }
 
-                const opcoesMaisProxData = calcularOpcoesMaisProx(distInputUser);
-                estado.opcoesMaisProx = opcoesMaisProxData.texto;
-                estado.opcoesMaisProxCount = opcoesMaisProxData.count;
-                estado.opcoesMaisProxItems = opcoesMaisProxData.items || []; 
+    const items = selecionadas.map(esc => {
+        const distEscRaw = (estado.distanciasOSRM[esc.id] !== undefined && estado.distanciasOSRM[esc.id] !== 'Erro')
+            ? Number(estado.distanciasOSRM[esc.id])
+            : Number(esc.distancia);
+        const distEsc = arredondar50(distEscRaw);
+        return { nome_unidade: limparNome(esc.nome), distancia: distEsc, id: esc.id };
+    });
+
+    const texto = items.reduce((acc, it, index) => {
+        const parte = `${it.nome_unidade} (${it.distancia})`;
+        if (index === 0) return parte;
+        if (index === items.length - 1) return `${acc} e ${parte}`;
+        return `${acc}, ${parte}`;
+    }, '');
+
+    return { texto, count: items.length, items };
+};
+
+const opcoesMaisProxData = calcularOpcoesMaisProx(distInputUser);
+estado.opcoesMaisProx = opcoesMaisProxData.texto;
+estado.opcoesMaisProxCount = opcoesMaisProxData.count;
+estado.opcoesMaisProxItems = opcoesMaisProxData.items || [];
 
                 let ehMaisProxima = false;
                 if (listaOrdenada.length > 0) {
-                    if (String(listaOrdenada[0].id) === String(idEscolaAtual)) {
+                    const topEscola = listaOrdenada[0];
+                    if (String(topEscola.id) === String(idEscolaAtual)) {
                         ehMaisProxima = true;
                     } else if (distEscolaAtual !== null && distMaisProxima !== null && distEscolaAtual === distMaisProxima) {
                         ehMaisProxima = true;
                     } else if (distInputUser !== null && distMaisProxima !== null && distInputUser === distMaisProxima) {
+                        ehMaisProxima = true;
+                    } else if (escolaAtualNoArray && escolaAtualNoArray.terreno && topEscola.terreno && String(escolaAtualNoArray.terreno) === String(topEscola.terreno)) {
                         ehMaisProxima = true;
                     }
                 }
@@ -1698,12 +1711,28 @@ if (inputDist) {
                             ehMaisProximaParcial = true;
                         } else if (distInputUser !== null && distParcialMaisProxima !== null && distInputUser === distParcialMaisProxima) {
                             ehMaisProximaParcial = true;
+                        } else if (escolaAtualNoArray.terreno && escolaMaisProximaParcial.terreno && String(escolaAtualNoArray.terreno) === String(escolaMaisProximaParcial.terreno)) {
+                            ehMaisProximaParcial = true;
                         }
                     }
                 }
 
                 const escolaMaisProximaIntegral = listaOrdenada.find(e => e.periodosEncontrados && e.periodosEncontrados.includes('INTEGRAL'));
-                const ehMaisProximaIntegral = (!ehMaisProxima && !ehMaisProximaParcial && escolaMaisProximaIntegral && String(escolaMaisProximaIntegral.id) === String(idEscolaAtual));
+                let ehMaisProximaIntegral = false;
+                if (!ehMaisProxima && !ehMaisProximaParcial && escolaMaisProximaIntegral) {
+                    if (String(escolaMaisProximaIntegral.id) === String(idEscolaAtual)) {
+                        ehMaisProximaIntegral = true;
+                    } else if (escolaAtualNoArray && escolaAtualNoArray.periodosEncontrados && escolaAtualNoArray.periodosEncontrados.includes('INTEGRAL')) {
+                        let distIntegralMaisProxima = (estado.distanciasOSRM[escolaMaisProximaIntegral.id] !== undefined && estado.distanciasOSRM[escolaMaisProximaIntegral.id] !== 'Erro') ? estado.distanciasOSRM[escolaMaisProximaIntegral.id] : escolaMaisProximaIntegral.distancia;
+                        if (distEscolaAtual !== null && distIntegralMaisProxima !== null && distEscolaAtual === distIntegralMaisProxima) {
+                            ehMaisProximaIntegral = true;
+                        } else if (distInputUser !== null && distIntegralMaisProxima !== null && distInputUser === distIntegralMaisProxima) {
+                            ehMaisProximaIntegral = true;
+                        } else if (escolaAtualNoArray.terreno && escolaMaisProximaIntegral.terreno && String(escolaAtualNoArray.terreno) === String(escolaMaisProximaIntegral.terreno)) {
+                            ehMaisProximaIntegral = true;
+                        }
+                    }
+                }
                 
                 estado.escolaProximaCalc = ehMaisProxima || ehMaisProximaParcial;
                 estado.ehMaisProximaParcial = ehMaisProximaParcial;
