@@ -1014,7 +1014,7 @@ window.abrirModalAssistente = async function() {
     const nomeStr = ctx.nomeAluno;
     //const nomesResponsaveis = ctx.nomesResponsaveis;
     const nomesResponsaveis = (nomeStr && ctx.nomesResponsaveis) 
-    ? nomeStr + '; ou<br>' + ctx.nomesResponsaveis 
+    ? ctx.nomesResponsaveis + '; ou<br>' + nomeStr
     : ctx.nomesResponsaveis;    const sugestaoDeficienciaHtml = ctx.sugestaoDeficienciaHtml;
     let idEscolaAtual = ctx.idEscolaAtual;
     let nivelAlunoOriginal = ctx.nivelAlunoOriginal;

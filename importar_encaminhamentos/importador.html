@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Importador de Encaminhamentos - Lote Multi-Planilhas</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; line-height: 1.6; color: #333; }
+        .config-box { background: #f4f4f9; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd; }
+        .campo { margin-bottom: 15px; }
+        label { font-weight: bold; display: block; margin-bottom: 5px; }
+        select, input[type="number"], input[type="text"] { padding: 8px; width: 320px; border-radius: 4px; border: 1px solid #ccc; background-color: #fff; }
+        
+        .btn-add { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .btn-add:hover { background: #0056b3; }
+        
+        .btn-salvar { background: #28a745; color: white; border: none; padding: 15px 30px; border-radius: 4px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px; width: 100%; display: none;}
+        .btn-salvar:hover { background: #218838; }
+
+        #mapeamento-secao { display: none; }
+        .secao-titulo { margin-top: 20px; padding-bottom: 5px; border-bottom: 2px solid #007bff; color: #007bff; }
+        .grid-campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 15px; }
+        .opcional { border-left: 3px solid #ffc107; padding-left: 10px; }
+        .obrigatorio { border-left: 3px solid #dc3545; padding-left: 10px; }
+        
+        .feedback-box { background: #e2f0d9; border: 2px solid #385723; padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
+        .feedback-box h3 { margin-top: 0; color: #385723; }
+        .badge { background: #007bff; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-right: 5px; display: inline-block; margin-bottom: 5px; }
+        .resumo-lote { background: #fff; border: 1px solid #ccc; padding: 10px; margin-top: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <h2>Passo 1: Base de Dados Existente (Opcional)</h2>
+    <div class="config-box">
+        <p style="margin-top:0; color:#666;">Se você já possui um arquivo historico_geral.js com anos anteriores gravados, selecione-o para complementar. Se estiver criando um banco do zero, pule esta etapa.</p>
+        <div class="campo">
+            <label for="arquivo-base-js">Selecione o arquivo atual (.js):</label>
+            <input type="file" id="arquivo-base-js" accept=".js">
+        </div>
+        <div id="status-base-atual"></div>
+    </div>
+
+    <h2>Passo 2: Carregar Nova Planilha do Lote</h2>
+    <div class="config-box">
+        <div class="campo">
+            <label for="ano-letivo">Ano de Referência dos Encaminhamentos:</label>
+            <input type="number" id="ano-letivo" value="2026">
+        </div>
+        <div class="campo">
+            <label for="campo-descricao">Descrição / Segmento (Inserido Manualmente):</label>
+            <input type="text" id="campo-descricao" placeholder="Ex: Ensino Infantil">
+        </div>
+        <div class="campo">
+            <label for="status-lote">Situação / Diretriz de Atendimento (Para este arquivo todo):</label>
+            <select id="status-lote">
+                <option value="ATENDER" selected>ATENDER / DEFERIR (Padrão)</option>
+                <option value="NÃO ATENDER">NÃO ATENDER / INDEFERIR (Ex: Escola de Opção)</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label for="arquivo-excel">Selecione a Planilha (.xlsx):</label>
+            <input type="file" id="arquivo-excel" accept=".xlsx, .xls">
+        </div>
+    </div>
+
+    <div id="mapeamento-secao" class="config-box">
+        <h2>Passo 3: Mapear Colunas desta Planilha</h2>
+        <p>Alinhe os cabeçalhos detectados:</p>
+        
+        <h3 class="secao-titulo">Campos Obrigatórios</h3>
+        <div class="grid-campos">
+            <div class="campo obrigatorio">
+                <label for="select-ra">Coluna do RA do Aluno:</label>
+                <select id="select-ra"></select>
+            </div>
+            <div class="campo obrigatorio">
+                <label for="select-unidade">Unidade de Destino (Encaminhamento):</label>
+                <select id="select-unidade"></select>
+            </div>
+        </div>
+
+        <h3 class="secao-titulo">Campos Opcionais</h3>
+        <div class="grid-campos">
+            <div class="campo opcional">
+                <label for="select-id-unidade">ID da Unidade de Destino:</label>
+                <select id="select-id-unidade"></select>
+            </div>
+            <div class="campo opcional">
+                <label for="select-nome">Nome do Aluno:</label>
+                <select id="select-nome"></select>
+            </div>
+            <div class="campo opcional">
+                <label for="select-origem">Unidade de Origem / Escola Anterior:</label>
+                <select id="select-origem"></select>
+            </div>
+            <div class="campo opcional">
+                <label for="select-motivo">Motivo do Encaminhamento / Prioridade:</label>
+                <select id="select-motivo"></select>
+            </div>
+            <div class="campo opcional">
+                <label for="select-endereco">Endereço do Aluno:</label>
+                <select id="select-endereco"></select>
+            </div>
+            <div class="campo opcional">
+                <label for="select-latitude">Latitude:</label>
+                <select id="select-latitude"></select>
+            </div>
+            <div class="campo opcional">
+                <label for="select-longitude">Longitude:</label>
+                <select id="select-longitude"></select>
+            </div>
+            <div class="campo opcional">
+                <label for="select-nascimento">Data de Nascimento:</label>
+                <select id="select-nascimento"></select>
+            </div>
+            <div class="campo opcional">
+                <label for="select-irmao">Possui irmão na rede?</label>
+                <select id="select-irmao"></select>
+            </div>
+            <div class="campo opcional">
+                <label for="select-unidade-irmao">Unidade do Irmão:</label>
+                <select id="select-unidade-irmao"></select>
+            </div>
+        </div>
+        
+        <br><br>
+        <button class="btn-add" id="btn-adicionar-lote">✓ Processar e Adicionar esta Planilha ao Lote</button>
+    </div>
+
+    <div id="painel-feedback" class="feedback-box">
+        <h3>Status Atual do Lote na Memória</h3>
+        <p>Planilhas processadas nesta sessão:</p>
+        <div class="resumo-lote" id="lista-lote-atual">Nenhuma planilha processada ainda.</div>
+        
+        <ul>
+            <li><strong>Total de alunos únicos na memória (Geral):</strong> <span id="feed-total-acumulado">0</span></li>
+            <li><strong>Última planilha adicionada - Novos registros:</strong> <span id="feed-novos-lote" style="color: green; font-weight: bold;">0</span></li>
+            <li><strong>Última planilha adicionada - Registros complementados:</strong> <span id="feed-completados-lote" style="color: #007bff; font-weight: bold;">0</span></li>
+            <li><strong>Registros ignorados (Mais antigos que 5 anos / Antes de 2021):</strong> <span id="feed-expurgados-lote" style="color: #dc3545; font-weight: bold;">0</span></li>
+            <li><strong>Última planilha adicionada - Pulados (Totalmente idênticos):</strong> <span id="feed-pulados-lote" style="color: #666;">0</span></li>
+        </ul>
+        
+        <button class="btn-salvar" id="btn-concluir-salvar">💾 Finalizar Lote e Baixar Banco Unificado (.JS)</button>
+    </div>
+
+    <script>
+        let bancoMaster = {
+            arquivosImportados: [],
+            encaminhamentos: {}
+        };
+
+        let dadosPlanilha = [];
+        let cabecalhos = [];
+        let nomeArquivoOriginal = "";
+
+        const ANO_CORTE = 2021; 
+
+        function configurarFocoInputs() {
+            document.querySelectorAll('input[type="text"], input[type="number"]').forEach(input => {
+                input.removeEventListener('focus', selecionarConteudo);
+                input.addEventListener('focus', selecionarConteudo);
+            });
+        }
+        
+        function selecionarConteudo() {
+            this.select();
+        }
+
+        configurarFocoInputs();
+
+        function aplicarFiltroCincoAnos() {
+            let contagemRemovidos = 0;
+            for (let ra in bancoMaster.encaminhamentos) {
+                let tamanhoOriginal = bancoMaster.encaminhamentos[ra].length;
+                
+                bancoMaster.encaminhamentos[ra] = bancoMaster.encaminhamentos[ra].filter(reg => reg.ano >= ANO_CORTE);
+                contagemRemovidos += (tamanhoOriginal - bancoMaster.encaminhamentos[ra].length);
+                
+                if (bancoMaster.encaminhamentos[ra].length === 0) {
+                    delete bancoMaster.encaminhamentos[ra];
+                }
+            }
+            return contagemRemovidos;
+        }
+
+        // 1. CARREGAR ARQUIVO BASE EXISTENTE
+        document.getElementById('arquivo-base-js').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    let texto = evt.target.result;
+                    let inicioJson = texto.indexOf('{');
+                    let fimJson = texto.lastIndexOf('}');
+                    
+                    if (inicioJson === -1 || fimJson === -1) throw new Error("Formato inválido");
+
+                    let safeJsonStr = texto.substring(inicioJson, fimJson + 1);
+                    let dadosExtraidos = JSON.parse(safeJsonStr);
+                    
+                    if (dadosExtraidos.encaminhamentos && Array.isArray(dadosExtraidos.arquivosImportados)) {
+                        bancoMaster = dadosExtraidos;
+                    } else {
+                        bancoMaster = { arquivosImportados: ["Importado_Versao_Antiga"], encaminhamentos: dadosExtraidos };
+                    }
+                    
+                    let velhosLimpos = aplicarFiltroCincoAnos();
+
+                    atualizarInterfaceLote(0, 0, 0, velhosLimpos);
+                    document.getElementById('status-base-atual').innerHTML = `
+                        <p style="color: green; font-weight: bold;">
+                            ✓ Base histórica carregada! Arquivos ativos integrados: 
+                            ${bancoMaster.arquivosImportados.map(a => `<span class="badge">${a}</span>`).join('')}
+                        </p>`;
+                } catch (err) {
+                    alert("Erro ao ler o arquivo base JS.");
+                    e.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // 2. DETECTAR UPLOAD DA NOVA PLANILHA
+        document.getElementById('arquivo-excel').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            nomeArquivoOriginal = file.name.replace(/\.[^/.]+$/, "");
+            document.getElementById('campo-descricao').value = nomeArquivoOriginal;
+
+            const anoEncontrado = nomeArquivoOriginal.match(/(20\d{2})/);
+            if (anoEncontrado) {
+                document.getElementById('ano-letivo').value = parseInt(anoEncontrado[1]);
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const primeiraAba = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[primeiraAba];
+                const matriz = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                if (matriz.length === 0) { alert("Planilha vazia!"); return; }
+
+                cabecalhos = matriz[0].map(c => c ? String(c).trim() : '');
+                dadosPlanilha = XLSX.utils.sheet_to_json(worksheet);
+
+                popularDropdowns();
+                document.getElementById('mapeamento-secao').style.display = 'block';
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function popularDropdowns() {
+            const configuracaoCampos = [
+                { id: 'select-ra', chaves: ['ra', 'id_aluno', 'matricula', 'cd_aluno', 'codigo aluno'], opcional: false },
+                { id: 'select-unidade', chaves: ['resultado final', 'resultado', 'encaminhamento', 'unidade destino', 'unidade encaminhamento', 'escola destino'], opcional: false },
+                { id: 'select-id-unidade', chaves: ['id_unidade', 'id unidade', 'id destino', 'codigo unidade', 'código unidade', 'id escola', 'id_escola'], opcional: true },
+                { id: 'select-nome', chaves: ['nome', 'aluno', 'nome do aluno', 'nome_aluno'], opcional: true },
+                { id: 'select-origem', chaves: ['unidade anterior', 'unidade de 20', 'origem', 'escola anterior', 'escola atual', 'escola matriculado', 'escola matriculada', 'unidade de origem', 'escola de origem', 'matriculado no ano'], opcional: true },
+                { id: 'select-motivo', chaves: ['motivo', 'prioridade', 'tipo de prioridade', 'motivo/tipo'], opcional: true },
+                { id: 'select-endereco', chaves: ['endereço', 'endereco', 'logradouro', 'rua'], opcional: true },
+                { id: 'select-latitude', chaves: ['latitude', 'lat'], opcional: true },
+                { id: 'select-longitude', chaves: ['longitude', 'long', 'lng'], opcional: true },
+                { id: 'select-nascimento', chaves: ['nascimento', 'nasc', 'data de nascimento', 'data nascimento', 'dt_nasc'], opcional: true },
+                { id: 'select-irmao', chaves: ['irmao', 'irmão', 'possui irmao', 'tem irmao'], opcional: true },
+                { id: 'select-unidade-irmao', chaves: ['unidade irmao', 'unidade irmão', 'escola irmao', 'escola do irmão'], opcional: true }
+            ];
+
+            configuracaoCampos.forEach(campo => {
+                const select = document.getElementById(campo.id);
+                select.innerHTML = '';
+                if (campo.opcional) select.add(new Option("-- Ignorar / Não consta na planilha --", ""));
+
+                let matchEncontrado = false;
+                cabecalhos.forEach(coluna => {
+                    let opt = new Option(coluna, coluna);
+                    let colBaixa = coluna.toLowerCase();
+                    let deuMatch = campo.chaves.some(chave => colBaixa.includes(chave));
+                    
+                    if (campo.id === 'select-ra' && colBaixa !== 'ra' && colBaixa.includes('digito')) deuMatch = false; 
+
+                    if (deuMatch && !matchEncontrado) { opt.selected = true; matchEncontrado = true; }
+                    select.add(opt);
+                });
+                if (campo.opcional && !matchEncontrado) select.selectedIndex = 0;
+            });
+        }
+
+        // 3. ADICIONAR DADOS DA PLANILHA AO LOTE
+        document.getElementById('btn-adicionar-lote').addEventListener('click', function() {
+            const ano = parseInt(document.getElementById('ano-letivo').value);
+            const descricaoManual = document.getElementById('campo-descricao').value.trim();
+            const statusLote = document.getElementById('status-lote').value;
+            const identificadorPlanilha = descricaoManual || nomeArquivoOriginal;
+
+            if (!ano) { alert("Por favor, preencha o ano."); return; }
+
+            if (ano < ANO_CORTE) {
+                alert(`Esta planilha é do ano ${ano} (mais de 5 anos atrás). Pelo regulamento, dados anteriores a ${ANO_CORTE} não são importados.`);
+                return;
+            }
+
+            if (bancoMaster.arquivosImportados.includes(identificadorPlanilha)) {
+                alert(`Identificador "${identificadorPlanilha}" repetido. Mude o campo Descrição para diferenciar as planilhas.`);
+                return;
+            }
+
+            const mapeamento = {
+                ra: document.getElementById('select-ra').value,
+                unidade: document.getElementById('select-unidade').value,
+                idUnidade: document.getElementById('select-id-unidade').value,
+                nome: document.getElementById('select-nome').value,
+                origem: document.getElementById('select-origem').value,
+                motivo: document.getElementById('select-motivo').value,
+                endereco: document.getElementById('select-endereco').value,
+                latitude: document.getElementById('select-latitude').value,
+                longitude: document.getElementById('select-longitude').value,
+                nascimento: document.getElementById('select-nascimento').value,
+                irmao: document.getElementById('select-irmao').value,
+                unidadeIrmao: document.getElementById('select-unidade-irmao').value
+            };
+
+            let novasInclusoes = 0;
+            let complementados = 0;
+            let puladosDuplicados = 0;
+            let expurgadosFila = 0;
+
+            dadosPlanilha.forEach(linha => {
+                let ra = linha[mapeamento.ra] ? String(linha[mapeamento.ra]).trim() : null;
+                let unidade = WebGLActiveInfo ? (linha[mapeamento.unidade] ? String(linha[mapeamento.unidade]).trim() : null) : null;
+
+                if (!ra || !unidade || ra === "undefined" || unidade === "undefined") return;
+
+                let registroAno = {
+                    ano: ano,
+                    unidade: unidade,
+                    descricao: identificadorPlanilha,
+                    situacao: statusLote
+                };
+
+                if (mapeamento.idUnidade && linha[mapeamento.idUnidade] !== undefined) registroAno.idUnidadeEncaminhamento = String(linha[mapeamento.idUnidade]).trim();
+                if (mapeamento.nome && linha[mapeamento.nome] !== undefined) registroAno.nomeAluno = String(linha[mapeamento.nome]).trim();
+                if (mapeamento.origem && linha[mapeamento.origem] !== undefined) registroAno.unidadeOrigem = String(linha[mapeamento.origem]).trim();
+                
+                // CORRIGIDO DEFINITIVAMENTE: Removido resíduo 'inline_data =' que travava o código
+                if (mapeamento.motivo && linha[mapeamento.motivo] !== undefined) registroAno.motivo = String(linha[mapeamento.motivo]).trim();
+                if (mapeamento.endereco && linha[mapeamento.endereco] !== undefined) registroAno.endereco = String(linha[mapeamento.endereco]).trim();
+                if (mapeamento.latitude && linha[mapeamento.latitude] !== undefined) registroAno.latitude = String(linha[mapeamento.latitude]).trim();
+                if (mapeamento.longitude && linha[mapeamento.longitude] !== undefined) registroAno.longitude = String(linha[mapeamento.longitude]).trim();
+                if (mapeamento.nascimento && linha[mapeamento.nascimento] !== undefined) registroAno.dataNascimento = String(linha[mapeamento.nascimento]).trim();
+                if (mapeamento.irmao && linha[mapeamento.irmao] !== undefined) registroAno.possuiIrmao = String(linha[mapeamento.irmao]).trim();
+                if (mapeamento.unidadeIrmao && linha[mapeamento.unidadeIrmao] !== undefined) registroAno.unidadeIrmao = String(linha[mapeamento.unidadeIrmao]).trim();
+
+                if (bancoMaster.encaminhamentos[ra]) {
+                    let registroExistente = bancoMaster.encaminhamentos[ra].find(reg => reg.ano === ano && reg.unidade === unidade);
+                    
+                    if (registroExistente) {
+                        let adicionouInformacao = false;
+                        
+                        Object.keys(registroAno).forEach(chave => {
+                            let campoVazioNoExistente = (registroExistente[chave] === undefined || registroExistente[chave] === null || registroExistente[chave] === "");
+                            let campoValidoNoNovo = (registroAno[chave] !== undefined && registroAno[chave] !== null && registroAno[chave] !== "");
+                            
+                            if (campoVazioNoExistente && campoValidoNoNovo) {
+                                registroExistente[chave] = registroAno[chave];
+                                adicionouInformacao = true;
+                            }
+                        });
+                        
+                        if (adicionouInformacao) complementados++;
+                        else puladosDuplicados++;
+                    } else {
+                        bancoMaster.encaminhamentos[ra].push(registroAno);
+                        novasInclusoes++;
+                    }
+                } else {
+                    bancoMaster.encaminhamentos[ra] = [registroAno];
+                    novasInclusoes++;
+                }
+            });
+
+            bancoMaster.arquivosImportados.push(identificadorPlanilha);
+            
+            for (let key in bancoMaster.encaminhamentos) {
+                bancoMaster.encaminhamentos[key].sort((a, b) => a.ano - b.ano);
+            }
+
+            atualizarInterfaceLote(novasInclusoes, complementados, puladosDuplicados, expurgadosFila);
+            alert(`Fila updated com sucesso!\n- Novos: ${novasInclusoes}\n- Dados complementados: ${complementados}\n- Pulados: ${puladosDuplicados}`);
+
+            document.getElementById('arquivo-excel').value = "";
+            document.getElementById('campo-descricao').value = "";
+            document.getElementById('status-lote').selectedIndex = 0;
+            document.getElementById('mapeamento-secao').style.display = "none";
+        });
+
+        function atualizarInterfaceLote(novos = 0, comps = 0, pulados = 0, expurgados = 0) {
+            const painel = document.getElementById('painel-feedback');
+            const listaDiv = document.getElementById('lista-lote-atual');
+            const totalSpan = document.getElementById('feed-total-acumulado');
+            const btnSalvar = document.getElementById('btn-concluir-salvar');
+
+            if (bancoMaster.arquivosImportados.length > 0) {
+                painel.style.display = 'block';
+                btnSalvar.style.display = 'block';
+                listaDiv.innerHTML = bancoMaster.arquivosImportados.map(a => `<span class="badge" style="background:#28a745;">${a}</span>`).join(' ');
+                
+                let totalAlunos = Object.keys(bancoMaster.encaminhamentos).length;
+                totalSpan.innerText = totalAlunos + " Alunos ativos mapeados";
+                
+                document.getElementById('feed-novos-lote').innerText = novos;
+                document.getElementById('feed-completados-lote').innerText = comps;
+                document.getElementById('feed-expurgados-lote').innerText = expurgados;
+                document.getElementById('feed-pulados-lote').innerText = pulados;
+            }
+        }
+
+        // 4. DOWNLOAD CONSOLIDADO
+        document.getElementById('btn-concluir-salvar').addEventListener('click', function() {
+            aplicarFiltroCincoAnos();
+            
+            for (let key in bancoMaster.encaminhamentos) {
+                bancoMaster.encaminhamentos[key].sort((a, b) => a.ano - b.ano);
+            }
+            
+            baixarComoJS(bancoMaster, 'historico_geral.js');
+        });
+
+        function baixarComoJS(objeto, nomeArquivo) {
+            const conteudoJS = `// Banco de dados integrado de encaminhamentos do Assistente\nconst HISTORICO_MASTER = ${JSON.stringify(objeto, null, 2)};`;
+            const dataStr = "data:text/javascript;charset=utf-8," + encodeURIComponent(conteudoJS);
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", nomeArquivo);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+    </script>
+</body>
+</html>
