@@ -1079,7 +1079,10 @@ window.abrirModalAssistente = async function() {
         areaRuralProcessada: false,
         deficienciaEspecialProcessada: false,
         pularDeficiencia: false,
-        top3EscolasNomes: ""
+        top3EscolasNomes: "",
+        opcoesMaisProx: '',
+        opcoesMaisProxCount: 0,
+        opcoesMaisProxItems: []
     };
     
     function persistirEstado() {
@@ -1240,6 +1243,11 @@ if (!motivoAnalise) {
             motivoAnalise = "ESCOLA POR OPÇÃO";
         }
     }
+
+    if (tipoAcao === 'INDEFERIR' && motivoAnalise === 'ESCOLA POR OPÇÃO' && estado.opcoesMaisProx) {
+        const prefix = estado.opcoesMaisProxCount === 1 ? 'Escola mais próxima: ' : 'Escolas mais próximas: ';
+        textoDetalhes = `${prefix}${estado.opcoesMaisProx}`;
+    }
 }
 
 
@@ -1303,24 +1311,31 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
             let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
             let estiloAluno = "background:#27ae60;";
             let estiloFamilia = "background:#2980b9;";
+            let txt_btn_DeficAluno = "A criança tem deficiência";
+            let txt_btn_DeficFamilia = "Pai/Mãe tem deficiência";
+            let txt_btn_DeficNao = "Não possui deficiência";
 
             if (sugestaoDeficienciaHtml === 'ALUNO') {
                 textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência da criança. Verifique se o laudo está ok:</p>";
                 estiloAluno = "background:#27ae60; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
+                txt_btn_DeficAluno = "Laudo do aluno está ok";
+                txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
             } else if (sugestaoDeficienciaHtml === 'FAMILIA') {
                 textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência na família. Verifique se o laudo está ok:</p>";
                 estiloFamilia = "background:#2980b9; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
+                txt_btn_DeficFamilia = "Laudo do responsável está ok";
+                txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
             }
 
             conteudo.innerHTML = `
                 <h3 class="section-title text-warning">
-                    <span class="mdi mdi-wheelchair-accessibility" style="font-size: 22px; margin-right: 6px;"></span> Exceção: Área Rural e Deficiência
+                    <span class="mdi mdi-wheelchair-accessibility" style="font-size: 22px; margin-right: 6px;"></span> Deficiência
                 </h3>
                 ${textoPergunta}
                 <div class="action-group-col" style="margin-top:20px;">
-                    <button id="btn-def-aluno" class="btn btn-success" style="${estiloAluno}">A criança tem deficiência</button>
-                    <button id="btn-def-familia" class="btn btn-info" style="${estiloFamilia}">Pai/Mãe tem deficiência</button>
-                    <button id="btn-def-nao" class="btn btn-danger">Não possui deficiência</button>
+                    <button id="btn-def-aluno" class="btn btn-success" style="${estiloAluno}">${txt_btn_DeficAluno}</button>
+                    <button id="btn-def-familia" class="btn btn-info" style="${estiloFamilia}">${txt_btn_DeficFamilia}</button>
+                    <button id="btn-def-nao" class="btn btn-danger">${txt_btn_DeficNao}</button>
                 </div>
             `;
             
@@ -1452,8 +1467,10 @@ if (inputDist) {
                     salvarHistorico(); 
                     estado.distancia = dist;
                     estado.escolaProximaUser = true; 
+                    estado.opcoesMaisProx = '';
+                    estado.opcoesMaisProxCount = 0;
                     if (estado.distancia >= 1500) {
-                        estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (${estado.distancia}m) e os critérios da escola ou encaminhamento estão corretos.` };
+                        estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (1500m) e os critérios da escola (ou encaminhamento) estão corretos.` };
                     }
                     renderizarPasso(); 
                 });
@@ -1464,6 +1481,15 @@ if (inputDist) {
                     salvarHistorico(); 
                     estado.distancia = dist;
                     estado.escolaProximaUser = false; 
+                    // Recalcular opções com base na distância informada pelo usuário
+                    try {
+                        const recal = calcularOpcoesMaisProx(estado.distancia);
+                        estado.opcoesMaisProxItems = recal.items || [];
+                        // Filtrar novamente por distancia menor que a informada (garantia)
+                        const filtradas = (estado.opcoesMaisProxItems || []).filter(i => Number(i.distancia) < Number(estado.distancia));
+                        estado.opcoesMaisProx = filtradas.map((it, idx) => `${it.nome_unidade} (${it.distancia})`).join(filtradas.length > 1 ? ' e ' : '');
+                        estado.opcoesMaisProxCount = filtradas.length;
+                    } catch (e) { console.error('Erro recalculando opcoesMaisProx:', e); }
                     renderizarPasso(); 
                 });
                 return;
@@ -1586,7 +1612,71 @@ if (inputDist) {
                      distEscolaAtual = (estado.distanciasOSRM[idEscolaAtual] !== undefined && estado.distanciasOSRM[idEscolaAtual] !== 'Erro') ? estado.distanciasOSRM[idEscolaAtual] : escolaAtualNoArray.distancia;
                 }
 
-                let distInputUser = estado.distanciaSugeridaInput ? parseInt(estado.distanciaSugeridaInput) : null;
+                let distInputUser = estado.distanciaSugeridaInput ? parseInt(estado.distanciaSugeridaInput, 10) : null;
+
+                const limparNome = (n) => (typeof n === 'string' ? n.split(',')[0].trim() : n);
+
+                const calcularOpcoesMaisProx = (threshold) => {
+                    const th = (threshold !== undefined && threshold !== null) ? Number(threshold) : (distInputUser !== null ? Number(distInputUser) : null);
+                    if (estado.escolaProximaUser === true || th === null || Number.isNaN(th)) {
+                        return { texto: '', count: 0, items: [] };
+                    }
+
+                    const idxAtual = listaOrdenada.findIndex(e => String(e.id) === String(idEscolaAtual));
+                    if (idxAtual <= 0) {
+                        return { texto: '', count: 0, items: [] };
+                    }
+
+                    const escolaAtual = listaOrdenada[idxAtual];
+                    const distAtual = (estado.distanciasOSRM[escolaAtual.id] !== undefined && estado.distanciasOSRM[escolaAtual.id] !== 'Erro')
+                        ? Number(estado.distanciasOSRM[escolaAtual.id])
+                        : Number(escolaAtual.distancia);
+
+                    const candidatas = listaOrdenada.slice(0, idxAtual).map(esc => {
+                        const distEsc = (estado.distanciasOSRM[esc.id] !== undefined && estado.distanciasOSRM[esc.id] !== 'Erro')
+                            ? Number(estado.distanciasOSRM[esc.id])
+                            : Number((esc.distancia / 50) *50);
+                        return { esc, distEsc };
+                    }).filter(o => (o.distEsc < th && o.distEsc <= distAtual));
+
+                    if (!candidatas.length) {
+                        return { texto: '', count: 0, items: [] };
+                    }
+
+                    let selecionadas = candidatas.slice(0, 3).map(o => o.esc);
+                    if (candidatas.length > 3) {
+                        const distTerceiro = (estado.distanciasOSRM[selecionadas[2].id] !== undefined && estado.distanciasOSRM[selecionadas[2].id] !== 'Erro')
+                            ? Number(estado.distanciasOSRM[selecionadas[2].id])
+                            : Number(selecionadas[2].distancia);
+                        const distQuarto = (estado.distanciasOSRM[candidatas[3].esc.id] !== undefined && estado.distanciasOSRM[candidatas[3].esc.id] !== 'Erro')
+                            ? Number(estado.distanciasOSRM[candidatas[3].esc.id])
+                            : Number(candidatas[3].esc.distancia);
+                        if (Number(distTerceiro) === Number(distQuarto)) {
+                            selecionadas.push(candidatas[3].esc);
+                        }
+                    }
+
+                    const items = selecionadas.map(esc => {
+                        const distEsc = (estado.distanciasOSRM[esc.id] !== undefined && estado.distanciasOSRM[esc.id] !== 'Erro')
+                            ? Number(estado.distanciasOSRM[esc.id])
+                            : Number((esc.distancia / 50) *50);
+                        return { nome_unidade: limparNome(esc.nome), distancia: Math.round(distEsc), id: esc.id };
+                    });
+
+                    const texto = items.reduce((acc, it, index) => {
+                        const parte = `${it.nome_unidade} (${it.distancia})`;
+                        if (index === 0) return parte;
+                        if (index === items.length - 1) return `${acc} e ${parte}`;
+                        return `${acc}, ${parte}`;
+                    }, '');
+
+                    return { texto, count: items.length, items };
+                };
+
+                const opcoesMaisProxData = calcularOpcoesMaisProx(distInputUser);
+                estado.opcoesMaisProx = opcoesMaisProxData.texto;
+                estado.opcoesMaisProxCount = opcoesMaisProxData.count;
+                estado.opcoesMaisProxItems = opcoesMaisProxData.items || []; 
 
                 let ehMaisProxima = false;
                 if (listaOrdenada.length > 0) {
@@ -1617,7 +1707,7 @@ if (inputDist) {
                 
                 estado.escolaProximaCalc = ehMaisProxima || ehMaisProximaParcial;
                 estado.ehMaisProximaParcial = ehMaisProximaParcial;
-                estado.top3EscolasNomes = listaOrdenada.slice(0, 3).map(e => e.nome).join(' / ');
+                estado.top3EscolasNomes = listaOrdenada.slice(0, 3).map(e => limparNome(e.nome)).join(' / ');
 
                 // New exception rule for skipping Encaminhamento step
                 const temDeficiencia = (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA');
@@ -1901,8 +1991,10 @@ if (inputDist) {
                 salvarHistorico(); 
                 estado.distancia = dist;
                 estado.escolaProximaUser = true; 
+                estado.opcoesMaisProx = '';
+                estado.opcoesMaisProxCount = 0;
                 if (estado.distancia >= 1500) {
-                    estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (${estado.distancia}m) e os critérios da escola ou encaminhamento estão corretos.` };
+                    estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (1500m) e os critérios da escola ou encaminhamento estão corretos.` };
                 }
                 renderizarPasso(); 
             });
@@ -1914,6 +2006,13 @@ if (inputDist) {
                 salvarHistorico(); 
                 estado.distancia = dist;
                 estado.escolaProximaUser = false; 
+                try {
+                    const recal = calcularOpcoesMaisProx(estado.distancia);
+                    estado.opcoesMaisProxItems = recal.items || [];
+                    const filtradas = (estado.opcoesMaisProxItems || []).filter(i => Number(i.distancia) < Number(estado.distancia));
+                    estado.opcoesMaisProx = filtradas.map((it, idx) => `${it.nome_unidade} (${it.distancia})`).join(filtradas.length > 1 ? ' e ' : '');
+                    estado.opcoesMaisProxCount = filtradas.length;
+                } catch (e) { console.error('Erro recalculando opcoesMaisProx:', e); }
                 renderizarPasso(); 
             });
 
@@ -1968,19 +2067,28 @@ if (inputDist) {
             let estiloAluno = "background:#27ae60;";
             let estiloFamilia = "background:#2980b9;";
 
+             let txt_btn_DeficAluno = "A criança tem deficiência";
+            let txt_btn_DeficFamilia = "Pai/Mãe tem deficiência";
+            let txt_btn_DeficNao = "Não possui deficiência";
+
             if (sugestaoDeficienciaHtml === 'ALUNO') {
                 textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência da criança. Verifique se o laudo está ok:</p>";
                 estiloAluno = "background:#27ae60; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
+                txt_btn_DeficAluno = "Laudo do aluno está ok";
+                txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
             } else if (sugestaoDeficienciaHtml === 'FAMILIA') {
                 textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência na família. Verifique se o laudo está ok:</p>";
                 estiloFamilia = "background:#2980b9; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
+                txt_btn_DeficFamilia = "Laudo do responsável está ok";
+                txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
             }
 
+            
             let tituloBoxStr = precisaDeficienciaEspecial 
                 ? "Exceção: Ensino Especial" 
-                : `Exceção: Distância (${estado.distancia}m)`;
+                : `Deficiência`;
             let subTituloBox = precisaDeficienciaEspecial 
-                ? "O aluno está matriculado ou necessita de ensino especial." 
+                ? "O aluno está matriculado e necessita de ensino especial." 
                 : "A distância aferida é <b>inferior a 1500m</b>.";
 
             conteudo.innerHTML = `
@@ -1990,9 +2098,9 @@ if (inputDist) {
                 <p>${subTituloBox}</p>
                 ${textoPergunta}
                 <div class="action-group-col" style="margin-top:20px;">
-                    <button id="btn-def-aluno" class="btn btn-success" style="${estiloAluno}">A criança tem deficiência</button>
-                    <button id="btn-def-familia" class="btn btn-info" style="${estiloFamilia}">Pai/Mãe tem deficiência</button>
-                    <button id="btn-def-nao" class="btn btn-danger">Não possui deficiência</button>
+                    <button id="btn-def-aluno" class="btn btn-success" style="${estiloAluno}">${txt_btn_DeficAluno}</button>
+                    <button id="btn-def-familia" class="btn btn-info" style="${estiloFamilia}">${txt_btn_DeficFamilia}</button>
+                    <button id="btn-def-nao" class="btn btn-danger">${txt_btn_DeficNao}</button>
                 </div>
             `;
             
@@ -2125,7 +2233,7 @@ if (inputDist) {
                         <ul style="padding-left: 15px; margin: 0; display: flex; flex-direction: column; gap: 8px;">
                             <li><b>Em <u>Verificação de Semelhança</u></b> os campos "Tipo Inscrição" e "Observações" não podem conter o termo "Transf. - Outros".</li>
                             <li><b>Em <u>dados do candidato</u>, o endereço deve ser:</b><br>${enderecoCompleto}</li>
-                            <li><b>Em <u>Unidades Escolares</u>, deve ter escolhido as escolas mais próximas:</b><br>${estado.top3EscolasNomes}</li>
+                            <li><b>Em <u>Unidades Escolares</u>, deve ter escolhido as escolas mais próximas (nessa ordem):</b><br>${estado.top3EscolasNomes}</li>
                             <li><b>Em <u>Status Inscrição</u>, deve constar:</b><br>"encaminhado(a) para ${estado.nomeEscolaAtual}"</li>
                         </ul>
                     </div>
@@ -2146,7 +2254,7 @@ if (inputDist) {
                     <button id="btn-enc-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não possui</button>
                 </div>
             `;
-            vincularEventoUnico(document.getElementById('btn-enc-sim'), 'click', () => { salvarHistorico(); estado.ehEncaminhado = true; estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (${estado.distancia}m) ou possui exceção válida, e os critérios de encaminhamento estão corretos.` }; renderizarPasso(); });
+            vincularEventoUnico(document.getElementById('btn-enc-sim'), 'click', () => { salvarHistorico(); estado.ehEncaminhado = true; estado.telaFinal = { titulo: "DEFERIR", mensagem: `Aluno encaminhado ou que atende aos critérios para deferimento.` }; renderizarPasso(); });
             vincularEventoUnico(document.getElementById('btn-enc-nao'), 'click', () => { salvarHistorico(); estado.ehEncaminhado = false; estado.telaFinal = { titulo: "INDEFERIR", mensagem: "O aluno não está na escola mais próxima e NÃO possui encaminhamento justificado por falta de vaga." }; renderizarPasso(); });
             return;
         }
