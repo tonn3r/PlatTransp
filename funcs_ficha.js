@@ -841,8 +841,8 @@ window.verificaArqDiastur = async function(documentoContexto) {
 
     // 3. CLONAGEM DA LÓGICA DE RETRY: Tenta capturar o container do mapa em loops controlados em caso de lentidão
     let retryCount = 0;
-    const maxRetries = 5;
-    const retryInterval = 500;
+    const maxRetries = 15;
+    const retryInterval = 400;
 
     const executarInjecaoSobMapa = async () => {
         const toggleContainer = targetDoc.getElementById('mapa-toggle-container');
@@ -916,50 +916,6 @@ window.verificaArqDiastur = async function(documentoContexto) {
                 const complemento = String(registroAluno['COMPLEMENTO'] || '').trim();
                 const enderecoFormatado = `${endereco}, Nº ${numero}${complemento ? ' - ' + complemento : ''} - ${bairro} (CEP: ${cep})`;
 
-                let rotaLink = null;
-                const criarRotaPorCoordenadas = (origem, destinoLat, destinoLon) =>
-                    `https://maps.google.com/maps?saddr=${encodeURIComponent(origem)}&daddr=${encodeURIComponent(destinoLat + ' ' + destinoLon)}`;
-
-                if (typeof window.extrairDadosGeograficos === 'function') {
-                    const idSolInput = targetDoc.querySelector('input[name="id_solicitacao"]') || targetDoc.querySelector('input[name="id"]');
-                    const idFicha = idSolInput ? String(idSolInput.value || '').trim() : '';
-
-                    if (idFicha) {
-                        const urlOrigem = targetDoc.location && targetDoc.location.href
-                            ? targetDoc.location.href
-                            : window.location.href;
-                        const basePath = urlOrigem.substring(0, urlOrigem.lastIndexOf('/') + 1);
-                        const urlFichaNova = `${basePath}ficha_transporte_nova_versao.php?id_solicitacao=${encodeURIComponent(idFicha)}`;
-
-                        try {
-                            const dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
-                            if (
-                                dadosGeo &&
-                                dadosGeo.geoEscola_Latit &&
-                                dadosGeo.geoEscola_Longit
-                            ) {
-                                rotaLink = criarRotaPorCoordenadas(
-                                    enderecoFormatado,
-                                    dadosGeo.geoEscola_Latit,
-                                    dadosGeo.geoEscola_Longit
-                                );
-                            }
-                        } catch (e) {
-                            console.warn("[AUDITORIA-LOTE] Falha ao obter coordenadas da escola para o link de rota:", e.message || e);
-                        }
-                    }
-                }
-
-                if (!rotaLink) {
-                    rotaLink = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(enderecoFormatado)}&destination=${encodeURIComponent('Escola')}`;
-                }
-
-                const linkRotaHtml = `
-                    <a href="${rotaLink}" target="_blank" style="color: #2980b9; text-decoration: underline; font-weight: bold; margin-left: 8px; display: inline-block;">
-                        Ver trajeto
-                    </a>
-                `;
-
                 // Persistir os dados minerados no barramento SharedStore global do ecossistema
                 if (typeof window.setSharedStore === 'function') {
                     window.setSharedStore({
@@ -976,7 +932,6 @@ window.verificaArqDiastur = async function(documentoContexto) {
                         <br><span style="background: #fff8db; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; border: 1px solid #f1c40f; color: #d35400; font-weight: bold; width: calc(100% - 18px); box-sizing: border-box;">
                             ${enderecoFormatado}
                         </span>
-                        ${linkRotaHtml}
                     </div>
                 `;
             } else {
@@ -996,7 +951,6 @@ window.verificaArqDiastur = async function(documentoContexto) {
 // POLLER CONTEXTUALIZADO (IFRAME & DIRECT DEEP TRAVERSAL): Posicionado na base para ler referências acima
 (function() {
     let checkCounter = 0;
-    const maxPollAttempts = 10;
     
     function tentarLocalizarFicha() {
         checkCounter++;
@@ -1024,10 +978,8 @@ window.verificaArqDiastur = async function(documentoContexto) {
             return;
         }
         
-        if (checkCounter < maxPollAttempts) {
+        if (checkCounter < 25) {
             setTimeout(tentarLocalizarFicha, 400);
-        } else {
-            console.warn(`[AUDITORIA-LOTE] Não foi localizada a ficha após ${maxPollAttempts} tentativas. Abortando.`);
         }
     }
     
