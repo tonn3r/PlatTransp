@@ -1,3 +1,4 @@
+// Calcula uma aproximação de distância euclidiana rápida entre dois pontos (evita math.sqrt pesada).
 window.calcularProximidadeRapida = function(lat1, lon1, lat2, lon2) {
     if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
 
@@ -12,6 +13,8 @@ window.calcularProximidadeRapida = function(lat1, lon1, lat2, lon2) {
     // Evitar a extração da Raiz Quadrada (Math.sqrt) economiza muito processamento do computador.
     return (dLat * dLat) + (dLon * dLon);
 };
+
+// Calcula a distância exata entre duas coordenadas em metros (Fórmula de Haversine).
 window.calcularDistanciaHaversine = function(lat1, lon1, lat2, lon2) {
     if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
 
@@ -30,6 +33,8 @@ window.calcularDistanciaHaversine = function(lat1, lon1, lat2, lon2) {
 
     return Math.round((R * c) * 1000);
 };
+
+// Copia para a área de transferência as coordenadas do endereço atual do aluno.
 window.copiarCoordenadasEndereco = function() {
     const rota = window.getSharedStoreValue?.('dadosGeraisRota');
 
@@ -81,6 +86,7 @@ window.copiarCoordenadasEndereco = function() {
 // - Regex patterns: /origin=([^&]+)/i and /destination=([^&]+)/i capture coordinate strings
 // - Coordinate parsing handles space/comma separators and converts to float
 // - Returns structured object with lat/lon for address and school locations
+// Extrai dados geográficos (como Lat e Lon) do mapa da ficha de transporte usando DOMParser e expressões regulares.
 window.extrairDadosGeograficos = async function(urlFichaNova) {
     const tInicioGeo = performance.now();
 
@@ -190,6 +196,7 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
     }
 };
 
+// Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
 window.sincronizarMapaECoordenadas =
 async function(docAlvo) {
 
@@ -589,6 +596,7 @@ async function(docAlvo) {
 };
 
 // --- SECTION: HELPER PARA CONTROLE DE COTAS E LIMITES (ANTI-COBRANÇA) ---
+// Verifica se o limite diário da chave de API do Google Maps foi atingido para evitar cobranças indevidas.
 function verificarEIncrementarCotaGoogle(apiKey, nomeChave) {
     const hoje = new Date().toISOString().slice(0, 10);
     const chaveStorageCount = `gmaps_count_${apiKey}_${hoje}`;
@@ -611,11 +619,13 @@ function verificarEIncrementarCotaGoogle(apiKey, nomeChave) {
     return true;
 }
 
+// Salva no localStorage que a chave específica do Google atingiu o limite ou foi bloqueada.
 function marcarChaveComoBloqueada(apiKey) {
     const hoje = new Date().toISOString().slice(0, 10);
     localStorage.setItem(`gmaps_blocked_${apiKey}_${hoje}`, 'true');
 }
 
+// Injeta assincronamente a SDK do Google Maps na página se ela ainda não existir.
 // Auxiliar para carregar de forma assíncrona o script SDK do Google Maps sem duplicar tags
 function carregarSDKGoogleMaps(apiKey) {
     return new Promise((resolve) => {
@@ -640,6 +650,7 @@ function carregarSDKGoogleMaps(apiKey) {
 }
 
 // --- SECTION: GOOGLE MAPS / OSRM ROUTING CALCULATION ---
+// Calcula o trajeto (distância da rota) de um ponto ao outro via Google Maps SDK ou servidor OSRM (como fallback).
 window.calcularTrajetoOSRM =
 async function(
     latOrigin,
@@ -714,7 +725,7 @@ async function(
     }
 
     if (googleSucesso && dadosRoteamento !== null) {
-        return dadosRoteamento;
+        return { distancia: dadosRoteamento, fonte: 'GOOGLE' };
     }
 
     console.warn("⚠️ Ambas as chaves do Google falharam ou atingiram os limites. Acionando Fallback OSRM.");
@@ -751,26 +762,24 @@ async function(
         ) {
             const distanciaOsrm = Math.round(data.routes[0].distance);
             console.info(`✅ Roteamento obtido via OSRM: ${distanciaOsrm} metros`);
-            return distanciaOsrm;
+            return { distancia: distanciaOsrm, fonte: 'OSRM' };
         }
 
     } catch (e) {
 
-        if (
-            e.name !== 'AbortError'
-        ) {
-
-            console.error(
-                `❌ Erro ao calcular trajeto via OSRM (${profile}):`,
-                e
-            );
+        if (e.name === 'AbortError') {
+            return null;
         }
+        console.error(`❌ Erro ao calcular trajeto via OSRM (${profile}):`, e);
     }
 
-    return null;
+    console.warn("⚠️ OSRM falhou. Acionando Fallback para Haversine (linha reta).");
+    const distHav = window.calcularDistanciaHaversine(latOrigin, lonOrigin, latDest, lonDest);
+    return { distancia: distHav, fonte: 'HAVERSINE' };
 };
 
 // --- SECTION: GOOGLE MAPS / NOMINATIM GEOCODING ---
+// Busca as coordenadas geográficas (Lat/Lon) correspondentes a um texto de endereço via Google ou Nominatim.
 window.obterCoordenadasPorEndereco =
 async function(enderecoCompleto) {
 

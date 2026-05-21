@@ -1,16 +1,20 @@
+// Configura os scripts, eventos e modificações visuais aplicados à página de pesquisa de alunos/solicitações.
 window.iniciarPaginaPesquisa = function() {
     let paginaAtual = 1;
 
+    // Limpa acentos e caracteres especiais para ajudar nos filtros de texto.
     function removerAcentosEspeciais(str) {
         if (!str) return "";
         return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, "");
     }
 
+    // Força o gatilho de alteração num elemento, avisando o sistema que o valor mudou.
     function dispararEventoChange(elemento) {
         if (!elemento) return;
         elemento.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
+    // Verifica se há alguma restrição (filtro) ativa nas buscas do painel.
     function temFiltroAtivo() {
         if (typeof $ === 'undefined') return false;
         const unidade = $('#id_unidade_selecionada').val();
@@ -26,6 +30,7 @@ window.iniciarPaginaPesquisa = function() {
                (endereco.trim().length > 0);
     }
 
+    // Mostra ou esconde o botão de "limpar filtros" a depender de existirem filtros ativos.
     function atualizarVisibilidadeBotaoReset() {
         const btn = document.getElementById('btn-limpar-filtros');
         if (btn) {
@@ -33,6 +38,7 @@ window.iniciarPaginaPesquisa = function() {
         }
     }
 
+    // Aplica alterações nas funções originais do sistema para que as buscas preservem outros filtros (nome, status, etc).
     function aplicarPatches() {
         const win = window;
 
@@ -201,6 +207,7 @@ window.iniciarPaginaPesquisa = function() {
         };
     }
 
+    // Ajusta o design, adiciona busca em tempo real com datalist e vincula as funções customizadas ao DOM na listagem inicial.
     function aplicarMelhorias() {
         const selectUnidade = document.getElementById('id_unidade_selecionada');
         if (!selectUnidade || document.getElementById('unidade-autocomplete')) return;
@@ -324,6 +331,7 @@ window.iniciarPaginaPesquisa = function() {
         }
     }
 
+    // Dispara via Ajax a listagem de alunos paginada baseada em avançar/voltar no painel melhorado.
     function dispararPesquisaPaginada(direcao) {
         if (typeof $ === 'undefined') return;
         if (direcao === 'next') paginaAtual++;
@@ -361,6 +369,7 @@ window.iniciarPaginaPesquisa = function() {
         });
     }
 
+    // Cria ou atualiza os botões inferiores de paginação com os botões "Anterior" e "Próxima".
     function atualizarBarraPaginacao() {
         const container = document.getElementById('mostra_alunos');
         if (!container) return;
@@ -385,6 +394,7 @@ window.iniciarPaginaPesquisa = function() {
         } else if (barra) { barra.remove(); }
     }
 
+    // Preenche a tabela no topo da página de pesquisa com os alunos abertos recentemente guardados no cache.
     function carregarTabelaHistorico() {
         const divPrincipal = document.getElementById('mostra_alunos');
         if (!divPrincipal || divPrincipal.innerHTML.replace(/<br\s*\/?>/gi, '').trim() !== "") return;
@@ -404,6 +414,7 @@ window.iniciarPaginaPesquisa = function() {
         vincularEventosHistorico();
     }
 
+    // Adiciona os event listeners aos botões das tabelas para registrar as aberturas recentes no histórico.
     function vincularEventosHistorico() {
         document.querySelectorAll('.botao').forEach(b => {
             if (b.dataset.eventoHistoricoVinculado) return; 
@@ -434,6 +445,7 @@ window.iniciarPaginaPesquisa = function() {
         });
     }
 
+    // Pega os parâmetros do endereço (URL) do navegador para preencher os filtros da página automaticamente.
     function processarParametrosURL() {
         const params = new URLSearchParams(window.location.search);
         let realizarBuscaAutomatica = false;

@@ -1,9 +1,11 @@
+// Escopo auto-executável: inicializa o Addon, faz chamadas iniciais dependendo da URL e configura o monitoramento do sistema.
 (function() {
     'use strict';
 
     const VERSAO_ATUAL = "3.0"; 
     const URL_VERSAO = "https://raw.githubusercontent.com/tonn3r/PlatTransp/main/version.json";
 
+    // Verifica por uma nova versão do script da extensão através de um link remoto com JSON, emitindo aviso na tela.
     async function verificarAtualizacao() {
         try {
             const controller = new AbortController();
@@ -44,6 +46,7 @@
         if (typeof window.iniciarPaginaFicha === 'function') window.iniciarPaginaFicha();
     }
 
+    // Interrompe e descarta as solicitações de busca de distância (OSRM) para poupar uso de CPU e memória.
     // Função global que interrompe qualquer cálculo OSRM a decorrer
     window.cancelarProcessamentosAssistente = function() {
         if (window.osrmAbortController) {
@@ -53,6 +56,7 @@
         window.osrmAbortController = null;
     };
 
+    // Remove os modais, botões e limpa o armazenamento global do Assistente de Análise.
     function ocultarBotaoAssistente() {
         const btn = document.getElementById('btn-assistente-transporte');
         const mod = document.getElementById('modal-assistente-analise');
@@ -71,6 +75,7 @@
         if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
     }
 
+    // Empacota a função "FechaModal" nativa para rodar nossa limpeza interna sempre que um modal for fechado no SE2.
     function envolverFechaModal(originalFechaModal) {
         if (typeof originalFechaModal !== 'function') return originalFechaModal;
         if (originalFechaModal.__plattransp_wrapped) return originalFechaModal;
@@ -82,6 +87,7 @@
         return wrapped;
     }
 
+    // Tenta sobrescrever funções vitais e acompanhar iframes carregados para embutir as modificações necessárias sem perdas.
     function monitorarCicloDeVidaModal() {
         if (typeof window.FechaModal === 'function') {
             window.FechaModal = envolverFechaModal(window.FechaModal);

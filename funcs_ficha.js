@@ -1,3 +1,4 @@
+// Remove os acentos e normaliza os caracteres de um texto, além de passá-lo para maiúsculas.
 window.normalizarTexto = function(texto) {
     if (!texto) return "";
 
@@ -16,6 +17,7 @@ window.normalizarTexto = function(texto) {
 // - Sem dependência de parent/top/window compartilhado
 // - Compatível com iframe, frameset e acesso direto
 
+// Busca ou cria o elemento de formulário escondido que armazena dados globais compartilhados da sessão.
 window.getSharedStoreElement = function() {
     let targetDoc = document;
     try {
@@ -38,6 +40,7 @@ window.getSharedStoreElement = function() {
     return el;
 };
 
+// Pega os valores armazenados no estado global (shared store) a partir do elemento escondido do DOM.
 window.getSharedStore = function() {
     const el = window.getSharedStoreElement();
 
@@ -51,11 +54,13 @@ window.getSharedStore = function() {
     }
 };
 
+// Pega o valor correspondente a uma chave específica armazenada no estado global.
 window.getSharedStoreValue = function(key) {
     const store = window.getSharedStore();
     return store ? store[key] : undefined;
 };
 
+// Atualiza ou insere múltiplos dados no estado global (shared store) através de um objeto.
 window.setSharedStore = function(updates) {
     const el = window.getSharedStoreElement();
 
@@ -70,6 +75,7 @@ window.setSharedStore = function(updates) {
     return store;
 };
 
+// Define o valor de uma chave específica e atualiza o estado global na página.
 window.setSharedStoreValue = function(key, value) {
     const store = window.getSharedStore();
 
@@ -84,6 +90,7 @@ window.setSharedStoreValue = function(key, value) {
     return value;
 };
 
+// Insere um botão com um link de pesquisa ao lado do endereço na ficha para encontrar outros alunos na mesma rua.
 window.aplicarLinkPesquisaEndereco = function() {
     const docAlvo = document;
 
@@ -188,6 +195,7 @@ window.aplicarLinkPesquisaEndereco = function() {
     }
 };
 
+// Inicia o processo automático de captura de informações (como RA e status) e chama outras funções auxiliares quando a página da ficha é carregada.
 window.iniciarPaginaFicha = function() {
 
     // Captura o RA do aluno (se houver) e o salva no estado global da aplicação.
@@ -390,6 +398,7 @@ window.iniciarPaginaFicha = function() {
     );
 };
 
+// Realiza a verificação e o cálculo prévio de distância por endereço e coordenadas, e salva as informações no estado compartilhado.
 window.realizarCalculosIniciaisDistancia = async function() {
 
     const docAlvo = document;
@@ -602,7 +611,7 @@ window.realizarCalculosIniciaisDistancia = async function() {
         distDiferentes = false;
     }
 
-    let distCoordFoot =
+    let distCoordFootObj =
         await window.calcularTrajetoOSRM(
             dadosGeo.geoEndereco_Latit,
             dadosGeo.geoEndereco_Longit,
@@ -610,6 +619,7 @@ window.realizarCalculosIniciaisDistancia = async function() {
             dadosGeo.geoEscola_Longit,
             'foot'
         );
+    let distCoordFoot = distCoordFootObj ? distCoordFootObj.distancia : null;
 
     if (
         typeof coordEndereco === 'string'
@@ -619,7 +629,7 @@ window.realizarCalculosIniciaisDistancia = async function() {
 
     } else if (distDiferentes) {
 
-        distEndFoot =
+        let distEndFootObj =
             await window.calcularTrajetoOSRM(
                 coordEndereco.lat,
                 coordEndereco.lon,
@@ -627,6 +637,7 @@ window.realizarCalculosIniciaisDistancia = async function() {
                 dadosGeo.geoEscola_Longit,
                 'foot'
             );
+        distEndFoot = distEndFootObj ? distEndFootObj.distancia : null;
 
     } else {
 
@@ -648,16 +659,17 @@ window.realizarCalculosIniciaisDistancia = async function() {
         distEndFoot > 10000
     ) {
 
-        let distCoordCar =
-            distCoordFoot > 10000
-                ? await window.calcularTrajetoOSRM(
-                    dadosGeo.geoEndereco_Latit,
-                    dadosGeo.geoEndereco_Longit,
-                    dadosGeo.geoEscola_Latit,
-                    dadosGeo.geoEscola_Longit,
-                    'driving'
-                )
-                : distCoordFoot;
+        let distCoordCar = distCoordFoot;
+        if (distCoordFoot > 10000) {
+            let distCoordCarObj = await window.calcularTrajetoOSRM(
+                dadosGeo.geoEndereco_Latit,
+                dadosGeo.geoEndereco_Longit,
+                dadosGeo.geoEscola_Latit,
+                dadosGeo.geoEscola_Longit,
+                'driving'
+            );
+            if (distCoordCarObj) distCoordCar = distCoordCarObj.distancia;
+        }
 
         let distEndCar =
             distEndFoot;
@@ -673,7 +685,7 @@ window.realizarCalculosIniciaisDistancia = async function() {
 
             } else {
 
-                distEndCar =
+                let distEndCarObj =
                     await window.calcularTrajetoOSRM(
                         coordEndereco.lat,
                         coordEndereco.lon,
@@ -681,6 +693,7 @@ window.realizarCalculosIniciaisDistancia = async function() {
                         dadosGeo.geoEscola_Longit,
                         'driving'
                     );
+                if (distEndCarObj) distEndCar = distEndCarObj.distancia;
             }
         }
 
@@ -764,6 +777,218 @@ window.realizarCalculosIniciaisDistancia = async function() {
         }
     }
 };
+
+
+// Função central de Auditoria de Lote (Com suporte a varredura recursiva de tempo para o container do mapa)
+window.verificaArqDiastur = async function(documentoContexto) {
+    const targetDoc = documentoContexto || document;
+    console.log("[AUDITORIA-LOTE] Iniciando verificação de ocorrências...");
+
+    const primeiraSecaoOcorrencias = targetDoc.querySelector('#div_ocorrencias');
+    if (!primeiraSecaoOcorrencias) {
+        console.warn("[AUDITORIA-LOTE] Primeiro #div_ocorrencias não localizado neste contexto.");
+        return;
+    }
+
+    // Fallbacks inteligentes estruturais de ano
+    let anoAtendimento = "";
+    const inputAno = targetDoc.querySelector('input[name="ano_atendimento"]');
+    if (inputAno && inputAno.value.trim()) {
+        anoAtendimento = inputAno.value.trim();
+    } else {
+        const matchAno = primeiraSecaoOcorrencias.innerText.match(/\b(20\d{2})\b/);
+        anoAtendimento = matchAno ? matchAno[1] : new Date().getFullYear();
+    }
+    
+    const raAlunoRaw = window.getSharedStoreValue?.('raAluno') || targetDoc.getElementById('ra_prodesp_search')?.value || '';
+    const raAlunoTarget = raAlunoRaw.replace(/\D/g, '');
+
+    if (!raAlunoTarget) {
+        console.warn("[AUDITORIA-LOTE] Falha de contexto: RA não extraído do DOM.");
+        return;
+    }
+
+    let tdArquivo = null;
+    let numeroArquivo = "";
+    const celulas = primeiraSecaoOcorrencias.querySelectorAll('td');
+
+    celulas.forEach(td => {
+        const matchTxt = td.innerText.match(/Arq\s+(\d+)/i);
+        if (matchTxt) {
+            tdArquivo = td;
+            numeroArquivo = matchTxt[1];
+        }
+    });
+
+    if (!tdArquivo || !numeroArquivo) {
+        console.log("[AUDITORIA-LOTE] Nenhuma linha contendo 'Arq XXXX' elegível para link.");
+        return;
+    }
+
+    const urlArquivo = `http://plataforma-se2/arquivos/transporte/arquivos%20empresa/Arquivo_${numeroArquivo}_${anoAtendimento}.xlsx`;
+
+    // 1. Converte de imediato o termo estático em link ativo na tabela original (Aparece TODAS as vezes)
+    tdArquivo.innerHTML = `<a href="${urlArquivo}" target="_blank" style="color: #2980b9; font-weight: bold; text-decoration: underline;" title="Download do arquivo original">Arq ${numeroArquivo} 📥</a>`;
+
+    // 2. FILTRAGEM DE SEGURANÇA POR STATUS: O painel sob o mapa só é montado se a ficha contiver "EM ANÁLISE"
+    const statusTextoGlobal = (window.getSharedStoreValue?.('statusFicha') || targetDoc.getElementById('status_atendimento')?.innerText || targetDoc.getElementById('mostra_status_pedido')?.innerText || "").toUpperCase();
+    const isEmAnaliseLote = statusTextoGlobal.includes('EM ANÁLISE') || statusTextoGlobal.includes('EM ANALISE');
+    
+    if (!isEmAnaliseLote) {
+        console.log("[AUDITORIA-LOTE] Ficha fora de análise. Painel complementar omitido e link mantido.");
+        return;
+    }
+
+    // 3. CLONAGEM DA LÓGICA DE RETRY: Tenta capturar o container do mapa em loops controlados em caso de lentidão
+    let retryCount = 0;
+    const maxRetries = 15;
+    const retryInterval = 400;
+
+    const executarInjecaoSobMapa = async () => {
+        const toggleContainer = targetDoc.getElementById('mapa-toggle-container');
+        
+        if (!toggleContainer) {
+            if (retryCount < maxRetries) {
+                retryCount++;
+                console.log(`[AUDITORIA-LOTE] Aguardando o elemento #mapa-toggle-container estabilizar... Tentativa ${retryCount}/${maxRetries}`);
+                setTimeout(executarInjecaoSobMapa, retryInterval);
+            } else {
+                console.warn("[AUDITORIA-LOTE] Limite de tentativas atingido. Elemento #mapa-toggle-container indisponível no DOM.");
+            }
+            return;
+        }
+
+        // 4. Estruturar o contêiner de auditoria acoplado diretamente sob o switch-mapa existente
+        let divAuditoria = targetDoc.getElementById('plattransp-auditoria-lote');
+        if (!divAuditoria) {
+            divAuditoria = targetDoc.createElement('div');
+            divAuditoria.id = 'plattransp-auditoria-lote';
+            divAuditoria.style.cssText = "margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc; font-family: verdana; font-size: 10px; display: block;";
+            toggleContainer.parentNode.insertBefore(divAuditoria, toggleContainer.nextSibling);
+        }
+
+        divAuditoria.innerHTML = `
+            <div style="font-size: 10px; font-family: verdana; color: #7f8c8d;">
+                <span class="mdi mdi-loading mdi-spin" style="margin-right: 4px;"></span> Consultando endereço do cadastro original...
+            </div>
+        `;
+
+        try {
+            // Injeção Dinâmica Local Robusta do SheetJS caso a biblioteca não esteja no escopo do documento
+            if (typeof XLSX === 'undefined') {
+                console.log("[AUDITORIA-LOTE] XLSX indisponível. Carregando dependência em tempo de execução...");
+                await new Promise((resolve) => {
+                    const script = targetDoc.createElement('script');
+                    script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+                    script.onload = () => resolve();
+                    script.onerror = () => resolve();
+                    targetDoc.head.appendChild(script);
+                });
+            }
+
+            if (typeof XLSX === 'undefined') {
+                throw new Error("Dependência XLSX offline");
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+            const resposta = await fetch(urlArquivo, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (!resposta.ok) throw new Error("404");
+
+            const buffer = await resposta.arrayBuffer();
+            const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+            const planilhaJson = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+            const registroAluno = planilhaJson.find(linha => {
+                const raLinha = String(linha['RA'] || linha['ID ALUNO'] || '').replace(/\D/g, '');
+                return raLinha === raAlunoTarget;
+            });
+
+            if (registroAluno) {
+                // Construtor String(...) previne erros fatais caso o Excel retorne números puros
+                const endereco = String(registroAluno['ENDERECO'] || registroAluno['LOGRADOURO'] || '').trim();
+                const numero = String(registroAluno['NUMERO'] || 'S/N').trim();
+                const bairro = String(registroAluno['BAIRRO'] || '').trim();
+                const cep = String(registroAluno['CEP'] || '').trim();
+                const complemento = String(registroAluno['COMPLEMENTO'] || '').trim();
+                const enderecoFormatado = `${endereco}, Nº ${numero}${complemento ? ' - ' + complemento : ''} - ${bairro} (CEP: ${cep})`;
+
+                // Persistir os dados minerados no barramento SharedStore global do ecossistema
+                if (typeof window.setSharedStore === 'function') {
+                    window.setSharedStore({
+                        auditoriaLoteDisponivel: true,
+                        auditoriaLoteEnderecoOriginal: enderecoFormatado,
+                        auditoriaLoteDadosCompletos: registroAluno
+                    });
+                }
+
+                // Exibe o painel amigável integrado à caixa de endereço nativa
+                divAuditoria.innerHTML = `
+                    <div style="line-height: 1.5; font-family: verdana; font-size: 10px; color: #2c3e50; margin-top: 5px;">
+                        📍 <b>Endereço original do cadastro em [${anoAtendimento}], conforme <a href="${urlArquivo}" target="_blank" style="color: #2980b9; text-decoration: underline; font-weight: bold;">Arquivo ${numeroArquivo}</a>:</b>
+                        <br><span style="background: #fff8db; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; border: 1px solid #f1c40f; color: #d35400; font-weight: bold; width: calc(100% - 18px); box-sizing: border-box;">
+                            ${enderecoFormatado}
+                        </span>
+                    </div>
+                `;
+            } else {
+                if (divAuditoria) divAuditoria.remove();
+            }
+
+        } catch (erro) {
+            console.warn("[AUDITORIA-LOTE] Omitindo painel complementar por falha técnica de leitura:", erro.message);
+            if (divAuditoria) divAuditoria.remove();
+        }
+    };
+
+    // Inicia o processo de injeção assíncrona com monitoramento de tempo
+    executarInjecaoSobMapa();
+};
+
+// POLLER CONTEXTUALIZADO (IFRAME & DIRECT DEEP TRAVERSAL): Posicionado na base para ler referências acima
+(function() {
+    let checkCounter = 0;
+    
+    function tentarLocalizarFicha() {
+        checkCounter++;
+        
+        let docAlvo = document;
+        let secaoOcorrencias = docAlvo.querySelector('#div_ocorrencias');
+        
+        if (!secaoOcorrencias) {
+            const subIframes = document.querySelectorAll('iframe');
+            for (let i = 0; i < subIframes.length; i++) {
+                try {
+                    let docIframe = subIframes[i].contentDocument || subIframes[i].contentWindow.document;
+                    if (docIframe && docIframe.querySelector('#div_ocorrencias')) {
+                        docAlvo = docIframe;
+                        secaoOcorrencias = docIframe.querySelector('#div_ocorrencias');
+                        break;
+                    }
+                } catch(e) {}
+            }
+        }
+        
+        if (secaoOcorrencias) {
+            // Execução segura: A função já foi içada e compilada em window
+            window.verificaArqDiastur(docAlvo);
+            return;
+        }
+        
+        if (checkCounter < 25) {
+            setTimeout(tentarLocalizarFicha, 400);
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tentarLocalizarFicha);
+    } else {
+        tentarLocalizarFicha();
+    }
+})();
 
 document.addEventListener(
     'DOMContentLoaded',
