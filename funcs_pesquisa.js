@@ -11,7 +11,7 @@ window.iniciarPaginaPesquisa = function() {
     // Força o gatilho de alteração num elemento, avisando o sistema que o valor mudou.
     function dispararEventoChange(elemento) {
         if (!elemento) return;
-        elemento.dispatchEvent(new Event('change', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     // Verifica se há alguma restrição (filtro) ativa nas buscas do painel.
@@ -414,16 +414,20 @@ window.iniciarPaginaPesquisa = function() {
         vincularEventosHistorico();
     }
 
-    // Adiciona os event listeners aos botões das tabelas para registrar as aberturas recentes no histórico.
+    // Adiciona os event listeners de forma ampla e irrestrita para registrar no histórico
     function vincularEventosHistorico() {
-        document.querySelectorAll('.botao').forEach(b => {
+        // Seletor universal: intercepta cliques em botões explicitamente ou elementos com links contendo o texto-alvo.
+        document.querySelectorAll('.botao, button, a, [onclick]').forEach(b => {
             if (b.dataset.eventoHistoricoVinculado) return; 
-            b.dataset.eventoHistoricoVinculado = "true";
+            
+            const textoBotao = (b.innerText || b.value || "").toLowerCase();
+            if (textoBotao.includes("abrir") || textoBotao.includes("reclama") || textoBotao.includes("v2")) {
+                b.dataset.eventoHistoricoVinculado = "true";
 
-            b.addEventListener('click', function() {
-                const textoBotao = this.innerText.toLowerCase();
-                if (textoBotao.includes("abrir") || textoBotao.includes("reclama")) {
+                b.addEventListener('click', function() {
                     const tr = this.closest('tr');
+                    if (!tr) return;
+
                     const id = (tr.cells[1] ? tr.cells[1].innerText.trim() : null) || (tr.querySelector('strong')?.innerText.trim());
                     
                     if (id) {
@@ -440,8 +444,8 @@ window.iniciarPaginaPesquisa = function() {
                         hist.unshift({ id: id, conteudoHtml: cloneTr.innerHTML });
                         localStorage.setItem('historico_alunos_transporte', JSON.stringify(hist.slice(0, 100)));
                     }
-                }
-            });
+                });
+            }
         });
     }
 
@@ -547,13 +551,10 @@ window.iniciarPaginaPesquisa = function() {
                     this.innerHTML = '✅ Copiado sem cabeçalho!';
                     setTimeout(() => { this.innerHTML = originalText; }, 2000);
                 });
-
-                // desconectar observer após a injeção inicial para economizar recursos
-                try { observer.disconnect(); } catch(e) {}
             }
         }
         atualizarBarraPaginacao();
-        vincularEventosHistorico();
+        vincularEventosHistorico(); // Continua monitorando os novos registros de forma contínua
     });
 
     const target = document.getElementById('mostra_alunos');

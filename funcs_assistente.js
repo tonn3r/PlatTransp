@@ -305,8 +305,6 @@ function resolverEncaminhamentoAluno(doc, dbEncaminhamentos) {
         if (Array.isArray(lista) && lista.length > 0) {
             maisRecente = lista.reduce((prev, current) => (prev.ano > current.ano) ? prev : current);
             msgEncaminhamentoHtml = montarHtmlEncaminhamento(maisRecente);
-        } else {
-            console.log('[ASSISTENTE] RA', raAluno, 'não localizado no banco de encaminhamentos.');
         }
     } else if (!raAluno || !dbEncaminhamentos) {
         console.error('[ASSISTENTE] Falha ao pesquisar encaminhamentos.', {
@@ -316,6 +314,8 @@ function resolverEncaminhamentoAluno(doc, dbEncaminhamentos) {
     }
     return { raAluno, maisRecente, msgEncaminhamentoHtml };
 }
+
+//compara encaminhamento do DB com os dados da Ficha do aluno (endereço, unidade, etc)
 
 // Verifica na ficha se há indicações de deficiência para o aluno ou familiares e sugere a análise.
 function calcularSugestaoDeficiencia(doc) {
@@ -377,7 +377,7 @@ function extrairContextoFicha(doc) {
     if (escolaAtual.escolaRegistro?.turmas) {
         isEspecial = isEspecial || escolaAtual.escolaRegistro.turmas.some(t => window.normalizarTexto(t.nivel).includes('ESPECIAL'));
     }
-
+    
     const escolasAptas = filtrarEscolasAptas(escolasDB, nivel.nivelNorm, nivel.isBercarioGeral);
     const urlPesquisaRua = montarUrlPesquisaRua(endRua);
     const encaminhamento = resolverEncaminhamentoAluno(doc, dbEncaminhamentos);
@@ -416,7 +416,8 @@ function extrairContextoFicha(doc) {
         isBercarioGeral: nivel.isBercarioGeral,
         isEspecial,
         iframeMapa: doc.getElementById('map_endereco'),
-        inputDistanciaFicha: doc.querySelector('input[name="distancia_aferida"], #distancia_aferida')
+        inputDistanciaFicha: doc.querySelector('input[name="distancia_aferida"], #distancia_aferida'),
+        encaminhamento: encaminhamento
     };
 }
 
@@ -1131,6 +1132,7 @@ window.abrirModalAssistente = async function() {
 
     const enderecoCompleto = ctx.enderecoCompleto;
     const endRua = ctx.endRua;
+    const endCEP = ctx.cepVal;
     const ruaMatch = ctx.ruaMatch;
     const ehAnaliseInicial = ctx.ehAnalise;
     const nomeRuaTitulo = ctx.nomeRuaTitulo;
@@ -1197,6 +1199,7 @@ window.abrirModalAssistente = async function() {
         ruaMatch: ruaMatch,
         confirmacaoFeita: false,
         ehMaisProximaParcial: false,
+        ehMaisProximaIntegral: false,
         isEspecial: ctx.isEspecial,
         nomeEscolaAtual: ctx.nomeEscolaAtual,
         areaRuralProcessada: false,
@@ -1227,7 +1230,7 @@ window.abrirModalAssistente = async function() {
             ultimoModo: estado.ultimoModoUsado
         });
     }
-
+    
     let historico = [];
     let listaExibirBase = [];
 
@@ -1872,18 +1875,18 @@ if (inputDist) {
                 }
 
                 const escolaMaisProximaIntegral = listaOrdenada.find(e => e.periodosEncontrados && e.periodosEncontrados.includes('INTEGRAL'));
-                let ehMaisProximaIntegral = false;
+                
                 if (!ehMaisProxima && !ehMaisProximaParcial && escolaMaisProximaIntegral) {
                     if (String(escolaMaisProximaIntegral.id) === String(idEscolaAtual)) {
-                        ehMaisProximaIntegral = true;
+                        estado.ehMaisProximaIntegral = true;
                     } else if (escolaAtualNoArray && escolaAtualNoArray.periodosEncontrados && escolaAtualNoArray.periodosEncontrados.includes('INTEGRAL')) {
                         let distIntegralMaisProxima = (estado.distanciasOSRM[escolaMaisProximaIntegral.id] !== undefined && estado.distanciasOSRM[escolaMaisProximaIntegral.id] !== 'Erro') ? estado.distanciasOSRM[escolaMaisProximaIntegral.id] : escolaMaisProximaIntegral.distancia;
                         if (distEscolaAtual !== null && distIntegralMaisProxima !== null && distEscolaAtual === distIntegralMaisProxima) {
-                            ehMaisProximaIntegral = true;
+                            estado.ehMaisProximaIntegral = true;
                         } else if (distInputUser !== null && distIntegralMaisProxima !== null && distInputUser === distIntegralMaisProxima) {
-                            ehMaisProximaIntegral = true;
+                            estado.ehMaisProximaIntegral = true;
                         } else if (escolaAtualNoArray.terreno && escolaMaisProximaIntegral.terreno && String(escolaAtualNoArray.terreno) === String(escolaMaisProximaIntegral.terreno)) {
-                            ehMaisProximaIntegral = true;
+                            estado.ehMaisProximaIntegral = true;
                         }
                     }
                 }
@@ -1891,19 +1894,15 @@ if (inputDist) {
                 estado.escolaProximaCalc = ehMaisProxima || ehMaisProximaParcial;
                 estado.ehMaisProximaParcial = ehMaisProximaParcial;
                 estado.top3EscolasNomes = listaOrdenada.slice(0, 3).map(e => limparNome(e.nome)).join(' / ');
-
-                // New exception rule for skipping Encaminhamento step
-                const temDeficiencia = (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA');
-                if (estado.escolaProximaUser === true || (temDeficiencia && ehMaisProximaIntegral && estado.distancia < 3000) || (temDeficiencia && estado.distancia < 1800)) {
-                    estado.isEncaminhamentoDispensado = true;
-                }
                 
                 // GARANTIA: Se o usuário clicou que NÃO é a mais próxima, força a exibição do Encaminhamento
-                if (estado.escolaProximaUser === false) {
-                    if (!(temDeficiencia && estado.distancia < 1800)) {
-                        estado.isEncaminhamentoDispensado = false;
-                    }
+                if (estado.escolaProximaUser === true) {
+                    estado.isEncaminhamentoDispensado = true;
+                }else{
+                    estado.isEncaminhamentoDispensado = false;
                 }
+
+                                               
 
                 let statusText = "";
                 if (listaOrdenada.length === 0) {
@@ -2371,14 +2370,21 @@ if (inputDist) {
         if (excecaoGarantida && estado.dificuldadeAcesso === true) {
             msgExcecao = msgExcecao + "foi confirmada dificuldade de acesso, o que garante o direito ao transporte escolar independentemente da distância.";
         }
+        
 
+        const temDeficiencia = (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA');
+                if ((temDeficiencia && estado.distancia < 1800) || (temDeficiencia && (estado.ehMaisProximaIntegral || estado.ehMaisProximaParcial)) || (temDeficiencia && estado.distancia < 3000) || (temDeficiencia && estado.isEspecial)) {
+                
+                    estado.isEncaminhamentoDispensado = true;
+                }
         if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGarantida) && estado.ehEncaminhado === null) {
-            if (estado.isEncaminhamentoDispensado) {
-                estado.telaFinal = { titulo: "DEFERIR", mensagem: msgExcecao };
-                renderizarPasso();
-                return;
-            }
 
+        if (estado.isEncaminhamentoDispensado) {
+        estado.ehEncaminhado = false; // Define como true para registrar no histórico que o fluxo foi superado
+        estado.telaFinal = { titulo: "DEFERIR", mensagem: msgExcecao };
+        renderizarPasso();
+        return;
+        }
             const windowAlvo = doc.defaultView || window;
             const docHref = windowAlvo.location.href;
             const isFichaAntiga = docHref.includes('ficha_transporte.php') && !docHref.includes('nova_versao');

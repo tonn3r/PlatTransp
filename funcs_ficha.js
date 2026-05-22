@@ -337,10 +337,14 @@ window.iniciarPaginaFicha = function() {
                 const dbLocal =
                     window.escolasDB || [];
 
+                // CORREÇÃO APLICADA: Obtém as coordenadas da rota calculada ou do histórico persistido
+                const dadosRota = typeof window.getSharedStoreValue === 'function' ? window.getSharedStoreValue('dadosGeraisRota') : null;
+                const latAluno = dadosRota?.coordAlunoGPS?.lat || dadosSalvos?.lat;
+                const lonAluno = dadosRota?.coordAlunoGPS?.lon || dadosSalvos?.lon;
+
                 if (
-                    typeof dados !== 'undefined' &&
-                    dados.lat &&
-                    dados.lon &&
+                    latAluno &&
+                    lonAluno &&
                     dbLocal.length > 0
                 ) {
 
@@ -356,8 +360,8 @@ window.iniciarPaginaFicha = function() {
                                     nome: esc.nome,
                                     distancia:
                                         window.calcularDistanciaHaversine(
-                                            dados.lat,
-                                            dados.lon,
+                                            latAluno,
+                                            lonAluno,
                                             esc.lat,
                                             esc.lon
                                         )
@@ -779,8 +783,8 @@ window.realizarCalculosIniciaisDistancia = async function() {
 };
 
 
-// Função central de Auditoria de Lote (Com suporte a varredura recursiva de tempo para o container do mapa)
-window.verificaArqDiastur = async function(documentoContexto) {
+
+window.verificaArqDiastur = async function(documentoContexto = document) {
     const targetDoc = documentoContexto || document;
     console.log("[AUDITORIA-LOTE] Iniciando verificação de ocorrências...");
 
@@ -790,7 +794,7 @@ window.verificaArqDiastur = async function(documentoContexto) {
         return;
     }
 
-    // Fallbacks inteligentes estruturais de ano
+    // --- 1. CAPTURA DE DADOS DO ALUNO ---
     let anoAtendimento = "";
     const inputAno = targetDoc.querySelector('input[name="ano_atendimento"]');
     if (inputAno && inputAno.value.trim()) {
@@ -800,19 +804,28 @@ window.verificaArqDiastur = async function(documentoContexto) {
         anoAtendimento = matchAno ? matchAno[1] : new Date().getFullYear();
     }
     
-    const raAlunoRaw = window.getSharedStoreValue?.('raAluno') || targetDoc.getElementById('ra_prodesp_search')?.value || '';
+    let raAlunoRaw = "";
+    const inputRa = targetDoc.getElementById('ra_prodesp_search');
+    if (inputRa) raAlunoRaw = inputRa.value || "";
+
+    if (typeof window.getSharedStoreValue === 'function'&& !raAlunoRaw) {
+        raAlunoRaw = window.getSharedStoreValue('raAluno') || "";
+    }
+    
     const raAlunoTarget = raAlunoRaw.replace(/\D/g, '');
 
     if (!raAlunoTarget) {
-        console.warn("[AUDITORIA-LOTE] Falha de contexto: RA não extraído do DOM.");
+        console.warn("[AUDITORIA-LOTE] Falha: RA não localizado no DOM.");
         return;
     }
 
+    // --- 2. LOCALIZAR O ARQUIVO DO LOTE NA TABELA ---
     let tdArquivo = null;
     let numeroArquivo = "";
     const celulas = primeiraSecaoOcorrencias.querySelectorAll('td');
 
     celulas.forEach(td => {
+        if (td.dataset.arqProcessado === "true") return;
         const matchTxt = td.innerText.match(/Arq\s+(\d+)/i);
         if (matchTxt) {
             tdArquivo = td;
@@ -821,172 +834,193 @@ window.verificaArqDiastur = async function(documentoContexto) {
     });
 
     if (!tdArquivo || !numeroArquivo) {
-        console.log("[AUDITORIA-LOTE] Nenhuma linha contendo 'Arq XXXX' elegível para link.");
+        console.log("[AUDITORIA-LOTE] Nenhuma linha 'Arq XXXX' elegível.");
         return;
     }
 
+    tdArquivo.dataset.arqProcessado = "true";
     const urlArquivo = `http://plataforma-se2/arquivos/transporte/arquivos%20empresa/Arquivo_${numeroArquivo}_${anoAtendimento}.xlsx`;
 
-    // 1. Converte de imediato o termo estático em link ativo na tabela original (Aparece TODAS as vezes)
-    tdArquivo.innerHTML = `<a href="${urlArquivo}" target="_blank" style="color: #2980b9; font-weight: bold; text-decoration: underline;" title="Download do arquivo original">Arq ${numeroArquivo} 📥</a>`;
+    tdArquivo.innerHTML = `<a href="${urlArquivo}" target="_blank" style="color: #2980b9; font-weight: bold; text-decoration: underline;" title="Baixar planilha do lote">Arq ${numeroArquivo} 📥</a>`;
 
-    // 2. FILTRAGEM DE SEGURANÇA POR STATUS: O painel sob o mapa só é montado se a ficha contiver "EM ANÁLISE"
-    const statusTextoGlobal = (window.getSharedStoreValue?.('statusFicha') || targetDoc.getElementById('status_atendimento')?.innerText || targetDoc.getElementById('mostra_status_pedido')?.innerText || "").toUpperCase();
-    const isEmAnaliseLote = statusTextoGlobal.includes('EM ANÁLISE') || statusTextoGlobal.includes('EM ANALISE');
+    // --- 3. IDENTIFICAR A ESCOLA (DESTINO NO GOOGLE MAPS) ---
+    let destinoEscola = "";
+    const inputIdUnidade = targetDoc.querySelector('input[name="id_unidade"]') || targetDoc.querySelector('input#id_unidade');
     
-    if (!isEmAnaliseLote) {
-        console.log("[AUDITORIA-LOTE] Ficha fora de análise. Painel complementar omitido e link mantido.");
-        return;
+    if (inputIdUnidade && window.escolasDB) {
+        const idBusca = inputIdUnidade.value.trim();
+        const escolaEncontrada = window.escolasDB.find(e => String(e.id) === idBusca);
+        
+        if (escolaEncontrada) {
+            if (escolaEncontrada.lat && escolaEncontrada.lon) {
+                destinoEscola = `${escolaEncontrada.lat},${escolaEncontrada.lon}`;
+            } else if (escolaEncontrada.rua) {
+                destinoEscola = `${escolaEncontrada.rua}, ${escolaEncontrada.numero || 'S/N'} - ${escolaEncontrada.bairro || ''}`;
+            }
+        }
     }
 
-    // 3. CLONAGEM DA LÓGICA DE RETRY: Tenta capturar o container do mapa em loops controlados em caso de lentidão
-    let retryCount = 0;
-    const maxRetries = 15;
-    const retryInterval = 400;
+    // --- 4. LEITURA BRUTA DO XLSX E CRUZAMENTO DE DADOS ---
+    let enderecoXlsx = null;
+    let enderecoXlsxURL = null;
 
-    const executarInjecaoSobMapa = async () => {
-        const toggleContainer = targetDoc.getElementById('mapa-toggle-container');
-        
-        if (!toggleContainer) {
-            if (retryCount < maxRetries) {
-                retryCount++;
-                console.log(`[AUDITORIA-LOTE] Aguardando o elemento #mapa-toggle-container estabilizar... Tentativa ${retryCount}/${maxRetries}`);
-                setTimeout(executarInjecaoSobMapa, retryInterval);
-            } else {
-                console.warn("[AUDITORIA-LOTE] Limite de tentativas atingido. Elemento #mapa-toggle-container indisponível no DOM.");
-            }
-            return;
+    try {
+        const loadingMsg = targetDoc.createElement('span');
+        loadingMsg.innerHTML = " <span style='font-size:10px; color:#e67e22;'>⏳ Lendo endereço do XLSX...</span>";
+        tdArquivo.appendChild(loadingMsg);
+
+        if (typeof XLSX === 'undefined') {
+            await new Promise((resolve) => {
+                const script = targetDoc.createElement('script');
+                script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+                script.onload = () => resolve();
+                script.onerror = () => resolve();
+                targetDoc.head.appendChild(script);
+            });
         }
 
-        // 4. Estruturar o contêiner de auditoria acoplado diretamente sob o switch-mapa existente
-        let divAuditoria = targetDoc.getElementById('plattransp-auditoria-lote');
-        if (!divAuditoria) {
-            divAuditoria = targetDoc.createElement('div');
-            divAuditoria.id = 'plattransp-auditoria-lote';
-            divAuditoria.style.cssText = "margin-top: 10px; padding-top: 8px; border-top: 1px dashed #ccc; font-family: verdana; font-size: 10px; display: block;";
-            toggleContainer.parentNode.insertBefore(divAuditoria, toggleContainer.nextSibling);
-        }
-
-        divAuditoria.innerHTML = `
-            <div style="font-size: 10px; font-family: verdana; color: #7f8c8d;">
-                <span class="mdi mdi-loading mdi-spin" style="margin-right: 4px;"></span> Consultando endereço do cadastro original...
-            </div>
-        `;
-
-        try {
-            // Injeção Dinâmica Local Robusta do SheetJS caso a biblioteca não esteja no escopo do documento
-            if (typeof XLSX === 'undefined') {
-                console.log("[AUDITORIA-LOTE] XLSX indisponível. Carregando dependência em tempo de execução...");
-                await new Promise((resolve) => {
-                    const script = targetDoc.createElement('script');
-                    script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
-                    script.onload = () => resolve();
-                    script.onerror = () => resolve();
-                    targetDoc.head.appendChild(script);
-                });
-            }
-
-            if (typeof XLSX === 'undefined') {
-                throw new Error("Dependência XLSX offline");
-            }
-
+        if (typeof XLSX !== 'undefined') {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000);
-
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            
             const resposta = await fetch(urlArquivo, { signal: controller.signal });
             clearTimeout(timeoutId);
 
-            if (!resposta.ok) throw new Error("404");
+            if (resposta.ok) {
+                const buffer = await resposta.arrayBuffer();
+                const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+                
+                // header: 1 transforma a planilha em um Array de Arrays (Linhas x Colunas)
+                // Isso ignora formatações ruins e títulos fora de lugar
+                const matrizDados = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-            const buffer = await resposta.arrayBuffer();
-            const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
-            const planilhaJson = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
-            const registroAluno = planilhaJson.find(linha => {
-                const raLinha = String(linha['RA'] || linha['ID ALUNO'] || '').replace(/\D/g, '');
-                return raLinha === raAlunoTarget;
-            });
-
-            if (registroAluno) {
-                // Construtor String(...) previne erros fatais caso o Excel retorne números puros
-                const endereco = String(registroAluno['ENDERECO'] || registroAluno['LOGRADOURO'] || '').trim();
-                const numero = String(registroAluno['NUMERO'] || 'S/N').trim();
-                const bairro = String(registroAluno['BAIRRO'] || '').trim();
-                const cep = String(registroAluno['CEP'] || '').trim();
-                const complemento = String(registroAluno['COMPLEMENTO'] || '').trim();
-                const enderecoFormatado = `${endereco}, Nº ${numero}${complemento ? ' - ' + complemento : ''} - ${bairro} (CEP: ${cep})`;
-
-                // Persistir os dados minerados no barramento SharedStore global do ecossistema
-                if (typeof window.setSharedStore === 'function') {
-                    window.setSharedStore({
-                        auditoriaLoteDisponivel: true,
-                        auditoriaLoteEnderecoOriginal: enderecoFormatado,
-                        auditoriaLoteDadosCompletos: registroAluno
-                    });
+                // Procura em qual linha exata o RA do aluno está (em qualquer coluna)
+                let indiceLinhaAluno = -1;
+                for (let i = 0; i < matrizDados.length; i++) {
+                    for (let j = 0; j < matrizDados[i].length; j++) {
+                        const valorCelula = String(matrizDados[i][j] || '').replace(/\D/g, '');
+                        // Confirma se o conteúdo da célula é exatamente o RA procurado
+                        if (valorCelula === raAlunoTarget && raAlunoTarget.length > 4) {
+                            indiceLinhaAluno = i;
+                            break;
+                        }
+                    }
+                    if (indiceLinhaAluno !== -1) break;
                 }
 
-                // Exibe o painel amigável integrado à caixa de endereço nativa
-                divAuditoria.innerHTML = `
-                    <div style="line-height: 1.5; font-family: verdana; font-size: 10px; color: #2c3e50; margin-top: 5px;">
-                        📍 <b>Endereço original do cadastro em [${anoAtendimento}], conforme <a href="${urlArquivo}" target="_blank" style="color: #2980b9; text-decoration: underline; font-weight: bold;">Arquivo ${numeroArquivo}</a>:</b>
-                        <br><span style="background: #fff8db; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; border: 1px solid #f1c40f; color: #d35400; font-weight: bold; width: calc(100% - 18px); box-sizing: border-box;">
-                            ${enderecoFormatado}
-                        </span>
-                    </div>
-                `;
-            } else {
-                if (divAuditoria) divAuditoria.remove();
-            }
-
-        } catch (erro) {
-            console.warn("[AUDITORIA-LOTE] Omitindo painel complementar por falha técnica de leitura:", erro.message);
-            if (divAuditoria) divAuditoria.remove();
-        }
-    };
-
-    // Inicia o processo de injeção assíncrona com monitoramento de tempo
-    executarInjecaoSobMapa();
-};
-
-// POLLER CONTEXTUALIZADO (IFRAME & DIRECT DEEP TRAVERSAL): Posicionado na base para ler referências acima
-(function() {
-    let checkCounter = 0;
-    
-    function tentarLocalizarFicha() {
-        checkCounter++;
-        
-        let docAlvo = document;
-        let secaoOcorrencias = docAlvo.querySelector('#div_ocorrencias');
-        
-        if (!secaoOcorrencias) {
-            const subIframes = document.querySelectorAll('iframe');
-            for (let i = 0; i < subIframes.length; i++) {
-                try {
-                    let docIframe = subIframes[i].contentDocument || subIframes[i].contentWindow.document;
-                    if (docIframe && docIframe.querySelector('#div_ocorrencias')) {
-                        docAlvo = docIframe;
-                        secaoOcorrencias = docIframe.querySelector('#div_ocorrencias');
+                // Procura a linha que contém o Cabeçalho (buscando palavras chaves)
+                let indiceCabecalho = 0;
+                for (let i = 0; i < matrizDados.length; i++) {
+                    const textoLinhaInteira = matrizDados[i].join(' ').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                    if (textoLinhaInteira.includes('ENDERECO') || textoLinhaInteira.includes('LOGRADOURO')) {
+                        indiceCabecalho = i;
                         break;
                     }
-                } catch(e) {}
+                }
+
+                if (indiceLinhaAluno !== -1) {
+                    const cabecalho = matrizDados[indiceCabecalho];
+                    const dadosAluno = matrizDados[indiceLinhaAluno];
+                    
+                    let rua = "", numero = "S/N", bairro = "", cep = "", complemento = "";
+
+                    // Varre a linha de cabeçalho para saber em qual coluna está cada dado
+                    for (let col = 0; col < cabecalho.length; col++) {
+                        let nomeCol = String(cabecalho[col] || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+                        let valorCol = String(dadosAluno[col] || '').trim();
+                        
+                        if (nomeCol.includes('ENDERECO') || nomeCol.includes('LOGRADOURO') || nomeCol.includes('RUA')) rua = valorCol;
+                        else if (nomeCol === 'NUMERO' || nomeCol === 'N' || nomeCol === 'NUM') numero = valorCol;
+                        else if (nomeCol.includes('BAIRRO')) bairro = valorCol;
+                        else if (nomeCol.includes('CEP')) cep = valorCol;
+                        else if (nomeCol.includes('COMPLEMENTO')) complemento = valorCol;
+                    }
+
+                    if (rua) {
+                        enderecoXlsx = `${rua}, Nº ${numero}${complemento ? ' - ' + complemento : ''} - ${bairro} (CEP: ${cep})`;
+                        enderecoXlsxURL = `${rua}, Nº ${numero}, ${bairro}, São bernardo do Campo, ${cep}`;
+                        console.log("[AUDITORIA-LOTE] ✅ Endereço extraído com sucesso da planilha:", enderecoXlsx);
+                    }
+                } else {
+                    console.warn(`[AUDITORIA-LOTE] ❌ Aluno com RA ${raAlunoTarget} não foi encontrado dentro do arquivo XLSX.`);
+                }
             }
         }
-        
-        if (secaoOcorrencias) {
-            // Execução segura: A função já foi içada e compilada em window
-            window.verificaArqDiastur(docAlvo);
-            return;
+        loadingMsg.remove();
+    } catch (erro) {
+        console.warn("[AUDITORIA-LOTE] Erro técnico ao processar o XLSX:", erro);
+    }
+
+    
+    // --- 5. RENDERIZAÇÃO DA INTERFACE COM A ROTA ---
+    if (enderecoXlsx) {
+        // Link oficial para traçar rota no Maps
+        let urlGoogleMaps = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(enderecoXlsxURL)}`;
+        if (destinoEscola) {
+            urlGoogleMaps += `&destination=${encodeURIComponent(destinoEscola)}`;
         }
-        
-        if (checkCounter < 25) {
-            setTimeout(tentarLocalizarFicha, 400);
+
+        const elementoLinha = tdArquivo.parentElement;
+
+        if (enderecoXlsx && elementoLinha && elementoLinha.tagName === 'TR') {
+            const novaLinha = targetDoc.createElement('tr');
+            novaLinha.className = 'linha-info-endereco-auditoria';
+            novaLinha.style.backgroundColor = '#fcf8e3';
+            novaLinha.style.borderLeft = '4px solid #f39c12';
+            
+            novaLinha.innerHTML = `
+                <td colspan="5">
+                    <strong>Endereço original do cadastro:</strong> ${enderecoXlsx}
+                    <a href="${urlGoogleMaps}" target="_blank" rel="noopener" style="margin-left: 15px; color: #2980b9; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">Trajeto</a>
+                </td>
+            `;
+            elementoLinha.parentNode.insertBefore(novaLinha, elementoLinha.nextSibling);
+        }
+
+        if (enderecoXlsx && (!elementoLinha || elementoLinha.tagName !== 'TR')) {
+            const painelInfo = targetDoc.createElement('div');
+            painelInfo.id = 'painel-consolidado-diastur';
+            painelInfo.style.cssText = "margin-top: 15px; padding: 12px; background: #ebf5fb; border: 1px solid #a9cce3; border-radius: 6px; color: #21618c; font-family: Arial, sans-serif; font-size: 13px;";
+            painelInfo.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <strong style="color: #1b4f72;">📢 Endereço Original Lote/XLSX:</strong> 
+                        <span style="color: #2c3e50;">${enderecoXlsx}</span>
+                    </div>
+                    <a href="${urlGoogleMaps}" target="_blank" rel="noopener" style="background: #e67e22; color: white; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 12px;">
+                        🚗 Rota (Casa ➔ Escola) ↗
+                    </a>
+                </div>
+            `;
+            primeiraSecaoOcorrencias.appendChild(painelInfo);
         }
     }
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', tentarLocalizarFicha);
-    } else {
-        tentarLocalizarFicha();
+};
+
+(function() {
+    const dispararVerificacao = () => {
+        let alvo = document.querySelector('#div_ocorrencias');
+        if (alvo) { window.verificaArqDiastur(document); return true; }
+        
+        const frames = document.querySelectorAll('iframe');
+        for (let i = 0; i < frames.length; i++) {
+            try {
+                let docFr = frames[i].contentDocument || frames[i].contentWindow.document;
+                if (docFr && docFr.querySelector('#div_ocorrencias')) {
+                    window.verificaArqDiastur(docFr);
+                    return true;
+                }
+            } catch(e) {}
+        }
+        return false;
+    };
+
+    if (!dispararVerificacao()) {
+        const obs = new MutationObserver((_, o) => {
+            if (dispararVerificacao()) o.disconnect();
+        });
+        obs.observe(document.body || document.documentElement, { childList: true, subtree: true });
+        setTimeout(() => obs.disconnect(), 7000); // Trava de segurança para desativar após 7 segundos
     }
 })();
 
