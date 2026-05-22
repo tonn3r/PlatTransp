@@ -316,6 +316,168 @@ function resolverEncaminhamentoAluno(doc, dbEncaminhamentos) {
 }
 
 //compara encaminhamento do DB com os dados da Ficha do aluno (endereço, unidade, etc)
+async function verificarCompatibilidadeEncaminhamento(ctx, maisRecente) {
+    console.log("[DEBUG ENC] Iniciando verificação com geolocalização dinâmica...");
+    console.log("[DEBUG ENC] Dados recebidos da Ficha (ctx):", { 
+        idUnidadeFicha: ctx?.idUnidade, 
+        nomeEscolaFicha: ctx?.nomeEscolaAtual, 
+        cepFicha: ctx?.cepVal, 
+        ruaFicha: ctx?.endRua,
+        bairroFicha: ctx?.endBairro
+    });
+    console.log("[DEBUG ENC] Dados do Encaminhamento (maisRecente):", maisRecente);
+
+    if (!maisRecente) {
+        console.warn("[DEBUG ENC] Falha: O objeto 'maisRecente' está vazio ou indefinido.");
+        return false;
+    }
+
+    // ----------------------------------------------------
+    // PASSO 1: OBTER NOMES ALTERNATIVOS DA ESCOLA DA FICHA NO ESCOLAS_DB
+    // ----------------------------------------------------
+    let escolaMapeadaDB = null;
+    if (ctx.escolasDB && Array.isArray(ctx.escolasDB) && ctx.idUnidade) {
+        escolaMapeadaDB = ctx.escolasDB.find(esc => String(esc.id).trim() === String(ctx.idUnidade).trim());
+    }
+
+    if (!escolaMapeadaDB && ctx.escolasDB && ctx.nomeEscolaAtual) {
+        const nomeFichaNormalizado = window.normalizarTexto(ctx.nomeEscolaAtual);
+        escolaMapeadaDB = ctx.escolasDB.find(esc => {
+            return window.normalizarTexto(esc.nome) === nomeFichaNormalizado ||
+                   window.normalizarTexto(esc.nome_unidade_SOMAR) === nomeFichaNormalizado ||
+                   window.normalizarTexto(esc.nome_prodesp_sed) === nomeFichaNormalizado;
+        });
+    }
+
+    if (!escolaMapeadaDB) {
+        console.warn("[DEBUG ENC] Falha crítica: Não foi possível mapear a escola da ficha no escolasDB.");
+        return false;
+    }
+
+    const idEscolaFicha = String(escolaMapeadaDB.id || ctx.idUnidade).trim();
+    const nomeFichaSomar = window.normalizarTexto(escolaMapeadaDB.nome_unidade_SOMAR);
+    const nomeFichaProdesp = window.normalizarTexto(escolaMapeadaDB.nome_prodesp_sed);
+    const nomeFichaPadrao = window.normalizarTexto(escolaMapeadaDB.nome);
+
+    // ----------------------------------------------------
+    // PASSO 2: COMPARAÇÃO DA UNIDADE/ESCOLA
+    // ----------------------------------------------------
+    let escolaCompativeis = false;
+
+    if (maisRecente.idUnidadeEncaminhamento) {
+        if (String(maisRecente.idUnidadeEncaminhamento).trim() === idEscolaFicha) {
+            escolaCompativeis = true;
+            console.log("[DEBUG ENC] ✅ Sucesso: IDs de unidade coincidem.");
+        }
+    }
+
+    if (!escolaCompativeis && maisRecente.unidade) {
+        const nomeEncaminhamento = window.normalizarTexto(maisRecente.unidade);
+        if (nomeFichaSomar && (nomeEncaminhamento.includes(nomeFichaSomar) || nomeFichaSomar.includes(nomeEncaminhamento))) {
+            escolaCompativeis = true;
+        } else if (nomeFichaProdesp && (nomeEncaminhamento.includes(nomeFichaProdesp) || nomeFichaProdesp.includes(nomeEncaminhamento))) {
+            escolaCompativeis = true;
+        } else if (nomeFichaPadrao && (nomeEncaminhamento.includes(nomeFichaPadrao) || nomeFichaPadrao.includes(nomeEncaminhamento))) {
+            escolaCompativeis = true;
+        }
+        if (escolaCompativeis) console.log("[DEBUG ENC] ✅ Sucesso: Nomes da unidade coincidem.");
+    }
+
+    if (!escolaCompativeis) {
+        console.warn("[DEBUG ENC] ❌ Bloqueado: A escola gravada no encaminhamento não condiz com a ficha.");
+        return false;
+    }
+
+  // ----------------------------------------------------
+    // PASSO 3: COMPARAÇÃO DA GEOLOCALIZAÇÃO / ENDEREÇO (CRITÉRIOS UNIFICADOS)
+    // ----------------------------------------------------
+    let enderecoCompativel = false;
+
+    // 1. CAPTURA DA LATITUDE E LONGITUDE DO ALUNO
+    let latFichaAluno = null;
+    let lonFichaAluno = null;
+
+    if (typeof dadosGeograficos !== 'undefined' && dadosGeograficos) {
+        latFichaAluno = parseFloat(dadosGeograficos.geoEndereco_Latit);
+        lonFichaAluno = parseFloat(dadosGeograficos.geoEndereco_Longit);
+    }
+
+    if ((isNaN(latFichaAluno) || !latFichaAluno) && ctx.iframeMapa && ctx.iframeMapa.src) {
+        const urlCompleta = ctx.iframeMapa.src;
+        const originMatch = urlCompleta.match(/origin=([^&]+)/i);
+        if (originMatch) {
+            const partes = decodeURIComponent(originMatch[1]).trim().split(/[\s,]+/);
+            if (partes.length >= 2) {
+                latFichaAluno = parseFloat(partes[0].trim());
+                lonFichaAluno = parseFloat(partes[1].trim());
+            }
+        }
+    }
+
+    if ((isNaN(latFichaAluno) || !latFichaAluno) && ctx.enderecoCompleto && typeof window.obterCoordenadasPorEndereco === 'function') {
+        try {
+            console.log("[DEBUG ENC] Buscando coordenadas em tempo real via obterCoordenadasPorEndereco...");
+            const coords = await window.obterCoordenadasPorEndereco(ctx.enderecoCompleto);
+            if (coords && coords.lat && coords.lon) {
+                latFichaAluno = parseFloat(coords.lat);
+                lonFichaAluno = parseFloat(coords.lon);
+            }
+        } catch (e) {
+            console.error("[DEBUG ENC] Erro ao chamar obterCoordenadasPorEndereco:", e);
+        }
+    }
+
+    console.log(`[DEBUG ENC] Coordenadas obtidas da Ficha do Aluno: Lat(${latFichaAluno}), Lon(${lonFichaAluno})`);
+
+    // 2. PREPARAÇÃO DOS DADOS DE TEXTO (Normalização para evitar falhas de String)
+    const enderecoEncText = maisRecente.endereco ? window.normalizarTexto(maisRecente.endereco) : "";
+    const ruaFichaText = ctx.endRua ? window.normalizarTexto(ctx.endRua) : "";
+    const termoLimpoRua = ruaFichaText.replace(/^(RUA|AVENIDA|AV|TRAVESSA|ALAMEDA|ESTRADA|EST)\s+/i, "").trim();
+
+    const cepEnc = maisRecente.cep ? maisRecente.cep.replace(/\D/g, '') : "";
+    const cepFicha = ctx.cepVal ? ctx.cepVal.replace(/\D/g, '') : "";
+
+    // 3. CÁLCULO DA DISTÂNCIA HA VERSINE (Se houver coordenadas válidas)
+    let metros = Infinity;
+    if (maisRecente.latitude && maisRecente.longitude && latFichaAluno && lonFichaAluno && !isNaN(latFichaAluno) && !isNaN(lonFichaAluno)) {
+        const latEnc = parseFloat(maisRecente.latitude);
+        const lonEnc = parseFloat(maisRecente.longitude);
+
+        if (!isNaN(latEnc) && !isNaN(lonEnc)) {
+            const R = 6371e3; 
+            const phi1 = latEnc * Math.PI/180;
+            const phi2 = latFichaAluno * Math.PI/180;
+            const deltaPhi = (latFichaAluno-latEnc) * Math.PI/180;
+            const deltaLambda = (lonFichaAluno-lonEnc) * Math.PI/180;
+            const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                      Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            metros = R * c;
+            console.log(`[DEBUG ENC] Distância calculada: ${metros.toFixed(2)} metros.`);
+        }
+    }
+
+    // 4. VERIFICAÇÃO EM BLOCO ÚNICO (Basta uma condição ser verdadeira)
+    const isGeoProxima = (metros <= 150);
+    const isCepValido  = (cepEnc.length > 0 && cepEnc === cepFicha);
+    const isRuaValida  = (enderecoEncText.length > 0 && ruaFichaText.length > 0 && 
+                          (enderecoEncText.includes(ruaFichaText) || ruaFichaText.includes(enderecoEncText) || 
+                          (termoLimpoRua.length > 3 && enderecoEncText.includes(termoLimpoRua))));
+
+    console.log("[DEBUG ENC] Avaliação dos critérios residenciais:", {
+        geolocalizacaoProxima: isGeoProxima,
+        cepIdentico: isCepValido,
+        ruaCompativel: isRuaValida
+    });
+
+    if (isGeoProxima || isCepValido || isRuaValida) {
+        enderecoCompativel = true;
+        console.log("[DEBUG ENC] ✅ Sucesso: Validação residencial aprovada por correspondência de dados.");
+    }
+
+    console.log("[DEBUG ENC] Resultado Final da Validação Residencial:", enderecoCompativel);
+    return enderecoCompativel;
+}
 
 // Verifica na ficha se há indicações de deficiência para o aluno ou familiares e sugere a análise.
 function calcularSugestaoDeficiencia(doc) {
@@ -2377,6 +2539,8 @@ if (inputDist) {
                 
                     estado.isEncaminhamentoDispensado = true;
                 }
+
+
         if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGarantida) && estado.ehEncaminhado === null) {
 
         if (estado.isEncaminhamentoDispensado) {
@@ -2385,8 +2549,30 @@ if (inputDist) {
         renderizarPasso();
         return;
         }
-            const windowAlvo = doc.defaultView || window;
-            const docHref = windowAlvo.location.href;
+
+        // >>> CHAMADA DO NOVO MOTOR DE COMPARAÇÃO CRUZADA <<<
+    const dadosMaisRecentes = encaminhamentoResolvido?.maisRecente;
+const isCompativelAutomatico = await verificarCompatibilidadeEncaminhamento(ctx, dadosMaisRecentes);
+
+    if (isCompativelAutomatico) {
+        // Se bater os critérios rigorosos (ID/Nome + LatLong/CEP/Rua), valida automaticamente sem exigir clique
+        salvarHistorico();
+        estado.ehEncaminhado = true;
+        estado.telaFinal = { 
+            titulo: "DEFERIR", 
+            mensagem: `Encaminhamento verificado e validado automaticamente para a unidade ${dadosMaisRecentes.unidade} (Ano: ${dadosMaisRecentes.ano}) via cruzamento de base de dados.` 
+        };
+        renderizarPasso();
+        return; // Finaliza o fluxo, impedindo a exibição manual
+    }
+    // >>> FIM DA COMPARAÇÃO AUTOMÁTICA <<<
+
+    // Caso dê falso, ele ignora o bloco acima e continua exibindo a tela 
+    // com as mensagens e botões para a decisão humana...
+    const windowAlvo = doc.defaultView || window;
+    const docHref = windowAlvo.location.href;
+
+    
             const isFichaAntiga = docHref.includes('ficha_transporte.php') && !docHref.includes('nova_versao');
 
             let msgCopiado = "";
