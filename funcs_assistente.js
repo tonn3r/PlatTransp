@@ -260,17 +260,70 @@ function montarUrlPesquisaRua(endRua) {
 // Gera o código HTML exibindo as informações do último encaminhamento do aluno.
 function montarHtmlEncaminhamento(maisRecente) {
     if (!maisRecente) return '';
+
     let finalTexto = '';
+    let precisaBuscarApi = false;
+    let idUnicoSpan = `geo-endereco-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    // Regra 1: Se o endereço já existe no banco, usa direto
     if (maisRecente.endereco) {
         finalTexto = ` e endereço <b>${maisRecente.endereco}</b>`;
-    } else if (maisRecente.latitude && maisRecente.longitude) {
-        finalTexto = ` nas coordenadas <b>${maisRecente.latitude}</b>, <b>${maisRecente.longitude}</b>`;
+    } 
+    // Regra 2: Se não há endereço, mas há coordenadas
+    else if (maisRecente.latitude && maisRecente.longitude) {
+        precisaBuscarApi = true;
+        // Placeholder com a coordenada bruta (último caso padrão)
+        finalTexto = `<span id="${idUnicoSpan}"> nas coordenadas <b>${maisRecente.latitude}</b>, <b>${maisRecente.longitude}</b></span>`;
     }
+
+    // Dispara a busca em background com tratamento resiliente e limites rígidos
+    if (precisaBuscarApi) {
+        console.log("[ASSISTENTE] Endereço ausente. Disparando busca assíncrona via coordenadas...");
+        
+        window.obterEnderecoPorCoordenadas(maisRecente.latitude, maisRecente.longitude)
+            .then(enderecoResolvido => {
+                if (enderecoResolvido) {
+                    let tentativas = 0;
+                    const maxTentativas = 10; // Limite rígido: para de rodar após 10 tentativas (2 segundos)
+                    let timerId = null;
+
+                    const atualizarElemento = () => {
+                        const elementoSpan = document.getElementById(idUnicoSpan);
+                        
+                        if (elementoSpan) {
+                            // Sucesso: Injeta o endereço e limpa qualquer agendamento restante
+                            elementoSpan.innerHTML = ` e endereço (via GPS) <b>${enderecoResolvido}</b>`;
+                            console.log(`[ASSISTENTE] ✅ Endereço injetado com sucesso no elemento #${idUnicoSpan}`);
+                            if (timerId) clearTimeout(timerId);
+                            return; // Encerra a função imediatamente e libera memória
+                        } 
+                        
+                        if (tentativas < maxTentativas) {
+                            tentativas++;
+                            // Executa a próxima tentativa de forma limpa
+                            timerId = setTimeout(atualizarElemento, 200);
+                        } else {
+                            // Parada forçada: Chegou ao limite de tentativas e o loop é destruído aqui
+                            console.warn(`[ASSISTENTE] 🛑 Limite de tentativas atingido. Parando busca pelo elemento #${idUnicoSpan} para poupar recursos.`);
+                            if (timerId) clearTimeout(timerId);
+                        }
+                    };
+
+                    // Agenda a primeira execução de forma segura
+                    timerId = setTimeout(atualizarElemento, 100);
+                }
+            })
+            .catch(err => {
+                console.error("[ASSISTENTE] Erro ao buscar/atualizar endereço:", err);
+            });
+    }
+
     const isDeferido = maisRecente.situacao !== 'NÃO ATENDER';
     const corPainel = isDeferido ? 'success' : 'danger';
     const corTexto = isDeferido ? '#27ae60' : '#c0392b';
     const iconeStatus = isDeferido ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline';
     const diretrizTexto = isDeferido ? '✓ ATENDER / DEFERIDO' : '⚠️ NÃO ATENDER / INDEFERIR';
+
     return `
         <div class="message-box ${corPainel}" style="margin-bottom: 15px;">
             <h4 style="margin: 0 0 10px 0; color: ${corTexto}; display: flex; align-items: center; gap: 6px; font-size: 15px;">
@@ -317,14 +370,7 @@ function resolverEncaminhamentoAluno(doc, dbEncaminhamentos) {
 
 //compara encaminhamento do DB com os dados da Ficha do aluno (endereço, unidade, etc)
 async function verificarCompatibilidadeEncaminhamento(ctx, maisRecente) {
-    console.log("[DEBUG ENC] Iniciando verificação com geolocalização dinâmica...");
-    console.log("[DEBUG ENC] Dados recebidos da Ficha (ctx):", { 
-        idUnidadeFicha: ctx?.idUnidade, 
-        nomeEscolaFicha: ctx?.nomeEscolaAtual, 
-        cepFicha: ctx?.cepVal, 
-        ruaFicha: ctx?.endRua,
-        bairroFicha: ctx?.endBairro
-    });
+    
     console.log("[DEBUG ENC] Dados do Encaminhamento (maisRecente):", maisRecente);
 
     if (!maisRecente) {
@@ -367,7 +413,7 @@ async function verificarCompatibilidadeEncaminhamento(ctx, maisRecente) {
     if (maisRecente.idUnidadeEncaminhamento) {
         if (String(maisRecente.idUnidadeEncaminhamento).trim() === idEscolaFicha) {
             escolaCompativeis = true;
-            console.log("[DEBUG ENC] ✅ Sucesso: IDs de unidade coincidem.");
+            //console.log("[DEBUG ENC] ✅ Sucesso: IDs de unidade coincidem.");
         }
     }
 
@@ -380,7 +426,7 @@ async function verificarCompatibilidadeEncaminhamento(ctx, maisRecente) {
         } else if (nomeFichaPadrao && (nomeEncaminhamento.includes(nomeFichaPadrao) || nomeFichaPadrao.includes(nomeEncaminhamento))) {
             escolaCompativeis = true;
         }
-        if (escolaCompativeis) console.log("[DEBUG ENC] ✅ Sucesso: Nomes da unidade coincidem.");
+        //if (escolaCompativeis) console.log("[DEBUG ENC] ✅ Sucesso: Nomes da unidade coincidem.");
     }
 
     if (!escolaCompativeis) {
@@ -416,7 +462,7 @@ async function verificarCompatibilidadeEncaminhamento(ctx, maisRecente) {
 
     if ((isNaN(latFichaAluno) || !latFichaAluno) && ctx.enderecoCompleto && typeof window.obterCoordenadasPorEndereco === 'function') {
         try {
-            console.log("[DEBUG ENC] Buscando coordenadas em tempo real via obterCoordenadasPorEndereco...");
+            //console.log("[DEBUG ENC] Buscando coordenadas em tempo real via obterCoordenadasPorEndereco...");
             const coords = await window.obterCoordenadasPorEndereco(ctx.enderecoCompleto);
             if (coords && coords.lat && coords.lon) {
                 latFichaAluno = parseFloat(coords.lat);
@@ -453,12 +499,12 @@ async function verificarCompatibilidadeEncaminhamento(ctx, maisRecente) {
                       Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             metros = R * c;
-            console.log(`[DEBUG ENC] Distância calculada: ${metros.toFixed(2)} metros.`);
+            console.log(`[DEBUG ENC] Distância calculada: +-${metros.toFixed(2)} metros.`);
         }
     }
 
     // 4. VERIFICAÇÃO EM BLOCO ÚNICO (Basta uma condição ser verdadeira)
-    const isGeoProxima = (metros <= 150);
+    const isGeoProxima = (metros <= 700);
     const isCepValido  = (cepEnc.length > 0 && cepEnc === cepFicha);
     const isRuaValida  = (enderecoEncText.length > 0 && ruaFichaText.length > 0 && 
                           (enderecoEncText.includes(ruaFichaText) || ruaFichaText.includes(enderecoEncText) || 
@@ -576,6 +622,7 @@ function extrairContextoFicha(doc) {
         nivelAlunoOriginal: nivel.nivelOriginal,
         nivelAlunoNorm: nivel.nivelNorm,
         isBercarioGeral: nivel.isBercarioGeral,
+        ehCreche: nivel.isBercarioGeral || nivel.nivelNorm.includes('BERCARIO') || nivel.nivelNorm === 'INFANTIL I' || nivel.nivelNorm === 'INFANTIL II',
         isEspecial,
         iframeMapa: doc.getElementById('map_endereco'),
         inputDistanciaFicha: doc.querySelector('input[name="distancia_aferida"], #distancia_aferida'),
@@ -659,122 +706,121 @@ function obterBancoEncaminhamentos() {
 }
 
 // Preenche automaticamente o formulário de análise da solicitação e abre os modais do sistema SE2.
-function preencheAnalise(resultado, resultado_motivo, resultado_detalhes, distancia){
-    const docFinal = window.getAlvoDocument(); 
+function preencheAnalise(resultado, resultado_motivo, resultado_detalhes, distancia, idEscolaMaisProxima = null) {
+    const docFinal = window.getAlvoDocument();
+    console.debug('[ASSISTENTE] Preenchendo análise:', { resultado, resultado_motivo, resultado_detalhes, distancia, idEscolaMaisProxima });
 
-    //obtem o valor, caso o parametro seja vazio
-    if (distancia === null || distancia === undefined || distancia === "") {
+    // 1. Normalização de Distância
+    if (!distancia) {
         const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
         const rota = window.getSharedStoreValue?.('dadosGeraisRota');
         distancia = modoMapa === 'endereco' ? rota?.distanciaEnd : rota?.distanciaCoord;
         
         if (distancia == null) {
             const inputDist = docFinal.getElementById('input-assistente-dist') || docFinal.querySelector('input[name="distancia_aferida"], #distancia_aferida');
-            if (inputDist && inputDist.value) distancia = parseInt(inputDist.value, 10);
-        }
-        if (distancia != null && !isNaN(distancia)) {
-            distancia = Math.round(Number(distancia) / 50) * 50;
-        }
-    }else{
-        distancia = Math.round(Number(distancia) / 50) * 50;
-    }
-
-
-    if (resultado === null || resultado === undefined || resultado === "") {
-        const h2Modal = docFinal.querySelector('#modal-assistente-analise h2');
-        if (h2Modal) {
-            resultado = h2Modal.textContent.toUpperCase().includes('INDEFERIR') ? 'INDEFERIR' : 'DEFERIR';
+            if (inputDist?.value) distancia = parseInt(inputDist.value, 10);
         }
     }
+    let baseArred = (distancia != null && !isNaN(distancia) && Number(distancia) >= 1000) ? 100 : 50;
+    distancia = (distancia != null && !isNaN(distancia)) ? Math.round(Number(distancia) / baseArred) * baseArred : 0;
 
-    if (resultado_motivo === null || resultado_motivo === undefined || resultado_motivo === "") {
+    // 2. Normalização de Dados Visuais (Fallback do DOM)
+    if (!resultado) {
+        const h2 = docFinal.querySelector('#modal-assistente-analise h2');
+        resultado = h2?.textContent.toUpperCase().includes('INDEFERIR') ? 'INDEFERIR' : 'DEFERIR';
+    }
+    
+    if (!resultado_motivo) {
         const bMotivo = Array.from(docFinal.querySelectorAll('#modal-assistente-analise .message-box b')).find(b => b.textContent.includes('Motivo:'));
-        if (bMotivo && bMotivo.nextSibling) {
-            resultado_motivo = bMotivo.nextSibling.textContent.trim();
+        resultado_motivo = bMotivo?.nextSibling?.textContent.trim() || "";
+    }
+
+    // [NOVA LÓGICA]: Captura o top3EscolasNomes do estado caso haja mais de uma escola mais próxima
+    const top3EscolasNomes = window.getSharedStoreValue?.('top3EscolasNomes') || [];
+    
+    if (!resultado_detalhes) {
+        const spanObs = docFinal.querySelector('#modal-assistente-analise .message-box .text-warning');
+        resultado_detalhes = spanObs?.textContent.replace('Obs:', '').trim() || "";
+    }
+
+    // [NOVA LÓGICA]: Se houver mais de 1 escola elegível no top3, anexa os nomes no campo de detalhes
+    if (resultado === 'INDEFERIR' && window.normalizarTexto(resultado_motivo).includes('ESCOLA') && window.normalizarTexto(resultado_motivo).includes('OPCAO') && top3EscolasNomes.length > 1) {
+        const listaNomesFormatada = "UEs mais próximas: " + top3EscolasNomes.map((esc) => `${esc.nome} (${esc.distancia})`).join('; ');
+        
+        if (!resultado_detalhes.includes('UEs mais próximas:')) {
+            resultado_detalhes = resultado_detalhes ? (resultado_detalhes + " / " + listaNomesFormatada) : listaNomesFormatada;
         }
     }
 
-    if (resultado_detalhes === null || resultado_detalhes === undefined || resultado_detalhes === "") {
-        const spanObs = docFinal.querySelector('#modal-assistente-analise .message-box .text-warning');
-        if (spanObs && spanObs.textContent.includes('Obs:')) {
-            resultado_detalhes = spanObs.textContent.replace('Obs:', '').trim();
-        } else if (resultado === 'INDEFERIR') {
-            const msgBox = docFinal.querySelector('#modal-assistente-analise .message-box');
-            if (msgBox) {
-                resultado_detalhes = msgBox.childNodes[0]?.textContent?.trim() || "";
+    // 3. Preenchimento de Campos no DOM
+    try {
+        docFinal.querySelectorAll('input[name="distancia_aferida"], #distancia_aferida').forEach(c => { c.value = distancia; c.setAttribute('value', distancia); });
+        
+        const camposDet = docFinal.querySelectorAll('textarea[name="status_detalhes"], #status_atual_detalhes, textarea[name="motivo_detalhes"]');
+        camposDet.forEach(c => { if(resultado_detalhes) c.value = c.innerHTML = resultado_detalhes; });
+    } catch (e) { console.error(e); }
+
+    // 4. Seleção do Motivo (com Regex para ignorar acentos e case)
+    if (resultado_motivo) {
+        const selector = (resultado === 'INDEFERIR') ? 'select[name="status_motivo"], #status_motivo_' : 'select[name="status_motivo"], #status_motivo';
+        const selectsMotivo = docFinal.querySelectorAll(selector);
+        const alvo = window.normalizarTexto(resultado_motivo);
+
+        selectsMotivo.forEach(select => {
+            for (let i = 0; i < select.options.length; i++) {
+                const opt = select.options[i];
+                if (window.normalizarTexto(opt.text).includes(alvo) || window.normalizarTexto(opt.value).includes(alvo)) {
+                    select.selectedIndex = i;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                    break;
+                }
+            }
+        });
+    }
+
+    // 5. Caso Específico: Escola por Opção
+    if (resultado === 'INDEFERIR' && window.normalizarTexto(resultado_motivo).includes('ESCOLA') && window.normalizarTexto(resultado_motivo).includes('OPCAO')) {
+        const selectEscola = docFinal.getElementById('escola_mais_proxima');
+        
+        if (selectEscola) {
+            // [NOVA LÓGICA]: Atualiza o select apenas se houver EXATAMENTE 1 escola mais próxima na lista do estado
+            if (top3EscolasNomes.length <= 1 && idEscolaMaisProxima && window.escolasDB) {
+                const escolaObj = window.escolasDB.find(e => String(e.id) === String(idEscolaMaisProxima));
+                if (escolaObj) {
+                    const nomesPossiveis = [
+                        escolaObj.nome_select_analise,
+                        escolaObj.nome, 
+                        escolaObj.nome_unidade_SOMAR, 
+                        escolaObj.nome_prodesp_sed, 
+                        escolaObj.nome_abreviado_unidade
+                    ].filter(Boolean).map(n => window.normalizarTexto(n));
+
+                    for (let i = 0; i < selectEscola.options.length; i++) {
+                        const opt = selectEscola.options[i];
+                        if (nomesPossiveis.includes(window.normalizarTexto(opt.text)) || nomesPossiveis.includes(window.normalizarTexto(opt.value))) {
+                            selectEscola.selectedIndex = i;
+                            selectEscola.dispatchEvent(new Event('change', { bubbles: true }));
+                            break;
+                        }
+                    }
+                }
+            } else {
+                // [NOVA LÓGICA]: Se houver mais de 1 escola no top3, limpa/reseta a seleção do combo nativo
+                selectEscola.selectedIndex = 0; 
+                selectEscola.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
     }
 
-    if (resultado_motivo !== "" && resultado_detalhes !== "" && resultado_motivo === resultado_detalhes) {
-        resultado_detalhes = ""; 
+    // 6. Finalização e Abertura do Modal do Sistema
+    const modalAssis = document.getElementById('modal-assistente-analise');
+    if (modalAssis) modalAssis.remove();
+
+    const win = docFinal.defaultView || window;
+    if (win.location.href.includes('ficha_transporte.php') && !win.location.href.includes('nova_versao') && typeof win.ShowModal === 'function') {
+        const modalId = (resultado === 'DEFERIR') ? "modal_Deferir" : "modal_Indeferir";
+        if (docFinal.getElementById(modalId)) win.ShowModal(modalId);
     }
-
-    if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] Preenchendo análise com:', { resultado, resultado_motivo, resultado_detalhes, distancia });
-
-                try {
-                    const camposDist = docFinal.querySelectorAll('input[name="distancia_aferida"], #distancia_aferida');
-                    if (distancia !== null && distancia !== undefined) {
-                        camposDist.forEach(campo => {
-                            campo.value = distancia;
-                            campo.setAttribute('value', distancia);
-                        });
-                    }
-                } catch (erro) {}
-
-                try {
-                    if (resultado === 'INDEFERIR') {
-                        const selectMotivo = docFinal.querySelector('select[name="status_motivo"], #status_motivo');
-                        if (!selectMotivo || selectMotivo.type === 'hidden' || window.getComputedStyle(selectMotivo).display === 'none') {
-                            const motivoIndef = resultado_motivo || estado.telaFinal.mensagem;
-                            if (!resultado_detalhes || resultado_detalhes === "encaminhado") {
-                                resultado_detalhes = motivoIndef;
-                            } else if (!resultado_detalhes.includes(motivoIndef)) {
-                                resultado_detalhes = motivoIndef + " - " + resultado_detalhes;
-                            }
-                        }
-                    }
-                    const camposDet = docFinal.querySelectorAll('textarea[name="status_detalhes"], #status_atual_detalhes, textarea[name="motivo_detalhes"]');
-                    camposDet.forEach(campo => {
-                        if(resultado_detalhes !== "") {
-                            campo.value = resultado_detalhes;
-                            campo.innerHTML = resultado_detalhes; 
-                        }
-                    });
-                } catch (erro) {}
-
-                try {
-                    if (resultado_motivo !== "" || resultado_detalhes !== "") {
-                        const selectsMotivo = docFinal.querySelectorAll('select[name="status_motivo"], #status_motivo');
-                        selectsMotivo.forEach((select) => {
-                            for (let i = 0; i < select.options.length; i++) {
-                                const opt = select.options[i];
-                                const txtOpcao = opt.text.toUpperCase();
-                                const valOpcao = opt.value.toUpperCase();
-                                
-                                if (txtOpcao.includes(resultado_motivo) || valOpcao.includes(resultado_motivo)) {
-                                    select.selectedIndex = i;
-                                    try { select.dispatchEvent(new Event('change', { bubbles: true })); } catch(e){}
-                                    break; 
-                                }
-                            }
-                        });
-                    }
-                } catch (erro) {}
-
-                const modalAssis = document.getElementById('modal-assistente-analise');
-                if (modalAssis) modalAssis.remove();
-
-                const windowFinal = docFinal.defaultView || window;
-                const isFichaAntigaFinal = windowFinal.location.href.includes('ficha_transporte.php') && !windowFinal.location.href.includes('nova_versao');
-                
-                if (isFichaAntigaFinal && typeof windowFinal.ShowModal === 'function') {
-                    if (resultado === 'DEFERIR') {
-                        if (docFinal.getElementById("modal_Deferir")) windowFinal.ShowModal("modal_Deferir");
-                    } else {
-                        if (docFinal.getElementById("modal_Indeferir")) windowFinal.ShowModal("modal_Indeferir");
-                    }
-                }
 }
 
 // ==============
@@ -1123,7 +1169,8 @@ window.atualizarInputDistancia = function(distancia) {
     if (distancia === 'endereco' || distancia === 'coordenada') return;
     const numero = Number(distancia);
     if (!Number.isFinite(numero) || numero <= 0) return;
-    const valorFinal = Math.round(numero / 50) * 50;
+    const baseFinal = (numero >= 1000) ? 100 : 50;
+    const valorFinal = Math.round(numero / baseFinal) * baseFinal;
     const tentarAtualizar = (tentativa = 0) => {
         const input = document.getElementById('input-assistente-dist');
         if (!input) {
@@ -1238,21 +1285,62 @@ window.gerenciarBotaoAssistente = function() {
 // ==============
 
 // Recupera o cache de análise (ex: distâncias) salvo anteriormente no localStorage para o pedido.
+// Recupera o cache de análise adaptado para a nova regra global (Expiração de 7 dias e teto de 100 itens)
 window.getCacheAssistente = function(id) {
     try {
-        let cache = JSON.parse(localStorage.getItem('plattransp_assistente_cache') || '[]');
-        return cache.find(c => String(c.idSolicitacao) === String(id));
-    } catch(e) { return null; }
+        let cacheCompleto = JSON.parse(localStorage.getItem('plattransp_assistente_cache_v2') || '{}');
+        const agora = Date.now();
+        const LIMITE_EXPIRACAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 Dias
+
+        if (cacheCompleto[id]) {
+            // Se o cache da solicitação passou de 7 dias, invalida reativamente
+            if (agora - cacheCompleto[id].timestamp > LIMITE_EXPIRACAO_MS) {
+                delete cacheCompleto[id];
+                localStorage.setItem('plattransp_assistente_cache_v2', JSON.stringify(cacheCompleto));
+                return null;
+            }
+            return cacheCompleto[id].dados;
+        }
+    } catch(e) { 
+        return null; 
+    }
+    return null;
 };
+
 window.setCacheAssistente = function(id, dados) {
     if (!id) return;
     try {
-        let cache = JSON.parse(localStorage.getItem('plattransp_assistente_cache') || '[]');
-        cache = cache.filter(c => String(c.idSolicitacao) !== String(id));
-        cache.unshift({ idSolicitacao: String(id), ...dados });
-        if (cache.length > 3) cache.pop(); // Mantém apenas os 3 últimos
-        localStorage.setItem('plattransp_assistente_cache', JSON.stringify(cache));
-    } catch(e) {}
+        let cacheCompleto = JSON.parse(localStorage.getItem('plattransp_assistente_cache_v2') || '{}');
+        const agora = Date.now();
+        const LIMITE_EXPIRACAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 Dias
+
+        // 1. Limpa registros expirados com mais de 7 dias
+        for (let k in cacheCompleto) {
+            if (cacheCompleto[k] && cacheCompleto[k].timestamp && (agora - cacheCompleto[k].timestamp > LIMITE_EXPIRACAO_MS)) {
+                delete cacheCompleto[k];
+            }
+        }
+
+        // 2. Atualiza ou insere a ficha atual com o carimbo do tempo
+        cacheCompleto[id] = {
+            dados: dados,
+            timestamp: agora
+        };
+
+        // 3. Aplica o limite estrito de no máximo os últimos 100 registros gravados no histórico
+        let listaChaves = Object.keys(cacheCompleto);
+        if (listaChaves.length > 100) {
+            listaChaves.sort((a, b) => (cacheCompleto[a]?.timestamp || 0) - (cacheCompleto[b]?.timestamp || 0));
+            while (listaChaves.length > 100) {
+                const chaveDeletar = listaChaves.shift();
+                delete cacheCompleto[chaveDeletar];
+            }
+        }
+
+        localStorage.setItem('plattransp_assistente_cache_v2', JSON.stringify(cacheCompleto));
+    } catch(e) {
+        console.error("❌ Falha de gravação no cache de fichas do assistente:", e);
+    }
 };
 
 // ==============
@@ -1360,6 +1448,7 @@ window.abrirModalAssistente = async function() {
         listaEscolas: [],
         ruaMatch: ruaMatch,
         confirmacaoFeita: false,
+        ehMaisProxima: null,
         ehMaisProximaParcial: false,
         ehMaisProximaIntegral: false,
         isEspecial: ctx.isEspecial,
@@ -1368,6 +1457,8 @@ window.abrirModalAssistente = async function() {
         deficienciaEspecialProcessada: false,
         pularDeficiencia: false,
         top3EscolasNomes: "",
+        idEscolaMaisProxima: null,
+        distMaisProxima: null,
         opcoesMaisProx: '',
         opcoesMaisProxCount: 0,
         opcoesMaisProxItems: []
@@ -1576,7 +1667,7 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
     }
 
     // Agora usa valorDistancia em vez de estado.distancia
-    preencheAnalise(tipoAcao, motivoAnalise, textoDetalhes, valorDistancia);
+    preencheAnalise(tipoAcao, motivoAnalise, textoDetalhes, valorDistancia, estado.idEscolaMaisProxima);
 });
             return;
         }
@@ -1596,7 +1687,7 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
             if (temSugestaoDeficiencia && estado.deficiencia === null) {
                 estado.pularDeficiencia= false;
             } else {
-                estado.pularDeficiencia= true;
+                if (temSugestaoDeficiencia || estado.deficiencia === null) {estado.pularDeficiencia= false;}else{estado.pularDeficiencia= true;}
                 estado.areaRuralProcessada = true;
                 garantirDistanciaPreenchida();
                 if (estado.deficiencia === 'ALUNO') {
@@ -1610,9 +1701,13 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
                 } else {estado.pularDeficiencia= false;}
                 return renderizarPasso();
             }
+        }else{
+            if (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA') {estado.pularDeficiencia= true;}
         }
 
-        if (estado.areaRuralProcessada && estado.pularDeficiencia=== false && estado.deficiencia === null) {
+        // etapa DEFICIENCIA do assistente
+        console.log("temSugestaoDeficiencia: ", temSugestaoDeficiencia, "\nestado.ehEncaminhado: ", estado.ehEncaminhado, "\nestado.pularDeficiencia: ", estado.pularDeficiencia, "\nestado.deficiencia: ", estado.deficiencia);
+        if ((estado.areaRuralProcessada || (temSugestaoDeficiencia && estado.ehEncaminhado !== null)) && estado.pularDeficiencia=== false && estado.deficiencia === null) {
             let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
             let estiloAluno = "background:#27ae60;";
             let estiloFamilia = "background:#2980b9;";
@@ -1700,125 +1795,20 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
             dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota') || dadosGeraisRotaSessao;
             estado.distanciaSugeridaInput = obterDistanciaSugeridaInput(ctx, mapMode, dadosGeraisRotaSessao);
             
-            const falhouCalculo = dadosGeograficos && 
-                                  (dadosGeograficos.erro || (!dadosGeograficos.geoEndereco_Latit && estado.tentouResgate));
-
-            if (falhouCalculo) {
-                let latA = dadosGeograficos ? dadosGeograficos.geoEndereco_Latit : null;
-                let lonA = dadosGeograficos ? dadosGeograficos.geoEndereco_Longit : null;
-                let linkBotaoErro = (latA && lonA) 
-                    ? `https://maps.google.com/maps?saddr=${latA}+${lonA}&daddr=0+0&travelmode=walking&dirflg=w` //nao alterar
-                    : `https://maps.google.com/maps?saddr=$`; //nao alterar
-
-                  //  <!-- <h3 class="section-title text-info">
-                   //     <span class="mdi mdi-graph" style="font-size: 22px; margin-right: 6px;"></span> Verificação de unidade escolar e distância
-                  //  </h3>
-                  //  <p class="text-danger">Verifique se está na escola mais próxima.</p>
-
-                conteudo.innerHTML = `
-                    
-                    <div style="margin-bottom: 15px;">
-                        <a href="${linkBotaoErro}" target="_blank" onclick="if(window.copiarCoordenadasEndereco) window.copiarCoordenadasEndereco();" class="btn btn-outline" style="text-decoration:none;">
-                            <span class="mdi mdi-map" style="font-size: 16px; margin-right: 4px;"></span> Conferir mapa da rede
-                        </a>
-                    </div>
-                    
-                    <hr class="divider">
-                    <h3 class="section-title text-warning">
-                        <span class="mdi mdi-map-marker-radius-outline" style="font-size: 22px; margin-right: 6px;"></span> Aferição de Distância
-                    </h3>
-                    <div class="input-group">
-                        <input type="number" id="input-assistente-dist" class="input-field" value="${estado.distanciaSugeridaInput}" required>
-                        <label for="input-assistente-dist" class="input-label">Qual é a distância aferida (em metros)?</label>
-                    </div>
-
-                    <div class="action-group">
-                        <button id="btn-esc-sim" class="btn btn-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Está na mais próxima</button>
-                        <button id="btn-esc-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não é a mais próxima</button>
-                    </div>
-                `;
-                
-                const inputDist =
-    document.getElementById(
-        'input-assistente-dist'
-    );
-
-if (inputDist) {
-
-    setTimeout(() => { inputDist.focus(); }, 100);
-    vincularEventoUnico(inputDist, 'focus', function () { this.select(); });
-    vincularEventoUnico(inputDist, 'input', function () { this.dataset.editado = 'true'; });
-    vincularEventoUnico(inputDist, 'keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); } });
-
-    const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-    const rota = dadosGeraisRotaSessao || window.getSharedStoreValue?.('dadosGeraisRota');
-    if (rota) {
-        const distancia = modoMapa === 'endereco' ? rota.distanciaEnd : rota.distanciaCoord;
-        window.atualizarInputDistancia(distancia);
-    }
-}
-
-                vincularEventoUnico(document.getElementById('btn-esc-sim'), 'click', () => { 
-                    const dist = parseInt(inputDist.value);
-                    if (isNaN(dist) || dist < 0) return alert("Por favor, insira uma distância válida em metros.");
-                    salvarHistorico(); 
-                    estado.distancia = dist;
-                    estado.escolaProximaUser = true; 
-                    estado.opcoesMaisProx = '';
-                    estado.opcoesMaisProxCount = 0;
-                    if (estado.distancia >= 1500) {
-                        estado.telaFinal = { titulo: "DEFERIR", mensagem: `A distância atinge o requisito mínimo (1500m) e os critérios da escola (ou encaminhamento) estão corretos.` };
-                    }
-                    renderizarPasso(); 
-                });
-                
-                vincularEventoUnico(document.getElementById('btn-esc-nao'), 'click', () => { 
-                    const dist = parseInt(inputDist.value);
-                    if (isNaN(dist) || dist < 0) return alert("Por favor, insira uma distância válida em metros.");
-                    salvarHistorico(); 
-                    estado.distancia = dist;
-                    estado.escolaProximaUser = false; 
-                    // Recalcular opções com base na distância informada pelo usuário
-                    try {
-                        if (typeof estado.calcularOpcoesMaisProx === 'function') {
-                            const recal = estado.calcularOpcoesMaisProx(estado.distancia);
-                            estado.opcoesMaisProxItems = recal.items || [];
-                            // Filtrar novamente por distancia menor que a informada (garantia)
-                            const filtradas = (estado.opcoesMaisProxItems || []).filter(i => Number(i.distancia) < Number(estado.distancia));
-                            estado.opcoesMaisProx = filtradas.reduce((acc, it, index) => {
-                                const parte = `${it.nome_unidade} (${it.distancia}m)`;
-                                if (index === 0) return parte;
-                                if (index === filtradas.length - 1) return `${acc} e ${parte}`;
-                                return `${acc}, ${parte}`;
-                            }, '');
-                            estado.opcoesMaisProxCount = filtradas.length;
-                        } else {
-                            estado.opcoesMaisProxItems = [];
-                            estado.opcoesMaisProx = '';
-                            estado.opcoesMaisProxCount = 0;
-                        }
-                    } catch (e) { console.error('Erro recalculando opcoesMaisProx:', e); }
-                    renderizarPasso(); 
-                });
-                return;
-            }
-
-            dadosGeograficos = dadosGeograficosSessao;
-            if (!dadosGeograficos || (!dadosGeograficos.geoEndereco_Latit && !dadosGeograficos.erro)) {
+            // AGUARDANDO DADOS GEOGRÁFICOS ASYNC
+            if (!dadosGeograficos && !estado.tentouResgate) {
                 if (!estado.tentativasEsperaGeo) estado.tentativasEsperaGeo = 0;
                 estado.tentativasEsperaGeo++;
-                if (estado.tentativasEsperaGeo > 15) {
-                    gravarDadosGeograficosSessao({ erro: true });
-                    setTimeout(renderizarPasso, 100);
+                if (estado.tentativasEsperaGeo <= 15) {
+                    conteudo.innerHTML = `<div style="text-align:center; padding:20px;" class="text-info"><span class="mdi mdi-refresh" style="font-size: 22px; margin-right: 6px;"></span> <b>Calculando escolas mais próximas...</b></div>`;
+                    setTimeout(renderizarPasso, 500); 
                     return;
                 }
-                conteudo.innerHTML = `<div style="text-align:center; padding:20px;" class="text-info"><span class="mdi mdi-refresh" style="font-size: 22px; margin-right: 6px;"></span> <b>Calculando escolas mais próximas...</b></div>`;
-                setTimeout(renderizarPasso, 500); 
-                return;
             }
 
-            const latAluno = dadosGeograficos.geoEndereco_Latit;
-            const lonAluno = dadosGeograficos.geoEndereco_Longit;
+            // CAPTURA DOS DADOS (SE PREPARANDO PARA RENDERIZAR A TELA COMPLETA COM LISTA)
+            const latAluno = dadosGeograficos?.geoEndereco_Latit || null;
+            const lonAluno = dadosGeograficos?.geoEndereco_Longit || null;
             
             estado.nomeEscolaAtual = ctx.nomeEscolaAtual;
             const escolaSelecionada = ctx.escolaRegistro;
@@ -1829,420 +1819,389 @@ if (inputDist) {
             }
             estado.isEspecial = ctx.isEspecial;
 
-            // Definir variáveis de modo em escopo mais amplo para uso em atualizarListaEscolasDinamicamente e OSRM
             let mapModeAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
             let transpModeAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
 
-            // --- SECTION: SCHOOL LIST MANAGEMENT ---
-            // Atualiza dinamicamente a interface e recalcula caminhos caso os modos (coordenada/endereço) mudem.
+            // DEFINIÇÃO DO MOTOR DA LISTA DINÂMICA
             const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
-                dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota') || dadosGeraisRotaSessao;
-                if (estado.buscandoOSRM && !forcarRecalculo) {
-                    if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-                    estado.buscandoOSRM = false;
-                } else if (estado.buscandoOSRM) {
-                    return;
-                }
+                
+    //funcao arredondar distancia:
+    const Arredondar = (distanciaBase = 0, idEscola = 0) => {
+        let valorOriginal = 0;
 
-                mapModeAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-                transpModeAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
-                let chaveCacheAtual = `${mapModeAtual}_${transpModeAtual}`;
-                let chaveListaAtual = mapModeAtual;
+        if (idEscola > 0 && estado.distanciasOSRM[idEscola] !== undefined && estado.distanciasOSRM[idEscola] !== 'Erro' && estado.distanciasOSRM[idEscola] !== null) {
+            valorOriginal = Number(estado.distanciasOSRM[idEscola]);
+        } else if (idEscola > 0 && Number(distanciaBase) > 0 && (estado.distanciasOSRM[idEscola] === 'Erro' || estado.distanciasOSRM[idEscola] === null)) {
+            valorOriginal = Number(distanciaBase);
+        } else if (Number(distanciaBase) > 0) {
+            valorOriginal = Number(distanciaBase);
+        } else {
+            return distanciaBase;
+        }
 
-                if (forcarRecalculo || !estado.listaEscolasPorModo[chaveListaAtual]) {
-                    listaExibirBase = montarListaEscolasExibicao(escolasAptas, latAluno, lonAluno, chaveListaAtual, idEscolaAtual, dadosGeraisRotaSessao);
-                    estado.listaEscolasPorModo[chaveListaAtual] = listaExibirBase;
-                    persistirEstado();
+        const numBase = valorOriginal >= 1000 ? 100 : 50;
+        return Math.round(valorOriginal / numBase) * numBase;
+    };
+
+    dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota') || dadosGeraisRotaSessao;
+    if (estado.buscandoOSRM && !forcarRecalculo) {
+        if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+        estado.buscandoOSRM = false;
+    } else if (estado.buscandoOSRM) {
+        return;
+    }
+
+    mapModeAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
+    transpModeAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
+    let chaveCacheAtual = `${mapModeAtual}_${transpModeAtual}`;
+    let chaveListaAtual = mapModeAtual;
+
+    if (forcarRecalculo || !estado.listaEscolasPorModo[chaveListaAtual]) {
+        listaExibirBase = montarListaEscolasExibicao(escolasAptas, latAluno || 0, lonAluno || 0, chaveListaAtual, idEscolaAtual, dadosGeraisRotaSessao);
+        estado.listaEscolasPorModo[chaveListaAtual] = listaExibirBase;
+        persistirEstado();
+    } else {
+        listaExibirBase = estado.listaEscolasPorModo[chaveListaAtual];
+    }
+    
+    estado.ultimoModoUsado = chaveCacheAtual;
+    
+    if (!estado.cacheDistancias) estado.cacheDistancias = {};
+    if (!estado.cacheDistancias[chaveCacheAtual]) estado.cacheDistancias[chaveCacheAtual] = {};
+    estado.distanciasOSRM = estado.cacheDistancias[chaveCacheAtual];
+    estado.perfilOSRM = transpModeAtual === 'carro' ? 'driving' : 'foot';
+    
+    const containerLista = document.getElementById('container-lista-escolas');
+    if (!containerLista) return;
+
+    // Averiguação: verifica se TODAS as escolas da lista já possuem cálculo feito (diferente de undefined)
+    const verificarTodosCalculados = () => {
+        return listaExibirBase.length > 0 && listaExibirBase.every(esc => estado.distanciasOSRM[esc.id] !== undefined);
+    };
+
+    // Função interna para gerar a string de status dinamicamente
+    const obterStatusText = (lista, ehMaisProx, ehMaisProxParcial) => {
+        if (!verificarTodosCalculados()) {
+            return `<p>Verifique se a escola matriculada é a mais próxima do endereço do aluno.</p>`;
+        }
+        
+        const possuiEstimativa = lista.some(esc => {
+            const valorDist = estado.distanciasOSRM[esc.id];
+            const fonteDist = estado.fontesOSRM ? estado.fontesOSRM[esc.id] : null;
+            
+            return valorDist === 'Erro' || 
+                   valorDist === null || 
+                   fonteDist === 'OSRM' || 
+                   fonteDist === 'HAVERSINE';
+        });
+
+        if (possuiEstimativa) {
+            return `<span class="text-warning"><span class="mdi mdi-alert-circle-outline" style="font-size: 16px; margin-right: 4px;"></span> Não foi possível calcular as distâncias, verifique a distância correta clicando nos links do Google Maps</span>`;
+        }
+
+        if (lista.length === 0) {
+            return `<span class="text-warning"><span class="mdi mdi-lightning-bolt" style="font-size: 16px; margin-right: 4px;"></span> Nenhuma opção compatível na base.</span>`;
+        } else if (ehMaisProx) {
+            return `<span class="text-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> A escola atual é a MAIS PRÓXIMA.</span>`;
+        } else if (ehMaisProxParcial) {
+            return `<span class="text-info"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Escola parcial mais próxima ao endereço.</span>`;
+        } else {
+            const complementoNivel = nivelAlunoOriginal ? ` de ${nivelAlunoOriginal}` : '';
+            return `<span class="text-danger"><span class="mdi mdi-lightning-bolt" style="font-size: 16px; margin-right: 4px;"></span> Parece haver UEs mais próximas${complementoNivel}:</span>`;
+        }
+    };
+
+    window.rerenderizarListaOSRM = () => {
+        const lis = containerLista.querySelectorAll('li');
+        lis.forEach(li => {
+            const idEsc = li.dataset.id;
+            if (!idEsc) return;
+            let distTexto = '';
+            if (estado.distanciasOSRM[idEsc] !== undefined) {
+                if (estado.distanciasOSRM[idEsc] === 'Erro' || estado.distanciasOSRM[idEsc] === null) {
+                    let escDados = listaExibirBase.find(e => String(e.id) === idEsc);
+                    let distHaversine = escDados ? Math.round(escDados.distancia / 100) * 100 : 0;
+                    let iconPath = estado.perfilOSRM === 'foot' ? 'mdi-walk' : 'mdi-car';
+                    distTexto = `<span class="text-muted"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> +- ${distHaversine}m (estimativa)</span>`;
                 } else {
-                    listaExibirBase = estado.listaEscolasPorModo[chaveListaAtual];
+                    let distArredondada = Arredondar(estado.distanciasOSRM[idEsc], idEsc);
+                    let iconPath = estado.perfilOSRM === 'foot' ? 'mdi-walk' : 'mdi-car';
+                    let sinalExato = (estado.fontesOSRM && (estado.fontesOSRM[idEsc] === 'OSRM' || estado.fontesOSRM[idEsc] === 'HAVERSINE')) ? '+-' : '';
+                    distTexto = `<span class="text-warning"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> Trajeto: <b>${sinalExato}${distArredondada}m</b></span>`;
                 }
-                
-                estado.ultimoModoUsado = chaveCacheAtual;
-                
-                if (!estado.cacheDistancias) estado.cacheDistancias = {};
-                if (!estado.cacheDistancias[chaveCacheAtual]) estado.cacheDistancias[chaveCacheAtual] = {};
-                estado.distanciasOSRM = estado.cacheDistancias[chaveCacheAtual];
-                estado.perfilOSRM = transpModeAtual === 'carro' ? 'driving' : 'foot';
-                
-                const containerLista = document.getElementById('container-lista-escolas');
-                if (!containerLista) {
-                    return;
-                }
+            } else {
+                distTexto = `<span class="text-warning"><span class="mdi mdi-refresh" style="font-size: 14px; margin-right: 2px;"></span> <i>Calculando trajeto...</i></span>`;
+            }
+            const divMeta = li.querySelector('.dist-texto');
+            if (divMeta) divMeta.innerHTML = distTexto;
+        });
 
-                window.rerenderizarListaOSRM = () => {
-                    const lis = containerLista.querySelectorAll('li');
-                    lis.forEach(li => {
-                        const idEsc = li.dataset.id;
-                        if (!idEsc) return;
-                        let distTexto = '';
-                        if (estado.distanciasOSRM[idEsc] !== undefined) {
-                            if (estado.distanciasOSRM[idEsc] === 'Erro' || estado.distanciasOSRM[idEsc] === null) {
-                                let escDados = listaExibirBase.find(e => String(e.id) === idEsc);
-                                let distHaversine = escDados ? Math.round(escDados.distancia + 100) : 0;
-                                let iconPath = estado.perfilOSRM === 'foot' ? 'mdi-walk' : 'mdi-car';
-                                distTexto = `<span class="text-muted"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> +- ${distHaversine}m (estimativa)</span>`;
+        const divStatusContainer = containerLista.querySelector('.status-text-container');
+        if (divStatusContainer) {
+            divStatusContainer.innerHTML = obterStatusText(listaOrdenada, estado.ehMaisProxima, estado.ehMaisProximaParcial);
+        }
+    };
+
+    let listaOrdenada = [...listaExibirBase];
+    listaOrdenada.sort((a, b) => {
+        let distA = Arredondar(a.distancia, a.id);
+        let distB = Arredondar(b.distancia, b.id);
+        return distA - distB;
+    });
+    
+    if (listaOrdenada.length > 0) {
+        let topEscola = listaOrdenada[0];
+        estado.idEscolaMaisProxima = topEscola.id; 
+        estado.distMaisProxima = Arredondar(topEscola.distancia, topEscola.id);
+    }
+
+    let schoolMaisProximaParcial = listaOrdenada.find(e => e.periodosEncontrados && e.periodosEncontrados.includes('PARCIAL'));
+    let distParcialMaisProxima = schoolMaisProximaParcial ? Arredondar(schoolMaisProximaParcial.distancia, schoolMaisProximaParcial.id) : null;
+
+    let schoolAtualNoArray = listaOrdenada.find(e => String(e.id) === String(idEscolaAtual));
+    let distEscolaAtual = schoolAtualNoArray ? Arredondar(schoolAtualNoArray.distancia, idEscolaAtual) : null;
+
+    let distInputUser = estado.distanciaSugeridaInput ? parseInt(estado.distanciaSugeridaInput, 10) : null;
+    const limparNome = (n) => (typeof n === 'string' ? n.split(',')[0].trim() : n);
+
+    const opcoesMaisProxData = estado.calcularOpcoesMaisProx ? estado.calcularOpcoesMaisProx(distInputUser) : { texto: '', count: 0, items: [] };
+    estado.opcoesMaisProx = opcoesMaisProxData.texto;
+    estado.opcoesMaisProxCount = opcoesMaisProxData.count;
+    estado.opcoesMaisProxItems = opcoesMaisProxData.items || [];
+
+    const todosCalculados = listaOrdenada.length > 0 && listaOrdenada.every(esc => estado.distanciasOSRM[esc.id] !== undefined);
+
+    let ehMaisProxima = false;
+    if (todosCalculados && listaOrdenada.length > 0) {
+        const topEscola = listaOrdenada[0];
+        if (String(topEscola.id) === String(idEscolaAtual)) ehMaisProxima = true;
+        else if (distEscolaAtual !== null && estado.distMaisProxima !== null && distEscolaAtual === estado.distMaisProxima) ehMaisProxima = true;
+        else if (distInputUser !== null && estado.distMaisProxima !== null && distInputUser === estado.distMaisProxima) ehMaisProxima = true;
+        else if (schoolAtualNoArray && schoolAtualNoArray.terreno && topEscola.terreno && String(schoolAtualNoArray.terreno) === String(topEscola.terreno)) ehMaisProxima = true;
+    }
+
+    let ehMaisProximaParcial = false;
+    if (todosCalculados && !ehMaisProxima && schoolMaisProximaParcial) {
+        if (String(schoolMaisProximaParcial.id) === String(idEscolaAtual)) ehMaisProximaParcial = true;
+        else if (schoolAtualNoArray && schoolAtualNoArray.periodosEncontrados && schoolAtualNoArray.periodosEncontrados.includes('PARCIAL')) {
+            if (distEscolaAtual !== null && distParcialMaisProxima !== null && distEscolaAtual === distParcialMaisProxima) ehMaisProximaParcial = true;
+            else if (distInputUser !== null && distParcialMaisProxima !== null && distInputUser === distParcialMaisProxima) ehMaisProximaParcial = true;
+            else if (schoolAtualNoArray.terreno && schoolMaisProximaParcial.terreno && String(schoolAtualNoArray.terreno) === String(schoolMaisProximaParcial.terreno)) ehMaisProximaParcial = true;
+        }
+    }
+    
+    estado.escolaProximaCalc = ehMaisProxima || ehMaisProximaParcial;
+    estado.ehMaisProximaParcial = ehMaisProximaParcial;
+    estado.ehMaisProxima = ehMaisProxima;
+    
+    const escolasEfetivamenteMaisProximas = listaOrdenada.filter(e => {
+        if (String(e.id) === String(idEscolaAtual)) return false; 
+        
+        if (distEscolaAtual !== null) {
+            const distArredondadaEscola = Arredondar(e.distancia, e.id);
+            return distArredondadaEscola < distEscolaAtual; 
+        }
+        return true;
+    });
+
+    estado.top3EscolasNomes = escolasEfetivamenteMaisProximas.slice(0, 3).map(e => ({
+        nome: limparNome(e.nome),
+        distancia: Arredondar(e.distancia, e.id) + 'm'
+    }));
+    
+    if (typeof window.setSharedStore === 'function') {
+    window.setSharedStore({ top3EscolasNomes: estado.top3EscolasNomes }); //  Corrigido para "estado"
+    }
+
+    estado.isEncaminhamentoDispensado = (estado.escolaProximaUser === true);
+
+    let statusText = obterStatusText(listaOrdenada, ehMaisProxima, ehMaisProximaParcial);
+
+    const btnSim = document.getElementById('btn-esc-sim');
+    const btnNao = document.getElementById('btn-esc-nao');
+    const destaqueSim = (ehMaisProxima || ehMaisProximaParcial);
+    const destaqueNao = (!ehMaisProxima && !ehMaisProximaParcial && !estado.ehMaisProximaIntegral);
+    
+    if (btnSim && btnNao) {
+        if (destaqueSim) {
+            btnSim.className = "btn btn-success destaque";
+            btnNao.className = "btn btn-danger dimmed";
+        } else if (destaqueNao) {
+            btnNao.className = "btn btn-danger destaque";
+            btnSim.className = "btn btn-success dimmed";
+        } else {
+            btnNao.className = "btn btn-danger";
+            btnSim.className = "btn btn-success";
+        }
+        window.destaqueSimGlobal = destaqueSim;
+    }
+
+    let listaHtml = `<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; position:relative;">
+        <div class="status-text-container">${statusText}</div>
+        <button id="btn-refresh-lista" class="btn-icon-transparent" style="position:absolute; top:0; right:0; display:none;" title="Atualizar lista">
+            <span class="mdi mdi-refresh" style="font-size: 18px;"></span>
+        </button>
+    </div>`;
+    listaHtml += `<div class="school-list-container" style="margin-top:0;"><ul class="school-list">`;
+    
+    if (listaOrdenada.length === 0) {
+        textHtml += `<li class="school-item text-danger">Nenhuma escola encontrada na base.</li>`;
+    } else {
+        const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
+        const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
+
+        listaOrdenada.forEach((esc, i) => {
+            const cor = String(esc.id) === String(idEscolaAtual) ? 'selected' : '';
+            const tagAtual = String(esc.id) === String(idEscolaAtual) ? `<span class="mdi mdi-star text-warning" style="font-size: 14px; margin-left: 4px;" title="Escola Solicitada"></span> ` : '';
+            
+            let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : "";
+            let urlConfere = "";
+            
+            if (mapModeAtual === 'endereco' && dadosGeraisRotaSessao && typeof dadosGeraisRotaSessao.coordAlunoEnd === 'string') {
+                let endStrEncode = encodeURIComponent(dadosGeraisRotaSessao.coordAlunoEnd);
+                urlConfere = `https://maps.google.com/maps?saddr=${endStrEncode}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;
+            } else {
+                urlConfere = `https://maps.google.com/maps?saddr=${latOrigemLista}+${lonOrigemLista}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;
+            }
+            
+            let iconPath = estado.perfilOSRM === 'foot' ? 'mdi-walk' : 'mdi-car';
+            let txtDist = `<span class="text-warning"><span class="mdi mdi-refresh" style="font-size: 14px; margin-right: 2px;"></span> <i>Calculando trajeto...</i></span>`;
+            if (estado.distanciasOSRM[esc.id] !== undefined) {
+                if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) {
+                    let distHaversine = Math.round(esc.distancia + 100);
+                    txtDist = `<span class="text-muted"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> +- ${distHaversine}m (estimativa)</span>`;
+                } else {
+                    let distArredondada = Arredondar(estado.distanciasOSRM[esc.id], esc.id);
+                    let sinalExato = (estado.fontesOSRM && (estado.fontesOSRM[esc.id] === 'OSRM' || estado.fontesOSRM[esc.id] === 'HAVERSINE')) ? '+-' : '';
+                    txtDist = `<span class="text-warning"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> Trajeto: <b>${sinalExato}${distArredondada}m</b></span>`;
+                    if(tagAtual !== '' && (estado.distancia === null || estado.distancia === undefined || estado.distancia === 0 || estado.distancia === '') && distArredondada > 0){
+                        estado.distancia = distArredondada;
+                    }
+                }
+            }
+
+            let classeBadge = esc.periodosEncontrados.includes('INTEGRAL') ? ' badge-integral' : (esc.periodosEncontrados.includes('PARCIAL') ? ' badge-parcial' : ' badge-noite');
+
+            listaHtml += `<li data-id="${esc.id}" class="school-item ${cor}">
+                ${tagAtual}${i + 1}º - ${esc.nome} <span class="badge${classeBadge}">${esc.periodosEncontrados}</span>
+                <div class="school-meta dist-texto">${txtDist}
+                <a href="${urlConfere}" target="_blank" class="link-action">
+                    <span class="mdi mdi-map" style="font-size: 14px; margin-right: 2px;"></span> Ver rota no Google Maps
+                </a></div>
+            </li>`;
+        });
+    }
+    listaHtml += `</ul></div>`;
+    
+    let linkMapaRede = latAluno ? `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latAluno}%2C${lonAluno}&z=18` : `https://maps.google.com/maps?saddr=$`;
+    listaHtml += `<a href="${linkMapaRede}" target="_blank" class="btn btn-outline" style="text-decoration:none; margin-bottom:15px;">
+        <span class="mdi mdi-map" style="font-size: 16px; margin-right: 4px;"></span> Conferir mapa da rede
+    </a>`;
+
+    containerLista.innerHTML = listaHtml;
+    
+    const temErros = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
+    const btnRefreshEnd = document.getElementById('btn-refresh-lista');
+    if (btnRefreshEnd) btnRefreshEnd.style.display = temErros ? 'block' : 'none';
+    
+    let faltaCalcularAgora = latAluno && listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
+    if (estado.ehAnalise && faltaCalcularAgora && typeof window.calcularTrajetoOSRM === 'function' && !estado.buscandoOSRM) {
+        estado.buscandoOSRM = true;
+        if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+        window.osrmAbortController = new AbortController();
+
+        (async () => {
+            const meuSignal = window.osrmAbortController.signal;
+            try {
+                const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
+                const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
+
+                for (let esc of listaExibirBase) {
+                    if (estado.distanciasOSRM[esc.id] === undefined) {
+                        
+                        // --- INTERCEPTAÇÃO E OTIMIZAÇÃO DA UNIDADE ATUAL SOLICITADA ---
+                        let distanciaCalculadaFinal = null;
+                        if (String(esc.id) === String(idEscolaAtual)) {
+                            const liAtualDOM = containerLista.querySelector(`li[data-id="${idEscolaAtual}"]`);
+                            const textoDistanciaAtual = liAtualDOM ? liAtualDOM.querySelector('.dist-texto')?.innerText || "" : "";
+                            
+                            const precisaRecalcular = !textoDistanciaAtual || 
+                                                      textoDistanciaAtual.includes("+-") || 
+                                                      textoDistanciaAtual.toUpperCase().includes("OSRM") || 
+                                                      textoDistanciaAtual.toUpperCase().includes("HAVERSINE") ||
+                                                      textoDistanciaAtual.includes("Calculando");
+
+                            if (precisaRecalcular) {
+                                console.log("[OTIMIZAÇÃO] Distância da escola atual ausente ou imprecisa. Calculando via Google...");
+                                const resultadoCalc = await window.calcularTrajetoOSRM(latOrigemLista, lonOrigemLista, esc.lat, esc.lon, estado.perfilOSRM, meuSignal);
+                                if (resultadoCalc !== null && resultadoCalc.distancia !== undefined) {
+                                    distanciaCalculadaFinal = resultadoCalc.distancia;
+                                    estado.distanciasOSRM[esc.id] = resultadoCalc.distancia;
+                                    if (!estado.fontesOSRM) estado.fontesOSRM = {};
+                                    estado.fontesOSRM[esc.id] = resultadoCalc.fonte;
+                                    window.setSharedStoreValue?.('distanciaPreenchidaAtual', distanciaCalculadaFinal);
+                                } else {
+                                    estado.distanciasOSRM[esc.id] = 'Erro';
+                                }
                             } else {
-                                let distArredondada = Math.round(estado.distanciasOSRM[idEsc] / 50) * 50;
-                                let iconPath = estado.perfilOSRM === 'foot' ? 'mdi-walk' : 'mdi-car';
-                                let sinalExato = (estado.fontesOSRM && (estado.fontesOSRM[idEsc] === 'OSRM' || estado.fontesOSRM[idEsc] === 'HAVERSINE')) ? '+-' : '';
-                                distTexto = `<span class="text-warning"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> Trajeto: <b>${sinalExato}${distArredondada}m</b></span>`;
+                                console.log("[OTIMIZAÇÃO] Reutilizando cálculo robusto do Google existente para a unidade atual.");
+                                const numeroKm = parseFloat(textoDistanciaAtual.replace(/[^\d,.]/g, '').replace(',', '.'));
+                                distanciaCalculadaFinal = isNaN(numeroKm) ? null : Math.round(numeroKm * 1000);
+                                estado.distanciasOSRM[esc.id] = distanciaCalculadaFinal;
+                            }
+
+                            // Sincroniza em tempo real o input de distância do painel lateral
+                            if (distanciaCalculadaFinal !== null) {
+                                window.atualizarInputDistancia(distanciaCalculadaFinal);
                             }
                         } else {
-                            distTexto = `<span class="text-warning"><span class="mdi mdi-refresh" style="font-size: 14px; margin-right: 2px;"></span> <i>Calculando trajeto...</i></span>`;
-                        }
-                        const divMeta = li.querySelector('.dist-texto');
-                        if (divMeta) {
-                            divMeta.innerHTML = distTexto;
-                        }
-                    });
-                };
-
-                let listaOrdenada = [...listaExibirBase];
-                listaOrdenada.sort((a, b) => {
-                    let distA = (estado.distanciasOSRM[a.id] !== undefined && estado.distanciasOSRM[a.id] !== 'Erro') ? estado.distanciasOSRM[a.id] : a.distancia;
-                    let distB = (estado.distanciasOSRM[b.id] !== undefined && estado.distanciasOSRM[b.id] !== 'Erro') ? estado.distanciasOSRM[b.id] : b.distancia;
-                    return distA - distB;
-                });
-                
-                let distMaisProxima = null;
-                if (listaOrdenada.length > 0) {
-                    let topEscola = listaOrdenada[0];
-                    distMaisProxima = (estado.distanciasOSRM[topEscola.id] !== undefined && estado.distanciasOSRM[topEscola.id] !== 'Erro') ? estado.distanciasOSRM[topEscola.id] : topEscola.distancia;
-                }
-
-                let escolaMaisProximaParcial = listaOrdenada.find(e => e.periodosEncontrados && e.periodosEncontrados.includes('PARCIAL'));
-                let distParcialMaisProxima = null;
-                if (escolaMaisProximaParcial) {
-                     distParcialMaisProxima = (estado.distanciasOSRM[escolaMaisProximaParcial.id] !== undefined && estado.distanciasOSRM[escolaMaisProximaParcial.id] !== 'Erro') ? estado.distanciasOSRM[escolaMaisProximaParcial.id] : escolaMaisProximaParcial.distancia;
-                }
-
-                let escolaAtualNoArray = listaOrdenada.find(e => String(e.id) === String(idEscolaAtual));
-                let distEscolaAtual = null;
-                if (escolaAtualNoArray) {
-                     distEscolaAtual = (estado.distanciasOSRM[idEscolaAtual] !== undefined && estado.distanciasOSRM[idEscolaAtual] !== 'Erro') ? estado.distanciasOSRM[idEscolaAtual] : escolaAtualNoArray.distancia;
-                }
-
-                let distInputUser = estado.distanciaSugeridaInput ? parseInt(estado.distanciaSugeridaInput, 10) : null;
-
-                // Remove partes desnecessárias do nome da escola na exibição em tela.
-                const limparNome = (n) => (typeof n === 'string' ? n.split(',')[0].trim() : n);
-
-                // Calcula e formata um texto exibindo as opções de escolas mais próximas do aluno.
-                const calcularOpcoesMaisProx = (threshold) => {
-                    const th = (threshold !== undefined && threshold !== null) ? Number(threshold) : (distInputUser !== null ? Number(distInputUser) : null);
-                    if (estado.escolaProximaUser === true || th === null || Number.isNaN(th)) {
-                        return { texto: '', count: 0, items: [] };
-                    }
-
-                    const idxAtual = listaOrdenada.findIndex(e => String(e.id) === String(idEscolaAtual));
-                    if (idxAtual <= 0) {
-                        return { texto: '', count: 0, items: [] };
-                    }
-
-                    // Função auxiliar para arredondar sempre de 50 em 50 metros.
-                    // Função auxiliar interna para forçar o arredondamento de 50 em 50 metros
-                    const arredondar50 = (val) => Math.round(Number(val) / 50) * 50;
-
-                    const escolaAtual = listaOrdenada[idxAtual];
-                    const distAtualRaw = (estado.distanciasOSRM[escolaAtual.id] !== undefined && estado.distanciasOSRM[escolaAtual.id] !== 'Erro')
-                        ? Number(estado.distanciasOSRM[escolaAtual.id])
-                        : Number(escolaAtual.distancia);
-                    const distAtual = arredondar50(distAtualRaw);
-
-                    const candidatas = listaOrdenada.slice(0, idxAtual).map(esc => {
-                        const distEscRaw = (estado.distanciasOSRM[esc.id] !== undefined && estado.distanciasOSRM[esc.id] !== 'Erro')
-                            ? Number(estado.distanciasOSRM[esc.id])
-                            : Number(esc.distancia);
-                        const distEsc = arredondar50(distEscRaw);
-                        return { esc, distEsc };
-                    }).filter(o => {
-                        if (o.distEsc >= th || o.distEsc >= distAtual) return false;
-                        if (o.esc.terreno && escolaAtual.terreno && String(o.esc.terreno) === String(escolaAtual.terreno)) return false;
-                        return true;
-                    });
-
-                    if (!candidatas.length) {
-                        return { texto: '', count: 0, items: [] };
-                    }
-
-                    let selecionadas = candidatas.slice(0, 3).map(o => o.esc);
-                    if (candidatas.length > 3) {
-                        const distTerceiroRaw = (estado.distanciasOSRM[selecionadas[2].id] !== undefined && estado.distanciasOSRM[selecionadas[2].id] !== 'Erro')
-                            ? Number(estado.distanciasOSRM[selecionadas[2].id])
-                            : Number(selecionadas[2].distancia);
-                        const distTerceiro = arredondar50(distTerceiroRaw);
-
-                        const distQuartoRaw = (estado.distanciasOSRM[candidatas[3].esc.id] !== undefined && estado.distanciasOSRM[candidatas[3].esc.id] !== 'Erro')
-                            ? Number(estado.distanciasOSRM[candidatas[3].esc.id])
-                            : Number(candidatas[3].esc.distancia);
-                        const distQuarto = arredondar50(distQuartoRaw);
-
-                        if (distTerceiro === distQuarto) {
-                            selecionadas.push(candidatas[3].esc);
-                        }
-                    }
-
-                    const items = selecionadas.map(esc => {
-                        const distEscRaw = (estado.distanciasOSRM[esc.id] !== undefined && estado.distanciasOSRM[esc.id] !== 'Erro')
-                            ? Number(estado.distanciasOSRM[esc.id])
-                            : Number(esc.distancia);
-                        const distEsc = arredondar50(distEscRaw);
-                        return { nome_unidade: limparNome(esc.nome), distancia: distEsc, id: esc.id };
-                    });
-
-                    const texto = items.reduce((acc, it, index) => {
-                        const parte = `${it.nome_unidade} (${it.distancia}m)`;
-                        if (index === 0) return parte;
-                        if (index === items.length - 1) return `${acc} e ${parte}`;
-                        return `${acc}, ${parte}`;
-                    }, '');
-
-                    return { texto, count: items.length, items };
-                };
-
-                estado.calcularOpcoesMaisProx = calcularOpcoesMaisProx;
-
-                const opcoesMaisProxData = calcularOpcoesMaisProx(distInputUser);
-                estado.opcoesMaisProx = opcoesMaisProxData.texto;
-                estado.opcoesMaisProxCount = opcoesMaisProxData.count;
-                estado.opcoesMaisProxItems = opcoesMaisProxData.items || [];
-
-                let ehMaisProxima = false;
-                if (listaOrdenada.length > 0) {
-                    const topEscola = listaOrdenada[0];
-                    if (String(topEscola.id) === String(idEscolaAtual)) {
-                        ehMaisProxima = true;
-                    } else if (distEscolaAtual !== null && distMaisProxima !== null && distEscolaAtual === distMaisProxima) {
-                        ehMaisProxima = true;
-                    } else if (distInputUser !== null && distMaisProxima !== null && distInputUser === distMaisProxima) {
-                        ehMaisProxima = true;
-                    } else if (escolaAtualNoArray && escolaAtualNoArray.terreno && topEscola.terreno && String(escolaAtualNoArray.terreno) === String(topEscola.terreno)) {
-                        ehMaisProxima = true;
-                    }
-                }
-
-                let ehMaisProximaParcial = false;
-                if (!ehMaisProxima && escolaMaisProximaParcial) {
-                    if (String(escolaMaisProximaParcial.id) === String(idEscolaAtual)) {
-                        ehMaisProximaParcial = true;
-                    } else if (escolaAtualNoArray && escolaAtualNoArray.periodosEncontrados && escolaAtualNoArray.periodosEncontrados.includes('PARCIAL')) {
-                        if (distEscolaAtual !== null && distParcialMaisProxima !== null && distEscolaAtual === distParcialMaisProxima) {
-                            ehMaisProximaParcial = true;
-                        } else if (distInputUser !== null && distParcialMaisProxima !== null && distInputUser === distParcialMaisProxima) {
-                            ehMaisProximaParcial = true;
-                        } else if (escolaAtualNoArray.terreno && escolaMaisProximaParcial.terreno && String(escolaAtualNoArray.terreno) === String(escolaMaisProximaParcial.terreno)) {
-                            ehMaisProximaParcial = true;
-                        }
-                    }
-                }
-
-                const escolaMaisProximaIntegral = listaOrdenada.find(e => e.periodosEncontrados && e.periodosEncontrados.includes('INTEGRAL'));
-                
-                if (!ehMaisProxima && !ehMaisProximaParcial && escolaMaisProximaIntegral) {
-                    if (String(escolaMaisProximaIntegral.id) === String(idEscolaAtual)) {
-                        estado.ehMaisProximaIntegral = true;
-                    } else if (escolaAtualNoArray && escolaAtualNoArray.periodosEncontrados && escolaAtualNoArray.periodosEncontrados.includes('INTEGRAL')) {
-                        let distIntegralMaisProxima = (estado.distanciasOSRM[escolaMaisProximaIntegral.id] !== undefined && estado.distanciasOSRM[escolaMaisProximaIntegral.id] !== 'Erro') ? estado.distanciasOSRM[escolaMaisProximaIntegral.id] : escolaMaisProximaIntegral.distancia;
-                        if (distEscolaAtual !== null && distIntegralMaisProxima !== null && distEscolaAtual === distIntegralMaisProxima) {
-                            estado.ehMaisProximaIntegral = true;
-                        } else if (distInputUser !== null && distIntegralMaisProxima !== null && distInputUser === distIntegralMaisProxima) {
-                            estado.ehMaisProximaIntegral = true;
-                        } else if (escolaAtualNoArray.terreno && escolaMaisProximaIntegral.terreno && String(escolaAtualNoArray.terreno) === String(escolaMaisProximaIntegral.terreno)) {
-                            estado.ehMaisProximaIntegral = true;
-                        }
-                    }
-                }
-                
-                estado.escolaProximaCalc = ehMaisProxima || ehMaisProximaParcial;
-                estado.ehMaisProximaParcial = ehMaisProximaParcial;
-                estado.top3EscolasNomes = listaOrdenada.slice(0, 3).map(e => limparNome(e.nome)).join(' / ');
-                
-                // GARANTIA: Se o usuário clicou que NÃO é a mais próxima, força a exibição do Encaminhamento
-                if (estado.escolaProximaUser === true) {
-                    estado.isEncaminhamentoDispensado = true;
-                }else{
-                    estado.isEncaminhamentoDispensado = false;
-                }
-
-                                               
-
-                let statusText = "";
-                if (listaOrdenada.length === 0) {
-                     statusText = `<span class="text-warning"><span class="mdi mdi-lightning-bolt" style="font-size: 16px; margin-right: 4px;"></span> Verifique o nível do aluno. Nenhuma opção compatível foi encontrada.</span>`;
-                } else if (ehMaisProxima) {
-                     statusText = `<span class="text-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> A escola atual parece ser a MAIS PRÓXIMA de ${nivelAlunoOriginal}.</span>`;
-                } else if (ehMaisProximaParcial) {
-                     statusText = `<span class="text-info"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Parece estar na UE mais próxima de ENSINO PARCIAL para ${nivelAlunoOriginal}.</span>`;
-                } else {
-                     statusText = `<span class="text-danger"><span class="mdi mdi-lightning-bolt" style="font-size: 16px; margin-right: 4px;"></span> Parece que há UEs mais próximas para ${nivelAlunoOriginal}:</span>`;
-                }
-
-                const btnSim = document.getElementById('btn-esc-sim');
-                const btnNao = document.getElementById('btn-esc-nao');
-                const destaqueSim = (ehMaisProxima || ehMaisProximaParcial);
-                
-                if (btnSim && btnNao) {
-                    if (destaqueSim) {
-                        btnSim.className = "btn btn-success destaque";
-                        btnNao.className = "btn btn-danger dimmed";
-                    } else {
-                        btnNao.className = "btn btn-danger destaque";
-                        btnSim.className = "btn btn-success dimmed";
-                    }
-                    window.destaqueSimGlobal = destaqueSim;
-                }
-
-                let listaHtml = `<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; position:relative;">
-                    ${statusText}
-                    <button id="btn-refresh-lista" class="btn-icon-transparent" style="position:absolute; top:0; right:0; display:none;" title="Atualizar lista">
-                        <span class="mdi mdi-refresh" style="font-size: 18px;"></span>
-                    </button>
-                </div>`;
-                listaHtml += `<div class="school-list-container" style="margin-top:0;"><ul class="school-list">`;
-                
-                if (listaOrdenada.length === 0) {
-                    listaHtml += `<li class="school-item text-danger">Nenhuma escola encontrada na base.</li>`;
-                } else {
-                    const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
-                    const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
-
-                    listaOrdenada.forEach((esc, i) => {
-                        const cor = String(esc.id) === String(idEscolaAtual) ? 'selected' : '';
-                        const tagAtual = String(esc.id) === String(idEscolaAtual) ? `<span class="mdi mdi-star text-warning" style="font-size: 14px; margin-left: 4px;" title="Escola Solicitada"></span> ` : '';
-                        
-                        let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : "";
-                        let urlConfere = "";
-                        
-                        if (mapModeAtual === 'endereco' && dadosGeraisRotaSessao && typeof dadosGeraisRotaSessao.coordAlunoEnd === 'string') {
-                            let endStrEncode = encodeURIComponent(dadosGeraisRotaSessao.coordAlunoEnd);
-                            urlConfere = `https://maps.google.com/maps?saddr=${endStrEncode}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;
-                        } else {
-                            urlConfere = `https://maps.google.com/maps?saddr=${latOrigemLista}+${lonOrigemLista}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`; //nao alterar
-                        }
-                        
-                        let iconPath = estado.perfilOSRM === 'foot' ? 'mdi-walk' : 'mdi-car';
-                        let txtDist = `<span class="text-warning"><span class="mdi mdi-refresh" style="font-size: 14px; margin-right: 2px;"></span> <i>Calculando trajeto...</i></span>`;
-                        if (estado.distanciasOSRM[esc.id] !== undefined) {
-                            if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) {
-                                let distHaversine = Math.round(esc.distancia + 100);
-                                txtDist = `<span class="text-muted"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> +- ${distHaversine}m (estimativa)</span>`;
+                            // Escolas secundárias comuns da lista seguem o fluxo padrão regulamentado
+                            const resultadoCalc = await window.calcularTrajetoOSRM(latOrigemLista, lonOrigemLista, esc.lat, esc.lon, estado.perfilOSRM, meuSignal);
+                            if (meuSignal.aborted) break; 
+                            
+                            if (resultadoCalc !== null && resultadoCalc.distancia !== undefined && resultadoCalc.distancia !== null) {
+                                estado.distanciasOSRM[esc.id] = resultadoCalc.distancia;
+                                if (!estado.fontesOSRM) estado.fontesOSRM = {};
+                                estado.fontesOSRM[esc.id] = resultadoCalc.fonte;
                             } else {
-                                let distArredondada = Math.round(estado.distanciasOSRM[esc.id] / 50) * 50;
-                                let sinalExato = (estado.fontesOSRM && (estado.fontesOSRM[esc.id] === 'OSRM' || estado.fontesOSRM[esc.id] === 'HAVERSINE')) ? '+-' : '';
-                                txtDist = `<span class="text-warning"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> Trajeto: <b>${sinalExato}${distArredondada}m</b></span>`;
+                                estado.distanciasOSRM[esc.id] = 'Erro';
                             }
                         }
 
-                        let classeBadge="";
-                        if (esc.periodosEncontrados.includes('INTEGRAL')) {
-                            classeBadge = ' badge-integral';
-                        } else if (esc.periodosEncontrados.includes('PARCIAL')) {
-                            classeBadge = ' badge-parcial';
-                        } else if (esc.periodosEncontrados.includes('NOITE')) {
-                            classeBadge = ' badge-noite';
-                        }
-
-                        listaHtml += `<li data-id="${esc.id}" class="school-item ${cor}">
-                            ${tagAtual}${i + 1}º - ${esc.nome} <span class="badge${classeBadge}">${esc.periodosEncontrados}</span>
-                            <div class="school-meta dist-texto">${txtDist}
-                            <a href="${urlConfere}" target="_blank" onclick="if(window.copiarCoordenadasEndereco) window.copiarCoordenadasEndereco();" class="link-action">
-                                <span class="mdi mdi-map" style="font-size: 14px; margin-right: 2px;"></span> Ver rota no Google Maps
-                            </a></div>
-                        </li>`;
-                    });
+                        persistirEstado();
+                        if (typeof window.rerenderizarListaOSRM === 'function') window.rerenderizarListaOSRM();
+                        await new Promise(r => setTimeout(r, 250));
+                    }
                 }
-                listaHtml += `</ul></div>`;
-                
-                let linkMapaRede = "";
-                let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : ""; //nao alterar
-                linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latAluno}%2C${lonAluno}&z=18`; //nao alterar
-                
-                listaHtml += `<a href="${linkMapaRede}" target="_blank" onclick="if(window.copiarCoordenadasEndereco) window.copiarCoordenadasEndereco();" class="btn btn-outline" style="text-decoration:none; margin-bottom:15px;">
-                    <span class="mdi mdi-map" style="font-size: 16px; margin-right: 4px;"></span> Conferir mapa da rede
-                </a>`;
-
-                containerLista.innerHTML = listaHtml;
-                const extraInfoContainer = document.getElementById('assistente-info-contexto');
-                if (extraInfoContainer) {
-                    extraInfoContainer.innerHTML = gerarHtmlMensagensContexto();
+            } catch (erro) {
+                console.error('[ASSISTENTE] erro OSRM:', erro);
+            } finally {
+                estado.buscandoOSRM = false;
+                window.osrmAbortController = null;
+                if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
+                    window.atualizarListaEscolasDinamicamente(false);
                 }
-                
-                // Verificar se há erros de cálculo e mostrar botão refresh
-                const temErros = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
-                const btnRefreshEnd = document.getElementById('btn-refresh-lista');
-                if (btnRefreshEnd) {
-                    btnRefreshEnd.style.display = temErros ? 'block' : 'none';
-                }
-                
-                // Verificar se há distâncias OSRM ainda não calculadas e iniciar se necessário
-                let faltaCalcularAgora = listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
-                if (estado.ehAnalise && faltaCalcularAgora && typeof window.calcularTrajetoOSRM === 'function' && !estado.buscandoOSRM) {
-                    estado.buscandoOSRM = true;
-                    if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-                    window.osrmAbortController = new AbortController();
-
-                    (async () => {
-                        const meuSignal = window.osrmAbortController.signal;
-                        try {
-                            const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
-                            const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
-
-                            for (let esc of listaExibirBase) {
-                                if (estado.distanciasOSRM[esc.id] === undefined) {
-                                    const resultadoCalc = await window.calcularTrajetoOSRM(latOrigemLista, lonOrigemLista, esc.lat, esc.lon, estado.perfilOSRM, meuSignal);
-                                    if (meuSignal.aborted) break; 
-                                    
-                                    if (resultadoCalc !== null && resultadoCalc.distancia !== undefined && resultadoCalc.distancia !== null) {
-                                        estado.distanciasOSRM[esc.id] = resultadoCalc.distancia;
-                                        if (!estado.fontesOSRM) estado.fontesOSRM = {};
-                                        estado.fontesOSRM[esc.id] = resultadoCalc.fonte;
-                                    } else {
-                                        estado.distanciasOSRM[esc.id] = 'Erro';
-                                    }
-                                    persistirEstado();
-                                    if (typeof window.rerenderizarListaOSRM === 'function') {
-                                        window.rerenderizarListaOSRM();
-                                    }
-                                    await new Promise(r => setTimeout(r, 250));
-                                }
-                            }
-                        } catch (erro) {
-                            console.error('[ASSISTENTE] erro no recálculo OSRM:', erro);
-                        } finally {
-                            // Garantir que o estado de busca seja sempre resetado
-                            try {
-                                estado.buscandoOSRM = false;
-                            } catch (e) {}
-
-                            // limpar global abort controller se existir
-                            try {
-                                if (window.osrmAbortController) {
-                                    window.osrmAbortController = null;
-                                }
-                            } catch (e) {}
-
-                            const temErrosFinal = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
-                            const btnRefreshEnd = document.getElementById('btn-refresh-lista');
-                            if (btnRefreshEnd) {
-                                btnRefreshEnd.style.display = temErrosFinal ? 'block' : 'none';
-                            }
-                            if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
-                                window.atualizarListaEscolasDinamicamente(false);
-                            }
-                        }
-                    })();
-                }
-            };
+            }
+        })();
+    } else {
+        // Se a listagem já foi processada anteriormente e não precisa recalcular em lote,
+        // apenas garante a alimentação inicial do input-assistente-dist com os dados salvos em cache
+        if (estado.distanciasOSRM[idEscolaAtual] !== undefined && estado.distanciasOSRM[idEscolaAtual] !== 'Erro') {
+            window.atualizarInputDistancia(Number(estado.distanciasOSRM[idEscolaAtual]));
+        }
+    }
+};
 
             window.atualizarListaEscolasDinamicamente = atualizarListaEscolasDinamicamente;
 
+            // RENDERIZAÇÃO DA INTERFACE UNIFICADA (A LISTA COMPATÍVEL SEMPRE É EXIBIDA)
             conteudo.innerHTML = `
                 <h3 class="section-title text-info">
                     <span class="mdi mdi-graph" style="font-size: 22px; margin-right: 6px;"></span> Verificação de Escola
                 </h3>
-                <p>Verifique se a escola matriculada é a mais próxima do endereço do aluno.</p>
-                
+                                
                 <div id="container-lista-escolas">
+                    <div style="text-align:center; padding:10px;" class="text-muted">Carregando listagem de UEs...</div>
                 </div>
                 
                 <hr class="divider">
@@ -2262,24 +2221,21 @@ if (inputDist) {
                 </div>
             `;
 
+            // DISPARA O MOTOR ASYNC DA LISTA LOGO EM SEGUIDA
             await atualizarListaEscolasDinamicamente();
             
             dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota') || dadosGeraisRotaSessao;
-            const modoMapaAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
             if (dadosGeraisRotaSessao) {
+                const modoMapaAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
                 const distancia = modoMapaAtual === 'endereco' ? dadosGeraisRotaSessao.distanciaEnd : dadosGeraisRotaSessao.distanciaCoord;
-                if (typeof window.atualizarInputDistancia === 'function') {
-                    window.atualizarInputDistancia(distancia);
-                }
+                if (typeof window.atualizarInputDistancia === 'function') window.atualizarInputDistancia(distancia);
             }
 
             const btnRefresh = document.getElementById('btn-refresh-lista');
             if (btnRefresh) {
                 vincularEventoUnico(btnRefresh, 'click', async () => {
                     listaExibirBase.forEach(esc => {
-                        if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) {
-                            delete estado.distanciasOSRM[esc.id];
-                        }
+                        if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) delete estado.distanciasOSRM[esc.id];
                     });
                     persistirEstado();
                     if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
@@ -2325,9 +2281,20 @@ if (inputDist) {
                 if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
                 const dist = parseInt(inputDist.value);
                 if (isNaN(dist) || dist < 0) return alert("Por favor, insira uma distância válida em metros.");
+                
                 salvarHistorico(); 
                 estado.distancia = dist;
-                estado.escolaProximaUser = false; 
+                
+                const distMaisProx = estado.distMaisProxima || 0;
+                const ehExcecaoCreche = (ctx.ehCreche === true && distMaisProx >= 1500 && (dist - distMaisProx < 500) && dist >=1500 && dist < 3500);
+
+                if (ehExcecaoCreche) {
+                    estado.escolaProximaUser = true;
+                    estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por Exceção: O aluno está em unidade de Creche dentro da margem de tolerância de distância." };
+                } else {
+                    estado.escolaProximaUser = false;
+                }
+
                 try {
                     if (typeof estado.calcularOpcoesMaisProx === 'function') {
                         const recal = estado.calcularOpcoesMaisProx(estado.distancia);
@@ -2340,10 +2307,6 @@ if (inputDist) {
                             return `${acc}, ${parte}`;
                         }, '');
                         estado.opcoesMaisProxCount = filtradas.length;
-                    } else {
-                        estado.opcoesMaisProxItems = [];
-                        estado.opcoesMaisProx = '';
-                        estado.opcoesMaisProxCount = 0;
                     }
                 } catch (e) { console.error('Erro recalculando opcoesMaisProx:', e); }
                 renderizarPasso(); 
@@ -2393,7 +2356,7 @@ if (inputDist) {
         }
 
         const precisaDeficienciaEspecial = estado.isEspecial && estado.deficiencia === null;
-        const precisaDeficienciaDistancia = estado.distancia !== null && estado.distancia < 1500 && estado.deficiencia === null;
+        const precisaDeficienciaDistancia = (estado.distancia !== null && estado.distancia < 1500 && estado.deficiencia === null) || (temSugestaoDeficiencia === true && estado.deficiencia === null && estado.pularDeficiencia !== true);
 
         if (precisaDeficienciaEspecial || precisaDeficienciaDistancia) {
             let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
@@ -2420,9 +2383,12 @@ if (inputDist) {
             let tituloBoxStr = precisaDeficienciaEspecial 
                 ? "Exceção: Ensino Especial" 
                 : `Deficiência`;
-            let subTituloBox = precisaDeficienciaEspecial 
-                ? "O aluno está matriculado e necessita de ensino especial." 
-                : "A distância aferida é <b>inferior a 1500m</b>.";
+            
+                let subTituloBox = ""
+                if(precisaDeficienciaEspecial){"O aluno está matriculado e necessita de ensino especial."
+                    
+                }else if(estado.distancia<1500){"A distância aferida é <b>inferior a 1500m</b>."}
+                
 
             conteudo.innerHTML = `
                 <h3 class="section-title text-warning">
@@ -2560,6 +2526,7 @@ const isCompativelAutomatico = await verificarCompatibilidadeEncaminhamento(ctx,
         estado.ehEncaminhado = true;
         estado.telaFinal = { 
             titulo: "DEFERIR", 
+            textoDetalhes: `Encaminhado conforme arquivo ${dadosMaisRecentes.descricao}`,
             mensagem: `Encaminhamento verificado e validado automaticamente para a unidade ${dadosMaisRecentes.unidade} (Ano: ${dadosMaisRecentes.ano}) via cruzamento de base de dados.` 
         };
         renderizarPasso();
@@ -2596,20 +2563,25 @@ const isCompativelAutomatico = await verificarCompatibilidadeEncaminhamento(ctx,
             const msgEncaminhamentoHtml = encaminhamentoResolvido.msgEncaminhamentoHtml;
 
             let infoExtraHtml = "";
-            if (isFichaAntiga) {
-                infoExtraHtml = `
-                    <div class="school-list-container" style="font-size:12px; margin-top:10px;">
-                        <b>Nome:</b> ${nomeStr}<br>
-                        <b>Nasc:</b> ${dataNasc}<br><br>
-                        <ul style="padding-left: 15px; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-                            <li><b>Em <u>Verificação de Semelhança</u></b> os campos "Tipo Inscrição" e "Observações" não podem conter o termo "Transf. - Outros".</li>
-                            <li><b>Em <u>dados do candidato</u>, o endereço deve ser:</b><br>${enderecoCompleto}</li>
-                            <li><b>Em <u>Unidades Escolares</u>, deve ter escolhido as escolas mais próximas (nessa ordem):</b><br>${estado.top3EscolasNomes}</li>
-                            <li><b>Em <u>Status Inscrição</u>, deve constar:</b><br>"encaminhado(a) para ${estado.nomeEscolaAtual}"</li>
-                        </ul>
-                    </div>
-                `;
-            }
+if (isFichaAntiga) {
+    // Formata a lista de escolas se o array tiver dados, caso contrário exibe uma mensagem de aviso
+    const textoEscolasFormatado = (Array.isArray(estado.top3EscolasNomes) && estado.top3EscolasNomes.length > 0)
+        ? estado.top3EscolasNomes.map((esc, idx) => `${idx + 1}º ${esc.nome}`).join('<br>')
+        : '<span class="text-warning" style="font-size:12px;font-weight:normal;"><i>Não foi possivel obter UEs.  Verifique manualmente a lista de mais próximas</i></span>';
+
+    infoExtraHtml = `
+        <div class="school-list-container" style="font-size:12px; margin-top:10px;">
+            <b>Nome:</b> ${nomeStr}<br>
+            <b>Nasc:</b> ${dataNasc}<br><br>
+            <ul style="padding-left: 15px; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                <li><b>Em <u>Verificação de Semelhança</u></b> não pode haver menção a <span style="color: #922b1f;">Transf. - Outros</span> em nenhum campo, especialmente em <i>Tipo Inscrição</i> e <i>Observações</i>.</li>
+                <li><b>Em <u>dados do candidato</u>, o endereço deve ser:</b><br><span style="font-size:13px;">${enderecoCompleto}</span></li>
+                <li><b>Em <u>Unidades Escolares</u>, deve ter escolhido as escolas mais próximas (nessa ordem):</b><br>${textoEscolasFormatado}</li>
+                <li><b>Em <u>Status Inscrição</u>, deve constar:</b><br>"encaminhado(a) para ${estado.nomeEscolaAtual.split(',')[0]}..."</li>
+            </ul>
+        </div>
+    `;
+}
 
             conteudo.innerHTML = `
                 ${msgEncaminhamentoHtml}

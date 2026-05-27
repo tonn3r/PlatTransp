@@ -41,7 +41,8 @@ window.escolasDB = [
         "telefones": [
             "4336-3416",
             "4822-2885"
-        ]
+        ],
+        "nome_select_analise": "CRECHE CONVENIADA MAO AMIGA"
     },
     {
         "id": "513",
@@ -75,7 +76,8 @@ window.escolasDB = [
         "transporte_grupo_atendimento": "G4",
         "email": [
             "crecheriachogrande@abasc.com.br"
-        ]
+        ],
+        "nome_select_analise": "CRECHE CONVENIADA MAO AMIGA II"
     },
     {
         "id": "518",
@@ -112,7 +114,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "48222885"
-        ]
+        ],
+        "nome_select_analise": "CRECHE CONVENIADA MAO AMIGA III"
     },
     {
         "id": "340",
@@ -148,7 +151,8 @@ window.escolasDB = [
         "telefones": [
             "1197130-2462",
             "98994-4739"
-        ]
+        ],
+        "nome_select_analise": "CRECHE CONVENIADA ABEF"
     },
     {
         "id": "3",
@@ -309,7 +313,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4330-2374"
-        ]
+        ],
+        "nome_select_analise": "ALDINO PINOTTI, EMEB PREFEITO"
     },
     {
         "id": "6",
@@ -485,7 +490,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "2630-5220"
-        ]
+        ],
+        "nome_select_analise": "ALZIRA MARTINS DE MENDONCA, EMEB (SILVINA CRECHE)"
     },
     {
         "id": "10",
@@ -638,7 +644,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4338-3737"
-        ]
+        ],
+        "nome_select_analise": "CRECHE CONVENIADA ANGELA BASO"
     },
     {
         "id": "16",
@@ -802,7 +809,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-4183"
-        ]
+        ],
+        "nome_select_analise": "ANTONIO DE LIMA, EMEB"
     },
     {
         "id": "20",
@@ -848,7 +856,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-3034"
-        ]
+        ],
+        "nome_select_analise": "ANTONIO DOS SANTOS FARIAS, EMEB"
     },
     {
         "id": "21",
@@ -885,7 +894,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-7666"
-        ]
+        ],
+        "nome_select_analise": "ANTONIO JOSE MANTUAN, EMEB"
     },
     {
         "id": "22",
@@ -922,7 +932,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4358-2046"
-        ]
+        ],
+        "nome_select_analise": "ANTONIO PEREIRA COUTINHO, EMEB"
     },
     {
         "id": "23",
@@ -1286,7 +1297,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-8477"
-        ]
+        ],
+        "nome_select_analise": "AUREO CRUZ, EMEB PROF."
     },
     {
         "id": "181",
@@ -1542,7 +1554,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4358-5205"
-        ]
+        ],
+        "nome_select_analise": "BOSKO PRERADOVIC, EMEB"
     },
     {
         "id": "32",
@@ -1745,7 +1758,8 @@ window.escolasDB = [
         "telefones": [
             "43540933",
             "4101-9151"
-        ]
+        ],
+        "nome_select_analise": "CARMEN TABET DE OLIVEIRA, EMEB PROFA."
     },
     {
         "id": "222",
@@ -1877,7 +1891,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4339-2585"
-        ]
+        ],
+        "nome_select_analise": "CASSIANO FARIA, EMEB PROF."
     },
     {
         "id": "38",
@@ -2138,7 +2153,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4358-1598"
-        ]
+        ],
+        "nome_select_analise": "CICERO PORFIRIO DOS SANTOS GILBERTO LAZZURI, EMEB"
     },
     {
         "id": "43",
@@ -2187,7 +2203,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4338-6511"
-        ]
+        ],
+        "nome_select_analise": "CLAUDEMIR GOMES DO VALE, EMEB PROF."
     },
     {
         "id": "44",
@@ -2225,7 +2242,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4336-1127"
-        ]
+        ],
+        "nome_select_analise": "CLEIA MARIA TEURES DE SOUZA, EMEB"
     },
     {
         "id": "45",
@@ -2571,7 +2589,8 @@ window.escolasDB = [
         "telefones": [
             "4472-3771",
             "940469577"
-        ]
+        ],
+        "nome_select_analise": "CRECHE CONVENIADA EL ELION"
     },
     {
         "id": "341",
@@ -2611,7 +2630,8 @@ window.escolasDB = [
         "telefones": [
             "1599853-6105",
             "99978-5180"
-        ]
+        ],
+        "nome_select_analise": "CRECHE CONVENIADA EL ELION II"
     },
     {
         "id": "525",
@@ -2689,7 +2709,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4345-1680"
-        ]
+        ],
+        "nome_select_analise": "ERMINIA PAGGI, EMEB PROF."
     },
     {
         "id": "331",
@@ -2955,7 +2976,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-0886"
-        ]
+        ],
+        "nome_select_analise": "FIORENTE ELENA, PADRE, EMEB"
     },
     {
         "id": "56",
@@ -3049,7 +3071,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-0720"
-        ]
+        ],
+        "nome_select_analise": "FLORESTAN FERNANDES, EMEB PROF."
     },
     {
         "id": "59",
@@ -3400,7 +3423,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4330-5961"
-        ]
+        ],
+        "nome_select_analise": "GERALDO HYPOLITO, EMEB PROF."
     },
     {
         "id": "63",
@@ -3810,7 +3834,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4101-8817"
-        ]
+        ],
+        "nome_select_analise": "HILDA BATAZOLI TEIXEIRA, EMEB PROFA ANTIGA RIACHO GRANDE"
     },
     {
         "id": "71",
@@ -3897,7 +3922,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4336-2062"
-        ]
+        ],
+        "nome_select_analise": "ISIDORO BATTISTIN, EMEB"
     },
     {
         "id": "73",
@@ -3980,7 +4006,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-3538"
-        ]
+        ],
+        "nome_select_analise": "IVANEIDE NOGUEIRA, EMEB PROFA."
     },
     {
         "id": "75",
@@ -4063,7 +4090,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4123-0451"
-        ]
+        ],
+        "nome_select_analise": "JANDIRA MARIA CASONATO, EMEB PROFA."
     },
     {
         "id": "77",
@@ -4112,7 +4140,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4125-0595"
-        ]
+        ],
+        "nome_select_analise": "JANETE MALLY BETTI SIMOES, EMEB PROFA."
     },
     {
         "id": "201",
@@ -4396,7 +4425,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4339-4088"
-        ]
+        ],
+        "nome_select_analise": "JORGE MARCOS DE OLIVEIRA, DOM, EMEB"
     },
     {
         "id": "172",
@@ -4441,7 +4471,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4358-2333"
-        ]
+        ],
+        "nome_select_analise": "JOSE ARNAUD DA SILVA, EMEB (PINHEIRINHO)"
     },
     {
         "id": "80",
@@ -4478,7 +4509,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-5533"
-        ]
+        ],
+        "nome_select_analise": "JOSE AUGUSTO OLIVEIRA SANTOS, EMEB"
     },
     {
         "id": "81",
@@ -4757,7 +4789,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4341-5844"
-        ]
+        ],
+        "nome_select_analise": "JOSE GETULIO ESCOBAR BUENO, EMEB PROF."
     },
     {
         "id": "87",
@@ -5003,7 +5036,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-6618"
-        ]
+        ],
+        "nome_select_analise": "JULIO ATLAS, EMEB ESCRITOR"
     },
     {
         "id": "93",
@@ -5165,7 +5199,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4368-3278"
-        ]
+        ],
+        "nome_select_analise": "KAZUE FUZINAKA, EMEB PROF."
     },
     {
         "id": "345",
@@ -5239,7 +5274,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4368-1865"
-        ]
+        ],
+        "nome_select_analise": "LAURO GOMES, EMEB"
     },
     {
         "id": "97",
@@ -5461,7 +5497,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4342-1770"
-        ]
+        ],
+        "nome_select_analise": "CRECHE CONVENIADA LOS ANGELES"
     },
     {
         "id": "102",
@@ -5658,7 +5695,8 @@ window.escolasDB = [
         "telefones": [
             "4332-6850",
             "4177-2861"
-        ]
+        ],
+        "nome_select_analise": "LUIZA MARIA DE FARIAS, CEU (CEU SILVINA)"
     },
     {
         "id": "221",
@@ -6172,7 +6210,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4122-3063 / 43306910"
-        ]
+        ],
+        "nome_select_analise": "MARIA JOSE MATTAR JORGE, EMEB PROFA."
     },
     {
         "id": "113",
@@ -6221,7 +6260,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4343-8933"
-        ]
+        ],
+        "nome_select_analise": "MARIA JUSTINA DE CAMARGO, EMEB PROFA."
     },
     {
         "id": "114",
@@ -6315,7 +6355,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4123-3357"
-        ]
+        ],
+        "nome_select_analise": "MARIA THEREZINHA BESANA, EMEB PROFA."
     },
     {
         "id": "116",
@@ -6590,7 +6631,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4396-5566"
-        ]
+        ],
+        "nome_select_analise": "MARLY BUISSA CHIEDDE, EMEBE PROFA."
     },
     {
         "id": "121",
@@ -7022,7 +7064,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-5428"
-        ]
+        ],
+        "nome_select_analise": "NILO CAMPOS GOMES, EMEB PROF."
     },
     {
         "id": "207",
@@ -7462,7 +7505,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4362-4544"
-        ]
+        ],
+        "nome_select_analise": "OTILIO DE OLIVEIRA, EMEB PROF."
     },
     {
         "id": "136",
@@ -7636,7 +7680,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-4944"
-        ]
+        ],
+        "nome_select_analise": "PAULO TEIXEIRA DE CAMARGO, EMEB PROF."
     },
     {
         "id": "441",
@@ -7681,7 +7726,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4390-0308"
-        ]
+        ],
+        "nome_select_analise": "PEDRA DE CARVALHO, EMEB"
     },
     {
         "id": "139",
@@ -7726,7 +7772,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-8700"
-        ]
+        ],
+        "nome_select_analise": "PEDRO AUGUSTO GOMES CARDIM, EMEB PROF."
     },
     {
         "id": "140",
@@ -7883,7 +7930,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-3235"
-        ]
+        ],
+        "nome_select_analise": "RAMIRO GONCALEZ FERNANDES, EMEB PROF."
     },
     {
         "id": "524",
@@ -7913,7 +7961,8 @@ window.escolasDB = [
         "id_unidade_SOMAR": "588",
         "email": [
             "dulce.donadelli@saobernardo.sp.gov.br"
-        ]
+        ],
+        "nome_select_analise": "REGINA DULCE DONADELLI PINTO,EMEB"
     },
     {
         "id": "213",
@@ -8117,7 +8166,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4351-4629"
-        ]
+        ],
+        "nome_select_analise": "ROSA DE PACCE DOS SANTOS, EMEB PROFA."
     },
     {
         "id": "146",
@@ -8199,7 +8249,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4341-7841"
-        ]
+        ],
+        "nome_select_analise": "SADAO HIGUCHI ,EMEB"
     },
     {
         "id": "148",
@@ -8244,7 +8295,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4392-3974"
-        ]
+        ],
+        "nome_select_analise": "SALVADOR GORI, EMEB PROF."
     },
     {
         "id": "149",
@@ -8282,7 +8334,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4347-6963"
-        ]
+        ],
+        "nome_select_analise": "SANDRA CRUZ MARTINS FREITAS, EMEB PROFA."
     },
     {
         "id": "330",
@@ -8499,7 +8552,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4101-7011"
-        ]
+        ],
+        "nome_select_analise": "SONIA REGINA HERNANDEZ DE LIMA, EMEB PROFA."
     },
     {
         "id": "154",
@@ -8548,7 +8602,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4397-5010"
-        ]
+        ],
+        "nome_select_analise": "SUZETE APARECIDA DE CAMPOS, EMEB PROFA."
     },
     {
         "id": "155",
@@ -8594,7 +8649,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4361-8630"
-        ]
+        ],
+        "nome_select_analise": "SYLVIA MARILENA FANTACIN ZANETTI, EMEB PROFA."
     },
     {
         "id": "9",
@@ -8636,7 +8692,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4104-4319"
-        ]
+        ],
+        "nome_select_analise": "TARSILA DO AMARAL, EMEB"
     },
     {
         "id": "156",
@@ -8950,7 +9007,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4125-6381"
-        ]
+        ],
+        "nome_select_analise": "CRECHE CONVENIADA LAR MADRE VINCENZA"
     },
     {
         "id": "163",
@@ -9114,7 +9172,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4337-9264"
-        ]
+        ],
+        "nome_select_analise": "WALDEMAR CANCIANI, EMEB PROF."
     },
     {
         "id": "167",
@@ -9151,7 +9210,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4337-9925"
-        ]
+        ],
+        "nome_select_analise": "ZORAIDA APARECIDA RAMOS, EMEB PROFA"
     },
     {
         "id": "528",

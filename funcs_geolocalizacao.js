@@ -1,46 +1,37 @@
+// =========================================================================
+// CONFIGURAÇÃO CENTRALIZADA DE CHAVES DE API DO GOOGLE (DEFINIDAS APENAS UMA VEZ)
+// =========================================================================
+window.apiKeyGoogle = "AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8";
+window.apiKeyGoogle2 = "AIzaSyBUvko37UZpzfwS9rS3pfexlsptYqQZW78";
+window.apiKeyGoogle3 = "AIzaSyDeFC9pEKnvyaqmVKbAVFJ2D2WRfh4esEs";
+
 // Calcula uma aproximação de distância euclidiana rápida entre dois pontos (evita math.sqrt pesada).
 window.calcularProximidadeRapida = function(lat1, lon1, lat2, lon2) {
     if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-
-    // Fator de correção de longitude fixo para a latitude de São Bernardo do Campo (~ -23.65°)
-    // Equaliza a distorção métrica Leste/Oeste sem precisar de funções trigonométricas pesadas
     const FATOR_LON = 0.916;
-
     const dLat = lat1 - lat2;
     const dLon = (lon1 - lon2) * FATOR_LON;
-
-    // Retorna a distância euclidiana ao quadrado.
-    // Evitar a extração da Raiz Quadrada (Math.sqrt) economiza muito processamento do computador.
     return (dLat * dLat) + (dLon * dLon);
 };
 
 // Calcula a distância exata entre duas coordenadas em metros (Fórmula de Haversine).
 window.calcularDistanciaHaversine = function(lat1, lon1, lat2, lon2) {
     if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) *
-        Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
     return Math.round((R * c) * 1000);
 };
 
 // Copia para a área de transferência as coordenadas do endereço atual do aluno.
 window.copiarCoordenadasEndereco = function() {
     const rota = window.getSharedStoreValue?.('dadosGeraisRota');
-
     if (!rota || !rota.coordAlunoEnd) return;
 
-    // Proteção para navegadores/contextos que não suportam clipboard API diretamente
     if (!navigator.clipboard || !navigator.clipboard.writeText) {
         console.warn("navigator.clipboard API não está disponível no contexto atual.");
         let txtToCopy = typeof rota.coordAlunoEnd === 'string' ? rota.coordAlunoEnd : (rota.coordAlunoEnd.lat ? `${rota.coordAlunoEnd.lat} ${rota.coordAlunoEnd.lon}` : "");
@@ -65,31 +56,18 @@ window.copiarCoordenadasEndereco = function() {
     }
 
     if (typeof rota.coordAlunoEnd === 'string') {
-        navigator.clipboard
-            .writeText(rota.coordAlunoEnd)
-            .catch(e => console.error("Erro copy", e));
+        navigator.clipboard.writeText(rota.coordAlunoEnd).catch(e => console.error("Erro copy", e));
         return;
     }
 
     if (rota.coordAlunoEnd.lat) {
         const txt = `${rota.coordAlunoEnd.lat} ${rota.coordAlunoEnd.lon}`;
-        navigator.clipboard
-            .writeText(txt)
-            .catch(e => console.error("Erro copy", e));
+        navigator.clipboard.writeText(txt).catch(e => console.error("Erro copy", e));
     }
 };
 
-// --- SECTION: GEOGRAPHIC DATA EXTRACTION ---
-// Technical comments for extrairDadosGeograficos:
-// - Uses DOMParser to parse HTML from ficha_transporte_nova_versao.php
-// - Extracts iframe src URL containing Google Maps parameters
-// - Regex patterns: /origin=([^&]+)/i and /destination=([^&]+)/i capture coordinate strings
-// - Coordinate parsing handles space/comma separators and converts to float
-// - Returns structured object with lat/lon for address and school locations
 // Extrai dados geográficos (como Lat e Lon) do mapa da ficha de transporte usando DOMParser e expressões regulares.
 window.extrairDadosGeograficos = async function(urlFichaNova) {
-    const tInicioGeo = performance.now();
-
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -99,206 +77,87 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
         clearTimeout(timeoutId);
 
         const parser = new DOMParser();
-        const docVirtual = parser.parseFromString(
-            htmlText,
-            "text/html"
-        );
-
-        const iframeMap =
-            docVirtual.getElementById('map_endereco');
+        const docVirtual = parser.parseFromString(htmlText, "text/html");
+        const iframeMap = docVirtual.getElementById('map_endereco');
 
         if (iframeMap && iframeMap.src) {
-
             const urlCompleta = iframeMap.src;
+            const regexOrigin = /origin=([^&]+)/i;
+            const regexDest = /destination=([^&]+)/i;
+            const matchOrigin = urlCompleta.match(regexOrigin);
+            const matchDest = urlCompleta.match(regexDest);
 
-            const regexOrigin =
-                /origin=([^&]+)/i;
-
-            const regexDest =
-                /destination=([^&]+)/i;
-
-            const matchOrigin =
-                urlCompleta.match(regexOrigin);
-
-            const matchDest =
-                urlCompleta.match(regexDest);
-
-            const separarCoordenadas = (
-                matchString
-            ) => {
-
-                if (!matchString) {
-                    return {
-                        lat: null,
-                        lon: null
-                    };
-                }
-
-                const decodificado =
-                    decodeURIComponent(
-                        matchString[1]
-                    ).trim();
-
-                const partes =
-                    decodificado.split(
-                        /[\s,]+/
-                    );
-
+            const separarCoordenadas = (matchString) => {
+                if (!matchString) return { lat: null, lon: null };
+                const decodificado = decodeURIComponent(matchString[1]).trim();
+                const partes = decodificado.split(/[\s,]+/);
                 if (partes.length >= 2) {
-
                     return {
-                        lat: parseFloat(
-                            partes[0].trim()
-                        ),
-                        lon: parseFloat(
-                            partes[1].trim()
-                        )
+                        lat: parseFloat(partes[0].trim()),
+                        lon: parseFloat(partes[1].trim())
                     };
                 }
-
-                return {
-                    lat: null,
-                    lon: null
-                };
+                return { lat: null, lon: null };
             };
 
-            const coordOrigin =
-                separarCoordenadas(matchOrigin);
+            const coordOrigin = separarCoordenadas(matchOrigin);
+            const coordDest = separarCoordenadas(matchDest);
 
-            const coordDest =
-                separarCoordenadas(matchDest);
-
-            const dados = {
+            return {
                 urlMaps: urlCompleta,
-                geoEndereco_Latit:
-                    coordOrigin.lat,
-                geoEndereco_Longit:
-                    coordOrigin.lon,
-                geoEscola_Latit:
-                    coordDest.lat,
-                geoEscola_Longit:
-                    coordDest.lon
+                geoEndereco_Latit: coordOrigin.lat,
+                geoEndereco_Longit: coordOrigin.lon,
+                geoEscola_Latit: coordDest.lat,
+                geoEscola_Longit: coordDest.lon
             };
-
-            const tFimGeo = performance.now();
-
-            return dados;
         }
-
         return null;
-
     } catch (erro) {
-        console.error(
-            "❌ Erro ao extrair dados geográficos:",
-            erro
-        );
+        console.error("❌ Erro ao extrair dados geográficos:", erro);
         return null;
     }
 };
 
 // Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
-window.sincronizarMapaECoordenadas =
-async function(docAlvo) {
+window.sincronizarMapaECoordenadas = async function(docAlvo) {
+    let urlOrigem = docAlvo.location ? docAlvo.location.href : window.location.href;
+    let idSolInput = docAlvo.querySelector('input[name="id_solicitacao"]') || docAlvo.querySelector('input[name="id"]');
+    let idFicha = idSolInput ? idSolInput.value : '';
+    let basePath = urlOrigem.substring(0, urlOrigem.lastIndexOf('/') + 1);
 
-    let urlOrigem =
-        docAlvo.location
-            ? docAlvo.location.href
-            : window.location.href;
+    const moduloPath = "modulos/transporte_escolar/";
+    const prefixo = basePath.includes(moduloPath) ? "" : moduloPath;
+    let urlFichaNova = basePath + prefixo + 'ficha_transporte_nova_versao.php?id_solicitacao=' + idFicha;
 
-    let idSolInput =
-        docAlvo.querySelector(
-            'input[name="id_solicitacao"]'
-        ) ||
-        docAlvo.querySelector(
-            'input[name="id"]'
-        );
-
-    let idFicha =
-        idSolInput
-            ? idSolInput.value
-            : '';
-
-    let basePath =
-        urlOrigem.substring(
-            0,
-            urlOrigem.lastIndexOf('/') + 1
-        );
-
-    // Verifica se a baseUrl já termina ou contém o caminho do módulo
-    const moduloPath =
-        "modulos/transporte_escolar/";
-
-    const prefixo =
-        basePath.includes(moduloPath)
-            ? ""
-            : moduloPath;
-
-    let urlFichaNova =
-        basePath +
-        prefixo +
-        'ficha_transporte_nova_versao.php?id_solicitacao=' +
-        idFicha;
-
-    const dadosGeo =
-        await window.extrairDadosGeograficos(
-            urlFichaNova
-        );
+    const dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
 
     if (dadosGeo) {
-
-        const iframeAtual =
-            docAlvo.getElementById(
-                'map_endereco'
-            );
-
-        const linkMapaNovaGuia =
-            docAlvo.getElementById(
-                'botao_mapa'
-            );
-
-        const btnAbrirFicha =
-            docAlvo.getElementById(
-                'botaoAbrirFicha'
-            );
+        const iframeAtual = docAlvo.getElementById('map_endereco');
+        const linkMapaNovaGuia = docAlvo.getElementById('botao_mapa');
+        const btnAbrirFicha = docAlvo.getElementById('botaoAbrirFicha');
 
         if (btnAbrirFicha) {
-            try {
-                vincularEventoUnico(btnAbrirFicha, 'click', window.copiarCoordenadasEndereco);
-            } catch (e) {
-                // fallback: dataset marker and native binding
-                if (!btnAbrirFicha.dataset.copyBound) {
-                    btnAbrirFicha.dataset.copyBound = 'true';
-                    btnAbrirFicha.addEventListener('click', window.copiarCoordenadasEndereco);
-                }
+            if (!btnAbrirFicha.dataset.copyBound) {
+                btnAbrirFicha.dataset.copyBound = 'true';
+                btnAbrirFicha.addEventListener('click', window.copiarCoordenadasEndereco);
             }
         }
 
-        if (
-            iframeAtual &&
-            !urlOrigem.includes('nova_versao')
-        ) {
-
+        if (iframeAtual && !urlOrigem.includes('nova_versao')) {
             if (!window.urlEnderecoGlobal) {
-
-                window.urlEnderecoGlobal =
-                    iframeAtual.src;
-
-                window.urlBotaoEnderecoGlobal =
-                    linkMapaNovaGuia
-                        ? linkMapaNovaGuia.href
-                        : iframeAtual.src;
+                window.urlEnderecoGlobal = iframeAtual.src;
+                window.urlBotaoEnderecoGlobal = linkMapaNovaGuia ? linkMapaNovaGuia.href : iframeAtual.src;
             }
 
-                if (typeof window.gerarEstilosAssistente === 'function') {
-                    window.gerarEstilosAssistente(docAlvo);
-                }
+            if (typeof window.gerarEstilosAssistente === 'function') {
+                window.gerarEstilosAssistente(docAlvo);
+            }
 
             let currentModoMapa = window.getSharedStoreValue?.('modoMapaAtual');
             if (!currentModoMapa) {
                 const statusTexto = (docAlvo.getElementById('status_atendimento')?.innerText || "").toUpperCase();
                 const ehMudanca = statusTexto.includes("MUDANCA") || statusTexto.includes("MUDANÇA");
-
-                window.setSharedStore({
+                window.setSharedStore?.({
                     modoMapaAtual: ehMudanca ? 'endereco' : 'coordenada',
                     modoTransporteAtual: 'pe'
                 });
@@ -308,163 +167,69 @@ async function(docAlvo) {
             const ehMudancaAux = statusTextoAux.includes("MUDANCA") || statusTextoAux.includes("MUDANÇA");
 
             const atualizarURLsMapas = (atualizarLista = false) => {
+                const modoTransporte = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
+                let sufixoTransporteBotao = modoTransporte === 'pe' ? "&travelmode=walking&dirflg=w" : "";
+                let sufixoTransporteFrame = modoTransporte === 'pe' ? "&mode=walking" : "";
 
-                const modoTransporte =
-                    window.getSharedStoreValue?.(
-                        'modoTransporteAtual'
-                    ) || 'pe';
+                const normalizeUrl = (url) => url ? url.replace(/&/g, '&') : url;
 
-                let sufixoTransporteBotao =
-                    modoTransporte === 'pe'
-                        ? "&travelmode=walking&dirflg=w"
-                        : "";
-
-                let sufixoTransporteFrame =
-                    modoTransporte === 'pe'
-                        ? "&mode=walking"
-                        : "";
-
-                const normalizeUrl = (url) =>
-                    url
-                        ? url.replace(
-                            /&amp;/g,
-                            '&'
-                        )
-                        : url;
-
-                const setIframeSrc = (
-                    newUrl
-                ) => {
-
-                    if (
-                        !iframeAtual ||
-                        !newUrl
-                    ) return;
-
-                    const normalized =
-                        normalizeUrl(newUrl);
-
+                const setIframeSrc = (newUrl) => {
+                    if (!iframeAtual || !newUrl) return;
+                    const normalized = normalizeUrl(newUrl);
                     if (iframeAtual.dataset.currentSrc !== normalized) {
                         iframeAtual.dataset.currentSrc = normalized;
-                        iframeAtual.src =
-                            normalized;
+                        iframeAtual.src = normalized;
                     }
                 };
 
-                const setLinkHref = (
-                    newUrl
-                ) => {
-
-                    if (
-                        !linkMapaNovaGuia ||
-                        !newUrl
-                    ) return;
-
-                    const normalized =
-                        normalizeUrl(newUrl);
-
+                const setLinkHref = (newUrl) => {
+                    if (!linkMapaNovaGuia || !newUrl) return;
+                    const normalized = normalizeUrl(newUrl);
                     if (linkMapaNovaGuia.dataset.currentHref !== normalized) {
                         linkMapaNovaGuia.dataset.currentHref = normalized;
-                        linkMapaNovaGuia.href =
-                            normalized;
+                        linkMapaNovaGuia.href = normalized;
                     }
                 };
 
-                const modoMapa =
-                    window.getSharedStoreValue?.(
-                        'modoMapaAtual'
-                    ) || 'coordenada';
+                const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
 
-                if (
-                    modoMapa === 'coordenada'
-                ) {
-
-                    const urlIframe =
-                        `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`; //nao alterar
-
-                    const urlLink =
-                        `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`; //nao alterar
-
+                if (modoMapa === 'coordenada') {
+                    const urlIframe = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+                    const urlLink = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
                     setIframeSrc(urlIframe);
                     setLinkHref(urlLink);
-
                 } else {
-
-                    let rota =
-                        window.getSharedStoreValue?.(
-                            'dadosGeraisRota'
-                        );
-
+                    let rota = window.getSharedStoreValue?.('dadosGeraisRota');
                     let urlIframeEnd = "";
                     let urlLinkEnd = "";
 
-                    if (
-                        rota &&
-                        rota.coordAlunoEnd &&
-                        typeof rota.coordAlunoEnd === 'string'
-                    ) {
-
-                        let stringEndereco =
-                            encodeURIComponent(
-                                rota.coordAlunoEnd
-                            );
-
-                        urlIframeEnd =
-                            `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${stringEndereco}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
-
-                        urlLinkEnd =
-                            `https://maps.google.com/maps?saddr=${stringEndereco}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
-
-                    } else if (
-                        rota &&
-                        rota.coordAlunoEnd &&
-                        rota.coordAlunoEnd.lat
-                    ) {
-
-                        urlIframeEnd =
-                            `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
-
-                        urlLinkEnd =
-                            `https://maps.google.com/maps?saddr=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
-
+                    if (rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd === 'string') {
+                        let stringEndereco = encodeURIComponent(rota.coordAlunoEnd);
+                        urlIframeEnd = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${stringEndereco}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+                        urlLinkEnd = `https://maps.google.com/maps?saddr=${stringEndereco}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
+                    } else if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
+                        urlIframeEnd = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+                        urlLinkEnd = `https://maps.google.com/maps?saddr=${rota.coordAlunoEnd.lat}+${rota.coordAlunoEnd.lon}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
                     } else {
-
-                        urlIframeEnd =
-                            `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
-
-                        urlLinkEnd =
-                            `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
+                        urlIframeEnd = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8&origin=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&destination=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteFrame}`;
+                        urlLinkEnd = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit}+${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit}+${dadosGeo.geoEscola_Longit}${sufixoTransporteBotao}`;
                     }
 
                     setIframeSrc(urlIframeEnd);
                     setLinkHref(urlLinkEnd);
                 }
 
-                if (
-                    atualizarLista &&
-                    typeof window.atualizarListaEscolasDinamicamente ===
-                    'function'
-                ) {
-
+                if (atualizarLista && typeof window.atualizarListaEscolasDinamicamente === 'function') {
                     window.atualizarListaEscolasDinamicamente();
                 }
             };
 
             atualizarURLsMapas(false);
-
-            window.atualizarURLsMapasGlobal = () =>
-                atualizarURLsMapas(true);
-
-            // --- SECTION: UI RESILIENCE ---
-            // Implement retry-loop (max 5 times, 500ms interval) or MutationObserver for mapa-toggle-container injection
+            window.atualizarURLsMapasGlobal = () => atualizarURLsMapas(true);
 
             let retryCount = 0;
-
             const maxRetries = 5;
-
             const retryInterval = 500;
-
-            let observer = null;
 
             const injectToggleContainer = () => {
                 if (docAlvo.getElementById('mapa-toggle-container')) return;
@@ -523,75 +288,36 @@ async function(docAlvo) {
                 toggleContainer.appendChild(btnModoMapa);
                 toggleContainer.appendChild(btnModoTransp);
 
-                if (
-                    iframeAtual &&
-                    iframeAtual.parentNode
-                ) {
-
-                    iframeAtual.parentNode.insertBefore(
-                        toggleContainer,
-                        iframeAtual.nextSibling
-                    );
-
-                    // Se um observer estiver observando, desconecta após injeção bem-sucedida
-                    try {
-                        if (observer && typeof observer.disconnect === 'function') observer.disconnect();
-                    } catch(e) {}
-
-                } else if (
-                    retryCount < maxRetries
-                ) {
-
+                if (iframeAtual && iframeAtual.parentNode) {
+                    iframeAtual.parentNode.insertBefore(toggleContainer, iframeAtual.nextSibling);
+                } else if (retryCount < maxRetries) {
                     retryCount++;
-
-                    setTimeout(
-                        injectToggleContainer,
-                        retryInterval
-                    );
+                    setTimeout(injectToggleContainer, retryInterval);
                 }
             };
 
-            // Use MutationObserver for resilience if available
-
             if (typeof MutationObserver !== 'undefined') {
-                let observer = null;
-
-                observer = new MutationObserver((mutations) => {
+                const observer = new MutationObserver((mutations) => {
                     mutations.forEach((mutation) => {
                         if (mutation.type === 'childList' && !docAlvo.getElementById('mapa-toggle-container')) {
                             injectToggleContainer();
                         }
                     });
-
-                    // se já foi injetado, desconectar observer para economizar recursos
                     if (docAlvo.getElementById('mapa-toggle-container')) {
                         try { observer.disconnect(); } catch(e) {}
                     }
                 });
-
                 observer.observe(docAlvo.body, { childList: true, subtree: true });
             }
-
             injectToggleContainer();
-
         }
 
         if (linkMapaNovaGuia) {
-            linkMapaNovaGuia.target =
-                "_blank";
+            linkMapaNovaGuia.target = "_blank";
         }
-
-        window.setSharedStoreValue(
-            'dadosGeograficos',
-            dadosGeo
-        );
-
+        window.setSharedStoreValue('dadosGeograficos', dadosGeo);
     } else {
-
-        window.setSharedStoreValue(
-            'dadosGeograficos',
-            { erro: true }
-        );
+        window.setSharedStoreValue('dadosGeograficos', { erro: true });
     }
 };
 
@@ -619,22 +345,17 @@ function verificarEIncrementarCotaGoogle(apiKey, nomeChave) {
     return true;
 }
 
-// Salva no localStorage que a chave específica do Google atingiu o limite ou foi bloqueada.
 function marcarChaveComoBloqueada(apiKey) {
     const hoje = new Date().toISOString().slice(0, 10);
     localStorage.setItem(`gmaps_blocked_${apiKey}_${hoje}`, 'true');
 }
 
-// Injeta assincronamente a SDK do Google Maps na página se ela ainda não existir.
-// Auxiliar para carregar de forma assíncrona o script SDK do Google Maps sem duplicar tags
 function carregarSDKGoogleMaps(apiKey) {
     return new Promise((resolve) => {
         if (window.google && window.google.maps) {
             resolve(true);
             return;
         }
-        
-        // Remove scripts antigos do Google instalados anteriormente para evitar colisões
         const scripts = document.querySelectorAll('script[src*="maps.googleapis.com/maps/api/js"]');
         scripts.forEach(s => s.remove());
         window.google = undefined;
@@ -651,277 +372,186 @@ function carregarSDKGoogleMaps(apiKey) {
 
 // --- SECTION: GOOGLE MAPS / OSRM ROUTING CALCULATION ---
 // Calcula o trajeto (distância da rota) de um ponto ao outro via Google Maps SDK ou servidor OSRM (como fallback).
-window.calcularTrajetoOSRM =
-async function(
-    latOrigin,
-    lonOrigin,
-    latDest,
-    lonDest,
-    profile = 'foot',
-    signal = null
-) {
-
-    if (
-        !latOrigin ||
-        !lonOrigin ||
-        !latDest ||
-        !lonDest
-    ) return null;
-
-    const apiKeyGoogle = "AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8";
-    const apiKeyGoogle2 = "AIzaSyBUvko37UZpzfwS9rS3pfexlsptYqQZW78";
-
-    // Mapeamento de perfis para o SDK
+window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDest, profile = 'foot', signal = null) {
+    if (!latOrigin || !lonOrigin || !latDest || !lonDest) return null;
     const googleMode = profile === 'foot' ? 'WALKING' : 'DRIVING';
     
+    const STORAGE_KEY_GLOBAL = 'plattransp_global_routes_cache';
+    const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
+    
+    // Associa a coordenada ao ID real da Escola (UE) no assistente
+    const idUnidadeDestino = (typeof listaExibirBase !== 'undefined' && listaExibirBase)
+        ? listaExibirBase.find(e => Number(e.lat) === Number(latDest) && Number(e.lon) === Number(lonDest))?.id || `${latDest},${lonDest}`
+        : `${latDest},${lonDest}`;
+
+    const chaveCache = `${modoMapa}_${googleMode}_${latOrigin},${lonOrigin}_UE_${idUnidadeDestino}`;
+
+    // Consulta o cache unificado com validação automática de expiração
+    const dadosEmCacheValido = window.obterValorCachePersistente(STORAGE_KEY_GLOBAL, chaveCache);
+    if (dadosEmCacheValido) {
+        console.info("⚡ [CACHE-PERSISTENTE] Rota idêntica recuperada do localStorage (Teto Máx: 100 | Validade: 7 dias) para a UE:", idUnidadeDestino);
+        return dadosEmCacheValido;
+    }
+
     const chavesDisponiveis = [
-        { key: apiKeyGoogle, label: "Chave Google 1" },
-        { key: apiKeyGoogle2, label: "Chave Google 2" }
+        { key: window.apiKeyGoogle,  label: "Chave Google 1" },
+        { key: window.apiKeyGoogle2, label: "Chave Google 2" },
+        { key: window.apiKeyGoogle3, label: "Chave Google 3" }
     ];
     
     let dadosRoteamento = null;
     let googleSucesso = false;
 
     for (const item of chavesDisponiveis) {
-        if (!verificarEIncrementarCotaGoogle(item.key, item.label)) {
-            continue; 
-        }
+        if (!verificarEIncrementarCotaGoogle(item.key, item.label)) continue; 
 
         const carregouSDK = await carregarSDKGoogleMaps(item.key);
-        if (!carregouSDK) {
-            console.error(`❌ Erro ao carregar o SDK do Google Maps usando a ${item.label}`);
-            continue;
-        }
+        if (!carregouSDK) continue;
 
         try {
             const resultadoDirecao = await new Promise((resolve, reject) => {
-                const directionsService = new google.maps.DirectionsService();
-                directionsService.route({
-                    origin: new google.maps.LatLng(latOrigin, lonOrigin),
-                    destination: new google.maps.LatLng(latDest, lonDest),
-                    travelMode: google.maps.TravelMode[googleMode]
-                }, (response, status) => {
-                    if (status === 'OK') {
-                        resolve(response.routes[0].legs[0].distance.value);
-                    } else {
-                        reject(status);
+                const timeoutProtecao = setTimeout(() => reject('TIMEOUT_API_NOT_ACTIVATED'), 3500);
+                try {
+                    if (!window.google || !window.google.maps || !window.google.maps.DirectionsService) {
+                        clearTimeout(timeoutProtecao);
+                        return reject('SDK_INCOMPLETA');
                     }
-                });
+                    const directionsService = new google.maps.DirectionsService();
+                    directionsService.route({
+                        origin: new google.maps.LatLng(latOrigin, lonOrigin),
+                        destination: new google.maps.LatLng(latDest, lonDest),
+                        travelMode: google.maps.TravelMode[googleMode]
+                    }, (response, status) => {
+                        clearTimeout(timeoutProtecao);
+                        if (status === 'OK') resolve(response.routes[0].legs[0].distance.value);
+                        else reject(status);
+                    });
+                } catch (err) {
+                    clearTimeout(timeoutProtecao);
+                    reject(err);
+                }
             });
 
             dadosRoteamento = Math.round(resultadoDirecao);
             console.info(`✅ Roteamento obtido via ${item.label}: ${dadosRoteamento} metros`);
             googleSucesso = true;
             break; 
-
         } catch (statusErro) {
-            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED') {
-                console.warn(`🛑 ${item.label} rejeitada pelo Google (${statusErro}). Forçando bloqueio diário.`);
+            console.warn(`⚠️ Falha na tentativa com ${item.label}: Status/Motivo -> ${statusErro}`);
+            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED' || statusErro === 'TIMEOUT_API_NOT_ACTIVATED') {
                 marcarChaveComoBloqueada(item.key);
-            } else {
-                console.error(`❌ Erro operacional na ${item.label}: Status ${statusErro}`);
             }
         }
     }
 
     if (googleSucesso && dadosRoteamento !== null) {
-        return { distancia: dadosRoteamento, fonte: 'GOOGLE' };
+        const resultadoFinalGoogle = { distancia: dadosRoteamento, fonte: 'GOOGLE' };
+        window.gerenciarEsalvarCachePersistente(STORAGE_KEY_GLOBAL, chaveCache, resultadoFinalGoogle);
+        return resultadoFinalGoogle;
     }
 
-    console.warn("⚠️ Ambas as chaves do Google falharam ou atingiram os limites. Acionando Fallback OSRM.");
+    console.warn("⚠️ Ambas as chaves do Google falharam ou estão desativadas no Cloud. Acionando Fallback OSRM.");
 
-    // --- FALLBACK ORIGINAL OSRM ---
     try {
-
-        const url =
-            `https://router.project-osrm.org/route/v1/${profile}/${lonOrigin},${latOrigin};${lonDest},${latDest}?overview=false`;
-
-        const fetchOptions =
-            signal
-                ? { signal }
-                : {};
-
-        const response =
-            await fetch(
-                url,
-                fetchOptions
-            );
-
-        if (!response.ok) {
-            console.error(`❌ OSRM retornou HTTP ${response.status} ao calcular rota (${profile}).`);
-            return null;
-        }
-
-        const data =
-            await response.json();
-
-        if (
-            data.code === 'Ok' &&
-            data.routes &&
-            data.routes.length > 0
-        ) {
+        const url = `https://router.project-osrm.org/route/v1/${profile}/${lonOrigin},${latOrigin};${lonDest},${latDest}?overview=false`;
+        const fetchOptions = signal ? { signal } : {};
+        const response = await fetch(url, fetchOptions);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
             const distanciaOsrm = Math.round(data.routes[0].distance);
             console.info(`✅ Roteamento obtido via OSRM: ${distanciaOsrm} metros`);
-            return { distancia: distanciaOsrm, fonte: 'OSRM' };
+            const resultadoFinalOSRM = { distancia: distanciaOsrm, fonte: 'OSRM' };
+            window.gerenciarEsalvarCachePersistente(STORAGE_KEY_GLOBAL, chaveCache, resultadoFinalOSRM);
+            return resultadoFinalOSRM;
         }
-
     } catch (e) {
-
-        if (e.name === 'AbortError') {
-            return null;
-        }
-        console.error(`❌ Erro ao calcular trajeto via OSRM (${profile}):`, e);
+        if (e.name === 'AbortError') return null;
     }
-
-    console.warn("⚠️ OSRM falhou. Acionando Fallback para Haversine (linha reta).");
-    const distHav = window.calcularDistanciaHaversine(latOrigin, lonOrigin, latDest, lonDest);
-    return { distancia: distHav, fonte: 'HAVERSINE' };
+    
+    const resultadoFinalHav = { distancia: window.calcularDistanciaHaversine(latOrigin, lonOrigin, latDest, lonDest), fonte: 'HAVERSINE' };
+    window.gerenciarEsalvarCachePersistente(STORAGE_KEY_GLOBAL, chaveCache, resultadoFinalHav);
+    return resultadoFinalHav;
 };
 
 // --- SECTION: GOOGLE MAPS / NOMINATIM GEOCODING ---
 // Busca as coordenadas geográficas (Lat/Lon) correspondentes a um texto de endereço via Google ou Nominatim.
-window.obterCoordenadasPorEndereco =
-async function(enderecoCompleto) {
+window.obterCoordenadasPorEndereco = async function(enderecoCompleto) {
+    if (!enderecoCompleto) return null;
 
-    if (!enderecoCompleto) {
-        return null;
-    }
-
-    // Função auxiliar para substituir abreviações de tipos de vias
-
-    function substituirAbreviacoes(
-        endereco
-    ) {
-
+    function substituirAbreviacoes(endereco) {
         const substituicoes = {
-            'AV ': 'AVENIDA ',
-            'EST ': 'ESTRADA ',
-            'R ': 'RUA ',
-            'AL ': 'ALAMEDA ',
-            'PC ': 'PRAÇA ',
-            'VIE ': 'VIELA ',
-            'VL ': 'VIELA ',
-            'ROD ': 'RODOVIA ',
-            'TRAV ': 'TRAVESSA ',
-            'TV ': 'TRAVESSA ',
-            'LAR ': 'LARGO ',
-            'BEC ': 'BECO ',
-            'CAM ': 'CAMINHO ',
-            'CHA ': 'CHACARA ',
-            'CON ': 'CONDOMINIO ',
-            'FAZ ': 'FAZENDA ',
-            'JAR ': 'JARDIM ',
-            'LOT ': 'LOTEAMENTO ',
-            'NUC ': 'NUCLEO ',
-            'PAR ': 'PARQUE ',
-            'PAS ': 'PASSAGEM ',
-            'PTE ': 'PONTE ',
-            'REC ': 'RECANTO ',
-            'RES ': 'RESIDENCIAL ',
-            'SIT ': 'SITIO ',
-            'VIL ': 'VILA ',
-            'QD ': 'QUADRA ',
-            'LOT ': 'LOTE ',
-            'GAL ': 'GALERIA ',
-            'PAV ': 'PAVILHAO ',
-            'BL ': 'BLOCO ',
-            'AP ': 'APARTAMENTO ',
-            'CS ': 'CASA ',
-            'ED ': 'EDIFICIO ',
-            'SL ': 'SALA ',
-            'AND ': 'ANDAR ',
-            'CJ ': 'CONJUNTO ',
-            'NU ': 'NUMERO ',
-            'N ': 'NUMERO '
+            'AV ': 'AVENIDA ', 'EST ': 'ESTRADA ', 'R ': 'RUA ', 'AL ': 'ALAMEDA ',
+            'PC ': 'PRAÇA ', 'VIE ': 'VIELA ', 'VL ': 'VIELA ', 'ROD ': 'RODOVIA ',
+            'TRAV ': 'TRAVESSA ', 'TV ': 'TRAVESSA ', 'LAR ': 'LARGO ', 'BEC ': 'BECO ',
+            'CAM ': 'CAMINHO ', 'CHA ': 'CHACARA ', 'CON ': 'CONDOMINIO ', 'FAZ ': 'FAZENDA ',
+            'JAR ': 'JARDIM ', 'LOT ': 'LOTEAMENTO ', 'NUC ': 'NUCLEO ', 'PAR ': 'PARQUE ',
+            'PAS ': 'PASSAGEM ', 'PTE ': 'PONTE ', 'REC ': 'RECANTO ', 'RES ': 'RESIDENCIAL ',
+            'SIT ': 'SITIO ', 'VIL ': 'VILA ', 'QD ': 'QUADRA ', 'GAL ': 'GALERIA ',
+            'BL ': 'BLOCO ', 'AP ': 'APARTAMENTO ', 'CS ': 'CASA ', 'ED ': 'EDIFICIO ',
+            'AND ': 'ANDAR ', 'CJ ': 'CONJUNTO ', 'N ': 'NUMERO '
         };
-
-        let enderecoCorrigido =
-            endereco.toUpperCase();
-
-        for (
-            const [abreviacao, completo]
-            of Object.entries(
-                substituicoes
-            )
-        ) {
-
-            enderecoCorrigido =
-                enderecoCorrigido.replace(
-                    new RegExp(
-                        `\\b${abreviacao}`,
-                        'g'
-                    ),
-                    completo
-                );
+        let enderecoCorrigido = endereco.toUpperCase();
+        for (const [abreviacao, completo] of Object.entries(substituicoes)) {
+            enderecoCorrigido = enderecoCorrigido.replace(new RegExp(`\\b${abreviacao}`, 'g'), completo);
         }
-
         return enderecoCorrigido;
     }
 
-    let enderecoBusca =
-        substituirAbreviacoes(
-            enderecoCompleto
-        );
-
-    if (
-        enderecoBusca &&
-        !enderecoBusca
-            .toUpperCase()
-            .includes("BERNARDO")
-    ) {
-
-        enderecoBusca +=
-            ", São Bernardo do Campo - SP";
+    let enderecoBusca = substituirAbreviacoes(enderecoCompleto);
+    if (enderecoBusca && !enderecoBusca.toUpperCase().includes("BERNARDO")) {
+        enderecoBusca += ", São Bernardo do Campo - SP";
     }
 
-    const apiKeyGoogle = "AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8";
-    const apiKeyGoogle2 = "AIzaSyBUvko37UZpzfwS9rS3pfexlsptYqQZW78";
-    
     const chavesDisponiveis = [
-        { key: apiKeyGoogle, label: "Chave Google 1" },
-        { key: apiKeyGoogle2, label: "Chave Google 2" }
+        { key: window.apiKeyGoogle,  label: "Chave Google 1" },
+        { key: window.apiKeyGoogle2, label: "Chave Google 2" },
+        { key: window.apiKeyGoogle3, label: "Chave Google 3" }
     ];
 
     let coordenadasResultado = null;
     let googleSucesso = false;
 
     for (const item of chavesDisponiveis) {
-        if (!verificarEIncrementarCotaGoogle(item.key, item.label)) {
-            continue;
-        }
+        if (!verificarEIncrementarCotaGoogle(item.key, item.label)) continue;
 
         const carregouSDK = await carregarSDKGoogleMaps(item.key);
-        if (!carregouSDK) {
-            console.error(`❌ Erro ao carregar o SDK do Google Maps usando a ${item.label}`);
-            continue;
-        }
+        if (!carregouSDK) continue;
 
         try {
             const localizacaoGeocode = await new Promise((resolve, reject) => {
-                const geocoder = new google.maps.Geocoder();
-                geocoder.geocode({ address: enderecoBusca }, (results, status) => {
-                    if (status === 'OK' && results.length > 0) {
-                        resolve({
-                            lat: parseFloat(results[0].geometry.location.lat()),
-                            lon: parseFloat(results[0].geometry.location.lng())
-                        });
-                    } else {
-                        reject(status);
+                const timeoutProtecao = setTimeout(() => reject('TIMEOUT_API_NOT_ACTIVATED'), 3500);
+                try {
+                    if (!window.google || !window.google.maps || !window.google.maps.Geocoder) {
+                        clearTimeout(timeoutProtecao);
+                        return reject('SDK_INCOMPLETA');
                     }
-                });
+                    const geocoder = new google.maps.Geocoder();
+                    geocoder.geocode({ address: enderecoBusca }, (results, status) => {
+                        clearTimeout(timeoutProtecao);
+                        if (status === 'OK' && results.length > 0) {
+                            resolve({
+                                lat: parseFloat(results[0].geometry.location.lat()),
+                                lon: parseFloat(results[0].geometry.location.lng())
+                            });
+                        } else {
+                            reject(status);
+                        }
+                    });
+                } catch (err) {
+                    clearTimeout(timeoutProtecao);
+                    reject(err);
+                }
             });
 
             coordenadasResultado = localizacaoGeocode;
             console.info(`✅ Geocoding obtido via ${item.label}: ${coordenadasResultado.lat}, ${coordenadasResultado.lon}`);
             googleSucesso = true;
             break;
-
         } catch (statusErro) {
-            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED') {
-                console.warn(`🛑 Geocoding na ${item.label} bloqueado por limite/permissão (${statusErro}).`);
+            console.warn(`⚠️ Falha no Geocoding da ${item.label}: Status/Motivo -> ${statusErro}`);
+            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED' || statusErro === 'TIMEOUT_API_NOT_ACTIVATED') {
                 marcarChaveComoBloqueada(item.key);
-            } else {
-                console.error(`❌ Erro operacional de Geocoding na ${item.label}: Status ${statusErro}`);
             }
         }
     }
@@ -932,48 +562,80 @@ async function(enderecoCompleto) {
 
     console.warn("⚠️ Geocodificação do Google falhou em ambas as chaves. Acionando Fallback Nominatim.");
 
-    // --- FALLBACK ORIGINAL NOMINATIM ---
     try {
-
-        const url =
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBusca)}&limit=1&email=app.plattransp@gmail.com`;
-
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoBusca)}&limit=1&email=app.plattransp@gmail.com`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
         const response = await fetch(url, {
             signal: controller.signal,
-            headers: {
-                'Accept-Language': 'pt-BR,pt;q=0.9'
-            }
+            headers: { 'Accept-Language': 'pt-BR,pt;q=0.9' }
         });
-
-        if (!response.ok) {
-            console.warn(`⚠️ Piso Nominatim: Falha na requisição (Status: ${response.status})`);
-            return null;
-        }
-
+        if (!response.ok) return null;
         const data = await response.json();
         clearTimeout(timeoutId);
 
-        if (
-            data &&
-            data.length > 0
-        ) {
-            const resultadoNominatim = {
-                lat: parseFloat(data[0].lat),
-                lon: parseFloat(data[0].lon)
-            };
+        if (data && data.length > 0) {
+            const resultadoNominatim = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
             console.info(`✅ Geocoding obtido via Nominatim: ${resultadoNominatim.lat}, ${resultadoNominatim.lon}`);
             return resultadoNominatim;
         }
-
     } catch(e) {
-
-        console.error(
-            "❌ Erro ao buscar coordenadas do endereço no Nominatim:",
-            e
-        );
+        console.error("❌ Erro ao buscar coordenadas do endereço no Nominatim:", e);
     }
-
     return null;
+};
+
+// --- SECTION: GOOGLE MAPS REVERSE GEOCODING ---
+// Busca o endereço formatado por meio de uma coordenada (Latitude e Longitude) via Google Maps API.
+window.obterEnderecoPorCoordenadas = async function(latitude, longitude) {
+    if (!latitude || !longitude) return null;
+
+    const chavesDisponiveis = [
+        { key: window.apiKeyGoogle,  label: "Chave Google 1" },
+        { key: window.apiKeyGoogle2, label: "Chave Google 2" },
+        { key: window.apiKeyGoogle3, label: "Chave Google 3" }
+    ];
+
+    let enderecoEncontrado = null;
+    let googleSucesso = false;
+
+    for (const item of chavesDisponiveis) {
+        if (!verificarEIncrementarCotaGoogle(item.key, item.label)) continue;
+
+        const carregouSDK = await carregarSDKGoogleMaps(item.key);
+        if (!carregouSDK) continue;
+
+        try {
+            const resultadoGeocode = await new Promise((resolve, reject) => {
+                const timeoutProtecao = setTimeout(() => reject('TIMEOUT_API_NOT_ACTIVATED'), 3500);
+                try {
+                    if (!window.google || !window.google.maps || !window.google.maps.Geocoder) {
+                        clearTimeout(timeoutProtecao);
+                        return reject('SDK_INCOMPLETA');
+                    }
+                    const geocoder = new google.maps.Geocoder();
+                    const latlng = { lat: parseFloat(latitude), lng: parseFloat(longitude) };
+                    geocoder.geocode({ location: latlng }, (results, status) => {
+                        clearTimeout(timeoutProtecao);
+                        if (status === 'OK' && results[0]) resolve(results[0].formatted_address);
+                        else reject(status);
+                    });
+                } catch (err) {
+                    clearTimeout(timeoutProtecao);
+                    reject(err);
+                }
+            });
+
+            enderecoEncontrado = resultadoGeocode;
+            console.info(`✅ Reverse Geocoding obtido via ${item.label}: ${enderecoEncontrado}`);
+            googleSucesso = true;
+            break;
+        } catch (statusErro) {
+            console.warn(`⚠️ Falha no Reverse Geocoding da ${item.label}: Status/Motivo -> ${statusErro}`);
+            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED' || statusErro === 'TIMEOUT_API_NOT_ACTIVATED') {
+                marcarChaveComoBloqueada(item.key);
+            }
+        }
+    }
+    return googleSucesso ? enderecoEncontrado : null;
 };

@@ -82,39 +82,46 @@
 
                 let atualizadas = 0;
 
-                // Mapeia os dados do CSV para consulta rápida por ID
+                // Mapeia os dados do CSV para consulta rápida por ID (aceita tanto 'id' quanto 'id_unidade')
                 const csvMap = new Map();
                 csvEscolas.forEach(item => {
-                    if (item.id_unidade) csvMap.set(item.id_unidade, item);
+                    const idAtual = item.id_unidade || item.id;
+                    if (idAtual) csvMap.set(idAtual, item);
                 });
 
-                // Atualiza o objeto original mantendo tudo intacto e apenas adicionando o solicitado
+                // Atualiza o objeto original dinamicamente criando/injetando qualquer coluna que estiver no CSV
                 escolasDB.forEach(escola => {
                     const csvData = csvMap.get(escola.id);
                     
                     if (csvData) {
-                        // 1. Strings Simples (Apenas se não forem vazias)
-                        if (csvData.terreno) escola.terreno = csvData.terreno;
-                        if (csvData.nome_unidade_SOMAR) escola.nome_unidade_SOMAR = csvData.nome_unidade_SOMAR;
-                        if (csvData.nome_abreviado_unidade) escola.nome_abreviado_unidade = csvData.nome_abreviado_unidade;
-                        if (csvData.cie_prodesp_unidade) escola.cie_prodesp_unidade = csvData.cie_prodesp_unidade;
-                        if (csvData.nome_prodesp_sed) escola.nome_prodesp_sed = csvData.nome_prodesp_sed;
-                        if (csvData.conveniada) escola.conveniada = csvData.conveniada;
-                        if (csvData.id_unidade_SOMAR) schoolIdSomar = csvData.id_unidade_SOMAR; escola.id_unidade_SOMAR = csvData.id_unidade_SOMAR;
-                        if (csvData.transporte_grupo_atendimento) escola.transporte_grupo_atendimento = csvData.transporte_grupo_atendimento;
+                        // Varre todas as chaves/colunas que vieram do objeto CSV
+                        Object.keys(csvData).forEach(chave => {
+                            // Ignora as colunas de ID para não duplicar ou quebrar os identificadores
+                            if (chave === 'id' || chave === 'id_unidade') return;
 
-                        // 2. Construção do Array Único de E-mails (ignora vazios)
-                        const emailsArray = [];
-                        if (csvData.email_unidade) emailsArray.push(csvData.email_unidade);
-                        if (csvData.email_unidade_2) emailsArray.push(csvData.email_unidade_2);
-                        if (csvData.email_unidade_3) emailsArray.push(csvData.email_unidade_3);
-                        if (emailsArray.length > 0) escola.email = emailsArray;
+                            // Tratamento especial para E-mails (se a coluna for email_unidade, cria a estrutura de Array se necessário)
+                            if (chave.startsWith('email_unidade')) {
+                                if (!escola.email) escola.email = [];
+                                if (csvData[chave] && !escola.email.includes(csvData[chave])) {
+                                    escola.email.push(csvData[chave]);
+                                }
+                                return;
+                            }
 
-                        // 3. Construção do Array Único de Telefones (ignora vazios)
-                        const telefonesArray = [];
-                        if (csvData.telefone_1_unidade) telefonesArray.push(csvData.telefone_1_unidade);
-                        if (csvData.telefone_2_unidade) telefonesArray.push(csvData.telefone_2_unidade);
-                        if (telefonesArray.length > 0) escola.telefones = telefonesArray;
+                            // Tratamento especial para Telefones (se a coluna for telefone_X_unidade, alimenta a estrutura de Array)
+                            if (chave.startsWith('telefone_') && chave.endsWith('_unidade')) {
+                                if (!escola.telefones) escola.telefones = [];
+                                if (csvData[chave] && !escola.telefones.includes(csvData[chave])) {
+                                    escola.telefones.push(csvData[chave]);
+                                }
+                                return;
+                            }
+
+                            // Para qualquer outra coluna: injeta ou cria o campo dinamicamente se houver valor
+                            if (csvData[chave] !== undefined && csvData[chave] !== "") {
+                                escola[chave] = csvData[chave];
+                            }
+                        });
 
                         atualizadas++;
                     }

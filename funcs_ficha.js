@@ -40,6 +40,59 @@ window.getSharedStoreElement = function() {
     return el;
 };
 
+function blindarElementosAnalise(doc) {
+    const windowAlvo = doc.defaultView || window;
+
+    // Verifica se a função original existe no escopo da página
+    if (typeof windowAlvo.MostraEscondeOpcaoEscolaPorOpcao === 'function') {
+        
+        // Evita reinjectar a interceptação se ela já estiver ativa
+        if (!windowAlvo.MostraEscondeOpcaoEscolaPorOpcao.isIntercepted) {
+            const funcaoOriginal = windowAlvo.MostraEscondeOpcaoEscolaPorOpcao;
+
+            // Substituímos a função original pela versão estendida e protegida pelo nosso plugin
+            windowAlvo.MostraEscondeOpcaoEscolaPorOpcao = function(...args) {
+                console.log("[PLUGIN] Interceptando MostraEscondeOpcaoEscolaPorOpcao original...");
+
+                // --- MUTING DE ALERTS ---
+                const alertOriginal = windowAlvo.alert;
+                windowAlvo.alert = function() {}; 
+
+                try {
+                    // Executa a função nativa capturando erros de elementos nulos da página interna
+                    funcaoOriginal.apply(this, args);
+                } catch (err) {
+                    console.warn("[PLUGIN] Erro de elementos nulos evitado na função nativa com sucesso:", err.message);
+                } finally {
+                    // Restaura o alert nativo imediatamente
+                    windowAlvo.alert = alertOriginal; 
+                }
+
+                // Força a exibição dos elementos de análise da ficha
+                const IDsParaForcarBlock = ["distancia_aferida_div", "status_detalhes_div", "botao_salvar_modal"];
+                IDsParaForcarBlock.forEach(id => {
+                    const el = doc.getElementById(id);
+                    if (el) {
+                        el.style.display = "block";
+                    }
+                });
+            };
+            
+            windowAlvo.MostraEscondeOpcaoEscolaPorOpcao.isIntercepted = true;
+            console.log("[PLUGIN] ✅ Função original da página blindada com sucesso!");
+        }
+        
+        // Executa uma primeira vez de forma segura para garantir o estado inicial correto
+        try {
+            windowAlvo.MostraEscondeOpcaoEscolaPorOpcao();
+        } catch(e) {}
+
+    } else {
+        // Fallback: Caso a função ainda não tenha sido carregada no DOM, tenta novamente em breve
+        setTimeout(() => blindarElementosAnalise(doc), 200);
+    }
+}
+
 // Pega os valores armazenados no estado global (shared store) a partir do elemento escondido do DOM.
 window.getSharedStore = function() {
     const el = window.getSharedStoreElement();
@@ -124,6 +177,7 @@ window.aplicarLinkPesquisaEndereco = function() {
         }
     }
 
+    
     if (!textoOriginal) return;
 
     let ruaLimpa = textoOriginal.split(',')[0].trim();
@@ -227,6 +281,11 @@ window.iniciarPaginaFicha = function() {
         'function'
     ) {
         window.aplicarLinkPesquisaEndereco();
+    }
+
+
+    if (typeof window.blindarElementosAnalise === 'function') {
+        window.blindarElementosAnalise(document);
     }
 
     const storageHelper = {
@@ -783,6 +842,21 @@ window.realizarCalculosIniciaisDistancia = async function() {
 };
 
 
+window.atualizarInputDistancia = function(distanciaEmMetros) {
+    const docContexto = typeof docAlvo !== 'undefined' ? docAlvo : document;
+    const inputDist = docContexto.getElementById('input-assistente-dist');
+    
+    if (inputDist) {
+        if (distanciaEmMetros === undefined || distanciaEmMetros === null || isNaN(distanciaEmMetros)) {
+            inputDist.value = "---";
+            return;
+        }
+        // Converte metros em formato km legível (ex: 1.25 km)
+        const valorKm = (distanciaEmMetros / 1000).toFixed(2);
+        inputDist.value = `${valorKm} km`;
+        console.log(`[ASSISTENTE] Campo input-assistente-dist atualizado para: ${valorKm} km`);
+    }
+};
 
 window.verificaArqDiastur = async function(documentoContexto = document) {
     const targetDoc = documentoContexto || document;
@@ -1028,3 +1102,71 @@ document.addEventListener(
     'DOMContentLoaded',
     window.iniciarPaginaFicha
 );
+
+// =========================================================================
+// SISTEMA CENTRALIZADO E PERSISTENTE DE CONTROLE DE CACHE (EXPIRAÇÃO DE 7 DIAS E MÁX 100 ITENS)
+// =========================================================================
+window.gerenciarEsalvarCachePersistente = function(nomeChaveStorage, chaveRegistro, dadosValor) {
+    try {
+        let cacheCompleto = JSON.parse(localStorage.getItem(nomeChaveStorage) || '{}');
+        const agora = Date.now();
+        const LIMITE_EXPIRACAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 Dias em milissegundos
+
+        // 1. Limpeza reativa: remove qualquer dado que já tenha expirado o prazo de 7 dias
+        for (let k in cacheCompleto) {
+            if (cacheCompleto[k] && cacheCompleto[k].timestamp && (agora - cacheCompleto[k].timestamp > LIMITE_EXPIRACAO_MS)) {
+                delete cacheCompleto[k];
+            }
+        }
+
+        // 2. Adiciona ou atualiza o registro pretendido com o carimbo do timestamp atual
+        if (dadosValor !== undefined) {
+            cacheCompleto[chaveRegistro] = {
+                valor: dadosValor,
+                timestamp: agora
+            };
+        }
+
+        // 3. Aplicação do Teto Estrito (Máximo 100 registros)
+        let listaChavesAtivas = Object.keys(cacheCompleto);
+        if (listaChavesAtivas.length > 100) {
+            // Ordena as chaves colocando os timestamps mais antigos no começo do array
+            listaChavesAtivas.sort((a, b) => {
+                const timeA = cacheCompleto[a]?.timestamp || 0;
+                const timeB = cacheCompleto[b]?.timestamp || 0;
+                return timeA - timeB;
+            });
+
+            // Remove os itens mais antigos até restaurar o limite de 100 itens
+            while (listaChavesAtivas.length > 100) {
+                const chaveRemover = listaChavesAtivas.shift();
+                delete cacheCompleto[chaveRemover];
+            }
+        }
+
+        localStorage.setItem(nomeChaveStorage, JSON.stringify(cacheCompleto));
+    } catch (e) {
+        console.error(`❌ Erro crítico ao gerenciar armazenamento do cache [${nomeChaveStorage}]:`, e);
+    }
+};
+
+window.obterValorCachePersistente = function(nomeChaveStorage, chaveRegistro) {
+    try {
+        let cacheCompleto = JSON.parse(localStorage.getItem(nomeChaveStorage) || '{}');
+        const agora = Date.now();
+        const LIMITE_EXPIRACAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 Dias
+
+        if (cacheCompleto[chaveRegistro]) {
+            // Verifica se expirou os 7 dias no momento da leitura
+            if (agora - cacheCompleto[chaveRegistro].timestamp > LIMITE_EXPIRACAO_MS) {
+                delete cacheCompleto[chaveRegistro];
+                localStorage.setItem(nomeChaveStorage, JSON.stringify(cacheCompleto));
+                return null;
+            }
+            return cacheCompleto[chaveRegistro].valor;
+        }
+    } catch (e) {
+        return null;
+    }
+    return null;
+};
