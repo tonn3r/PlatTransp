@@ -721,7 +721,19 @@ function preencheAnalise(resultado, resultado_motivo, resultado_detalhes, distan
             if (inputDist?.value) distancia = parseInt(inputDist.value, 10);
         }
     }
-    let baseArred = (distancia != null && !isNaN(distancia) && Number(distancia) >= 1000) ? 100 : 50;
+    
+    let baseArred = 50; // Valor padrão
+
+if (distancia != null && !isNaN(distancia)) {
+    let dist = Number(distancia);
+    if (dist >= 10000) {
+        baseArred = 500;
+    } else if (dist >= 1000) {
+        baseArred = 100;
+    }else if (dist < 300) {
+        baseArred = 10;
+}
+}
     distancia = (distancia != null && !isNaN(distancia)) ? Math.round(Number(distancia) / baseArred) * baseArred : 0;
 
     // 2. Normalização de Dados Visuais (Fallback do DOM)
@@ -1169,7 +1181,18 @@ window.atualizarInputDistancia = function(distancia) {
     if (distancia === 'endereco' || distancia === 'coordenada') return;
     const numero = Number(distancia);
     if (!Number.isFinite(numero) || numero <= 0) return;
-    const baseFinal = (numero >= 1000) ? 100 : 50;
+    let baseFinal = 50; // Valor padrão
+
+if (distancia != null && !isNaN(distancia)) {
+    let dist = Number(distancia);
+    if (dist >= 10000) {
+        baseArred = 500;
+    } else if (dist >= 1000) {
+        baseArred = 100;
+    }else if (dist < 300) {
+        baseArred = 10;
+    }
+}
     const valorFinal = Math.round(numero / baseFinal) * baseFinal;
     const tentarAtualizar = (tentativa = 0) => {
         const input = document.getElementById('input-assistente-dist');
@@ -1706,44 +1729,77 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
         }
 
         // etapa DEFICIENCIA do assistente
-        console.log("temSugestaoDeficiencia: ", temSugestaoDeficiencia, "\nestado.ehEncaminhado: ", estado.ehEncaminhado, "\nestado.pularDeficiencia: ", estado.pularDeficiencia, "\nestado.deficiencia: ", estado.deficiencia);
-        if ((estado.areaRuralProcessada || (temSugestaoDeficiencia && estado.ehEncaminhado !== null)) && estado.pularDeficiencia=== false && estado.deficiencia === null) {
-            let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
-            let estiloAluno = "background:#27ae60;";
-            let estiloFamilia = "background:#2980b9;";
-            let txt_btn_DeficAluno = "A criança tem deficiência";
-            let txt_btn_DeficFamilia = "Pai/Mãe tem deficiência";
-            let txt_btn_DeficNao = "Não possui deficiência";
+        // --- INÍCIO: BLOCO UNIFICADO DA ETAPA DEFICIÊNCIA ---
+const precisaDeficienciaEspecial = estado.isEspecial && estado.deficiencia === null;
+const precisaDeficienciaDistancia = (estado.distancia !== null && estado.distancia < 1500 && estado.deficiencia === null) || (temSugestaoDeficiencia === true && estado.deficiencia === null && estado.distancia !== null && estado.pularDeficiencia !== true);
+const precisaDeficiencia_ = (estado.areaRuralProcessada || (temSugestaoDeficiencia && estado.ehEncaminhado !== null)) && estado.pularDeficiencia === false && estado.deficiencia === null;
 
-            if (sugestaoDeficienciaHtml === 'ALUNO') {
-                textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência da criança. Verifique se o laudo está ok:</p>";
-                estiloAluno = "background:#27ae60; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
-                txt_btn_DeficAluno = "Laudo do aluno está ok";
-                txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
-            } else if (sugestaoDeficienciaHtml === 'FAMILIA') {
-                textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência na família. Verifique se o laudo está ok:</p>";
-                estiloFamilia = "background:#2980b9; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
-                txt_btn_DeficFamilia = "Laudo do responsável está ok";
-                txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
-            }
+if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficiencia_) {
+    let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
+    let estiloAluno = "background:#27ae60;";
+    let estiloFamilia = "background:#2980b9;";
+    let txt_btn_DeficAluno = "A criança tem deficiência";
+    let txt_btn_DeficFamilia = "Pai/Mãe tem deficiência";
+    let txt_btn_DeficNao = "Não possui deficiência";
 
-            conteudo.innerHTML = `
-                <h3 class="section-title text-warning">
-                    <span class="mdi mdi-wheelchair-accessibility" style="font-size: 22px; margin-right: 6px;"></span> Deficiência
-                </h3>
-                ${textoPergunta}
-                <div class="action-group-col" style="margin-top:20px;">
-                    <button id="btn-def-aluno" class="btn btn-success" style="${estiloAluno}">${txt_btn_DeficAluno}</button>
-                    <button id="btn-def-familia" class="btn btn-info" style="${estiloFamilia}">${txt_btn_DeficFamilia}</button>
-                    <button id="btn-def-nao" class="btn btn-danger">${txt_btn_DeficNao}</button>
-                </div>
-            `;
-            
-            vincularEventoUnico(document.getElementById('btn-def-aluno'), 'click', () => { salvarHistorico(); estado.deficiencia = 'ALUNO'; renderizarPasso(); });
-            vincularEventoUnico(document.getElementById('btn-def-familia'), 'click', () => { salvarHistorico(); estado.deficiencia = 'FAMILIA'; renderizarPasso(); });
-            vincularEventoUnico(document.getElementById('btn-def-nao'), 'click', () => { salvarHistorico(); estado.deficiencia = false; renderizarPasso(); });
-            return;
-        }
+    // Lógica para sugestões (Aluno ou Família)
+    if (sugestaoDeficienciaHtml === 'ALUNO') {
+        textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência da criança. Verifique se o laudo está ok:</p>";
+        estiloAluno = "background:#27ae60; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
+        txt_btn_DeficAluno = "Laudo do aluno está ok";
+        txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
+    } else if (sugestaoDeficienciaHtml === 'FAMILIA') {
+        textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência na família. Verifique se o laudo está ok:</p>";
+        estiloFamilia = "background:#2980b9; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
+        txt_btn_DeficFamilia = "Laudo do responsável está ok";
+        txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
+    }
+
+    // Títulos e subtítulos dinâmicos
+    let tituloBoxStr = precisaDeficienciaEspecial ? "Exceção: Ensino Especial" : "Deficiência";
+    let subTituloBox = "";
+    if (precisaDeficienciaEspecial) {
+        subTituloBox = "O aluno está matriculado e necessita de ensino especial.";
+    } else if (estado.distancia !== null && estado.distancia < 1500) {
+        subTituloBox = "A distância aferida é <b>inferior a 1500m</b>.";
+    }
+
+    conteudo.innerHTML = `
+        <h3 class="section-title text-warning">
+            <span class="mdi mdi-wheelchair-accessibility" style="font-size: 22px; margin-right: 6px;"></span> ${tituloBoxStr}
+        </h3>
+        ${subTituloBox ? `<p>${subTituloBox}</p>` : ''}
+        ${textoPergunta}
+        <div class="action-group-col" style="margin-top:20px;">
+            <button id="btn-def-aluno" class="btn btn-success" style="${estiloAluno}">${txt_btn_DeficAluno}</button>
+            <button id="btn-def-familia" class="btn btn-info" style="${estiloFamilia}">${txt_btn_DeficFamilia}</button>
+            <button id="btn-def-nao" class="btn btn-danger">${txt_btn_DeficNao}</button>
+        </div>
+    `;
+
+    // Eventos com lógica de deferimento (incorporada do segundo bloco)
+    vincularEventoUnico(document.getElementById('btn-def-aluno'), 'click', () => { 
+        salvarHistorico(); 
+        estado.deficiencia = 'ALUNO'; 
+        if (!estado.isEspecial && estado.escolaProximaUser === true) { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do aluno." }; } 
+        renderizarPasso(); 
+    });
+    
+    vincularEventoUnico(document.getElementById('btn-def-familia'), 'click', () => { 
+        salvarHistorico(); 
+        estado.deficiencia = 'FAMILIA'; 
+        if (!estado.isEspecial && estado.escolaProximaUser === true) { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do responsável." }; } 
+        renderizarPasso(); 
+    });
+    
+    vincularEventoUnico(document.getElementById('btn-def-nao'), 'click', () => { 
+        salvarHistorico(); 
+        estado.deficiencia = false; 
+        renderizarPasso(); 
+    });
+    return;
+}
+// --- FIM: BLOCO DA ETAPA DEFICIÊNCIA ---
 
         if (estado.escolaProximaUser === null) {
 
@@ -1839,7 +1895,8 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
             return distanciaBase;
         }
 
-        const numBase = valorOriginal >= 1000 ? 100 : 50;
+        let numBase = valorOriginal >= 1000 ? 100 : 50;
+        if(valorOriginal < 300) {numBase = 10;}
         return Math.round(valorOriginal / numBase) * numBase;
     };
 
@@ -2093,7 +2150,12 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
     }
     listaHtml += `</ul></div>`;
     
-    let linkMapaRede = latAluno ? `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latAluno}%2C${lonAluno}&z=18` : `https://maps.google.com/maps?saddr=$`;
+    let linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=-23.706568332542187%2C-46.562466610927814&z=13`;
+    if(latAluno && lonAluno) {linkMapaRede =  `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latAluno}%2C${lonAluno}&z=18`;
+}else if(latOrigemLista && lonOrigemLista) {linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latOrigemLista}%2C${lonOrigemLista}&z=18`;
+}else if(dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') {linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${dadosGeraisRotaSessao.coordAlunoEnd.lat}%2C${dadosGeraisRotaSessao.coordAlunoEnd.lon}&z=18`;
+}   
+
     listaHtml += `<a href="${linkMapaRede}" target="_blank" class="btn btn-outline" style="text-decoration:none; margin-bottom:15px;">
         <span class="mdi mdi-map" style="font-size: 16px; margin-right: 4px;"></span> Conferir mapa da rede
     </a>`;
@@ -2355,60 +2417,7 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
                 }
         }
 
-        const precisaDeficienciaEspecial = estado.isEspecial && estado.deficiencia === null;
-        const precisaDeficienciaDistancia = (estado.distancia !== null && estado.distancia < 1500 && estado.deficiencia === null) || (temSugestaoDeficiencia === true && estado.deficiencia === null && estado.pularDeficiencia !== true);
-
-        if (precisaDeficienciaEspecial || precisaDeficienciaDistancia) {
-            let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
-            let estiloAluno = "background:#27ae60;";
-            let estiloFamilia = "background:#2980b9;";
-
-             let txt_btn_DeficAluno = "A criança tem deficiência";
-            let txt_btn_DeficFamilia = "Pai/Mãe tem deficiência";
-            let txt_btn_DeficNao = "Não possui deficiência";
-
-            if (sugestaoDeficienciaHtml === 'ALUNO') {
-                textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência da criança. Verifique se o laudo está ok:</p>";
-                estiloAluno = "background:#27ae60; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
-                txt_btn_DeficAluno = "Laudo do aluno está ok";
-                txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
-            } else if (sugestaoDeficienciaHtml === 'FAMILIA') {
-                textoPergunta = "<p style='color:#c0392b; font-weight:bold;'>⚠️ A escola informou deficiência na família. Verifique se o laudo está ok:</p>";
-                estiloFamilia = "background:#2980b9; box-shadow: 0 0 12px 3px #f1c40f; border: 2px solid #f39c12; transform: scale(1.02);";
-                txt_btn_DeficFamilia = "Laudo do responsável está ok";
-                txt_btn_DeficNao = "Não possui deficiência ou laudo não é aceito";
-            }
-
-            
-            let tituloBoxStr = precisaDeficienciaEspecial 
-                ? "Exceção: Ensino Especial" 
-                : `Deficiência`;
-            
-                let subTituloBox = ""
-                if(precisaDeficienciaEspecial){"O aluno está matriculado e necessita de ensino especial."
-                    
-                }else if(estado.distancia<1500){"A distância aferida é <b>inferior a 1500m</b>."}
-                
-
-            conteudo.innerHTML = `
-                <h3 class="section-title text-warning">
-                    <span class="mdi mdi-wheelchair-accessibility" style="font-size: 22px; margin-right: 6px;"></span> ${tituloBoxStr}
-                </h3>
-                <p>${subTituloBox}</p>
-                ${textoPergunta}
-                <div class="action-group-col" style="margin-top:20px;">
-                    <button id="btn-def-aluno" class="btn btn-success" style="${estiloAluno}">${txt_btn_DeficAluno}</button>
-                    <button id="btn-def-familia" class="btn btn-info" style="${estiloFamilia}">${txt_btn_DeficFamilia}</button>
-                    <button id="btn-def-nao" class="btn btn-danger">${txt_btn_DeficNao}</button>
-                </div>
-            `;
-            
-            vincularEventoUnico(document.getElementById('btn-def-aluno'), 'click', () => { salvarHistorico(); estado.deficiencia = 'ALUNO'; if (!estado.isEspecial && estado.escolaProximaUser === true) { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do aluno." }; } renderizarPasso(); });
-            vincularEventoUnico(document.getElementById('btn-def-familia'), 'click', () => { salvarHistorico(); estado.deficiencia = 'FAMILIA'; if (!estado.isEspecial && estado.escolaProximaUser === true) { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do responsável." }; } renderizarPasso(); });
-            vincularEventoUnico(document.getElementById('btn-def-nao'), 'click', () => { salvarHistorico(); estado.deficiencia = false; renderizarPasso(); });
-            return;
-        }
-
+        
         if (estado.deficiencia === 'ALUNO' && estado.isEspecial && !estado.deficienciaEspecialProcessada) {
             estado.deficienciaEspecialProcessada = true;
             garantirDistanciaPreenchida();

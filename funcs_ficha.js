@@ -41,54 +41,65 @@ window.getSharedStoreElement = function() {
 };
 
 function blindarElementosAnalise(doc) {
-    const windowAlvo = doc.defaultView || window;
+    const selectMotivo = doc.getElementById("status_motivo_");
 
-    // Verifica se a função original existe no escopo da página
-    if (typeof windowAlvo.MostraEscondeOpcaoEscolaPorOpcao === 'function') {
-        
-        // Evita reinjectar a interceptação se ela já estiver ativa
-        if (!windowAlvo.MostraEscondeOpcaoEscolaPorOpcao.isIntercepted) {
-            const funcaoOriginal = windowAlvo.MostraEscondeOpcaoEscolaPorOpcao;
+    if (selectMotivo) {
+        console.log("[PLUGIN] Elemento select encontrado. Iniciando correção estrutural e de eventos...");
 
-            // Substituímos a função original pela versão estendida e protegida pelo nosso plugin
-            windowAlvo.MostraEscondeOpcaoEscolaPorOpcao = function(...args) {
-                console.log("[PLUGIN] Interceptando MostraEscondeOpcaoEscolaPorOpcao original...");
+        // --- CORREÇÃO ESTRUTURAL (DOM EXTRACTION) ---
+        const elStatusDetalhes = doc.getElementById("status_detalhes_div");
+        const elEscolaProxima = doc.getElementById("escola_mais_proxima_div");
 
-                // --- MUTING DE ALERTS ---
-                const alertOriginal = windowAlvo.alert;
-                windowAlvo.alert = function() {}; 
-
-                try {
-                    // Executa a função nativa capturando erros de elementos nulos da página interna
-                    funcaoOriginal.apply(this, args);
-                } catch (err) {
-                    console.warn("[PLUGIN] Erro de elementos nulos evitado na função nativa com sucesso:", err.message);
-                } finally {
-                    // Restaura o alert nativo imediatamente
-                    windowAlvo.alert = alertOriginal; 
-                }
-
-                // Força a exibição dos elementos de análise da ficha
-                const IDsParaForcarBlock = ["distancia_aferida_div", "status_detalhes_div", "botao_salvar_modal"];
-                IDsParaForcarBlock.forEach(id => {
-                    const el = doc.getElementById(id);
-                    if (el) {
-                        el.style.display = "block";
-                    }
-                });
-            };
+        // Se ambos existirem e um estiver erroneamente dentro do outro
+        if (elStatusDetalhes && elEscolaProxima && elEscolaProxima.contains(elStatusDetalhes)) {
+            console.log("[PLUGIN] Detectado status_detalhes_div dentro de escola_mais_proxima_div. Corrigindo estrutura...");
             
-            windowAlvo.MostraEscondeOpcaoEscolaPorOpcao.isIntercepted = true;
-            console.log("[PLUGIN] ✅ Função original da página blindada com sucesso!");
+            // Move o status_detalhes_div para fora, posicionando-o logo após o escola_mais_proxima_div
+            elEscolaProxima.after(elStatusDetalhes);
+            
+            console.log("[PLUGIN] ✅ Estrutura corrigida! As divs agora são irmãs independentes.");
         }
-        
-        // Executa uma primeira vez de forma segura para garantir o estado inicial correto
-        try {
-            windowAlvo.MostraEscondeOpcaoEscolaPorOpcao();
-        } catch(e) {}
+
+        // --- MANIPULAÇÃO DE EVENTOS ---
+        // Remove completamente o atributo nativo onchange para evitar que chame a função da página
+        selectMotivo.removeAttribute("onchange");
+
+        // Criamos a função de exibição robusta que força a visibilidade
+        const aplicarRegrasVisibilidade = () => {
+            const valorSelecionado = selectMotivo.value || "";
+
+            // Elementos estruturais que SEMPRE devem ficar visíveis (independente de herança agora que estão separados)
+            const IDsSempreVisiveis = ["distancia_aferida_div", "status_detalhes_div", "botao_salvar_modal"];
+            IDsSempreVisiveis.forEach(id => {
+                const el = doc.getElementById(id);
+                if (el) {
+                    el.style.setProperty("display", "block", "important");
+                    el.style.setProperty("visibility", "visible", "important");
+                    el.style.setProperty("opacity", "1", "important");
+                }
+            });
+
+            // Elemento dinâmico (escola_mais_proxima_div) - agora pode sumir sem levar o status_detalhes_div junto
+            const elEscolaProximaAtualizado = doc.getElementById("escola_mais_proxima_div");
+            if (elEscolaProximaAtualizado) {
+                if (valorSelecionado.toUpperCase().includes("OPCAO")) {
+                    elEscolaProximaAtualizado.style.setProperty("display", "block", "important");
+                    elEscolaProximaAtualizado.style.setProperty("visibility", "visible", "important");
+                    elEscolaProximaAtualizado.style.setProperty("opacity", "1", "important");
+                } else {
+                    elEscolaProximaAtualizado.style.setProperty("display", "none", "important");
+                }
+            }
+        };
+
+        // Atribuímos o novo evento de mudança diretamente no elemento
+        selectMotivo.onchange = aplicarRegrasVisibilidade;
+
+        // Executa uma vez no carregamento para aplicar o estado inicial baseado na opção atual
+        aplicarRegrasVisibilidade();
 
     } else {
-        // Fallback: Caso a função ainda não tenha sido carregada no DOM, tenta novamente em breve
+        // Caso o select ainda não esteja renderizado na tela, tenta novamente
         setTimeout(() => blindarElementosAnalise(doc), 200);
     }
 }
