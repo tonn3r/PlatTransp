@@ -2095,7 +2095,7 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
 
     let listaHtml = `<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; position:relative;">
         <div class="status-text-container">${statusText}</div>
-        <button id="btn-refresh-lista" class="btn-icon-transparent" style="position:absolute; top:0; right:0; display:none;" title="Atualizar lista">
+        <button id="btn-refresh-lista" class="btn-icon-transparent" style="position:absolute; top:0; right:0; display:block;" title="Recalcular distâncias">
             <span class="mdi mdi-refresh" style="font-size: 18px;"></span>
         </button>
     </div>`;
@@ -2162,9 +2162,32 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
 
     containerLista.innerHTML = listaHtml;
     
-    const temErros = Object.values(estado.distanciasOSRM).some(dist => dist === 'Erro' || dist === null);
+    // --- FUNÇÃO CENTRALIZADA DO REFRESH ---
+    window.acionarRefreshLista = async () => {
+        // Esvazia completamente o objeto de distâncias para forçar o recálculo do zero de todas as escolas
+        estado.distanciasOSRM = {};
+        if (estado.cacheDistancias && estado.ultimoModoUsado) {
+            estado.cacheDistancias[estado.ultimoModoUsado] = {};
+        }
+        
+        persistirEstado();
+        if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+        estado.buscandoOSRM = false;
+        
+        // Mantém exibido em bloco independente de qualquer ação
+        const btnRefresh = document.getElementById('btn-refresh-lista');
+        if (btnRefresh) btnRefresh.style.display = 'block';
+        
+        // Passa o parâmetro como true para forçar nova listagem e recálculos
+        await atualizarListaEscolasDinamicamente(true);
+    };
+
     const btnRefreshEnd = document.getElementById('btn-refresh-lista');
-    if (btnRefreshEnd) btnRefreshEnd.style.display = temErros ? 'block' : 'none';
+    if (btnRefreshEnd) {
+        btnRefreshEnd.style.display = 'block';
+        // Vincula o evento diretamente toda vez que a lista for gerada no DOM
+        btnRefreshEnd.onclick = window.acionarRefreshLista;
+    }
     
     let faltaCalcularAgora = latAluno && listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
     if (estado.ehAnalise && faltaCalcularAgora && typeof window.calcularTrajetoOSRM === 'function' && !estado.buscandoOSRM) {
@@ -2232,6 +2255,10 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
 
                         persistirEstado();
                         if (typeof window.rerenderizarListaOSRM === 'function') window.rerenderizarListaOSRM();
+                        
+                        // Garante a permanência do botão fixo como block
+                        if (btnRefreshEnd) btnRefreshEnd.style.display = 'block';
+
                         await new Promise(r => setTimeout(r, 250));
                     }
                 }
@@ -2246,8 +2273,6 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
             }
         })();
     } else {
-        // Se a listagem já foi processada anteriormente e não precisa recalcular em lote,
-        // apenas garante a alimentação inicial do input-assistente-dist com os dados salvos em cache
         if (estado.distanciasOSRM[idEscolaAtual] !== undefined && estado.distanciasOSRM[idEscolaAtual] !== 'Erro') {
             window.atualizarInputDistancia(Number(estado.distanciasOSRM[idEscolaAtual]));
         }
@@ -2294,17 +2319,8 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
             }
 
             const btnRefresh = document.getElementById('btn-refresh-lista');
-            if (btnRefresh) {
-                vincularEventoUnico(btnRefresh, 'click', async () => {
-                    listaExibirBase.forEach(esc => {
-                        if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) delete estado.distanciasOSRM[esc.id];
-                    });
-                    persistirEstado();
-                    if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-                    estado.buscandoOSRM = false;
-                    btnRefresh.style.display = 'none';
-                    await atualizarListaEscolasDinamicamente(false);
-                });
+            if (btnRefresh && typeof window.acionarRefreshLista === 'function') {
+                btnRefresh.onclick = window.acionarRefreshLista;
             }
 
             const inputDist = document.getElementById('input-assistente-dist');

@@ -42,7 +42,8 @@ window.escolasDB = [
             "4336-3416",
             "4822-2885"
         ],
-        "nome_select_analise": "CRECHE CONVENIADA MAO AMIGA"
+        "nome_select_analise": "CRECHE CONVENIADA MAO AMIGA",
+        "nome_un_sigla": "A1"
     },
     {
         "id": "513",
@@ -77,7 +78,8 @@ window.escolasDB = [
         "email": [
             "crecheriachogrande@abasc.com.br"
         ],
-        "nome_select_analise": "CRECHE CONVENIADA MAO AMIGA II"
+        "nome_select_analise": "CRECHE CONVENIADA MAO AMIGA II",
+        "nome_un_sigla": "A2"
     },
     {
         "id": "518",
@@ -115,7 +117,8 @@ window.escolasDB = [
         "telefones": [
             "48222885"
         ],
-        "nome_select_analise": "CRECHE CONVENIADA MAO AMIGA III"
+        "nome_select_analise": "CRECHE CONVENIADA MAO AMIGA III",
+        "nome_un_sigla": "A3"
     },
     {
         "id": "340",
@@ -152,7 +155,8 @@ window.escolasDB = [
             "1197130-2462",
             "98994-4739"
         ],
-        "nome_select_analise": "CRECHE CONVENIADA ABEF"
+        "nome_select_analise": "CRECHE CONVENIADA ABEF",
+        "nome_un_sigla": "ABEF"
     },
     {
         "id": "3",
@@ -194,7 +198,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4347-7586"
-        ]
+        ],
+        "nome_un_sigla": "AMC"
     },
     {
         "id": "15",
@@ -231,7 +236,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4335-5304"
-        ]
+        ],
+        "nome_un_sigla": "AS"
     },
     {
         "id": "4",
@@ -268,7 +274,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4332-7537"
-        ]
+        ],
+        "nome_un_sigla": "AP"
     },
     {
         "id": "5",
@@ -314,7 +321,8 @@ window.escolasDB = [
         "telefones": [
             "4330-2374"
         ],
-        "nome_select_analise": "ALDINO PINOTTI, EMEB PREFEITO"
+        "nome_select_analise": "ALDINO PINOTTI, EMEB PREFEITO",
+        "nome_un_sigla": "PAP"
     },
     {
         "id": "6",
@@ -359,7 +367,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-5196"
-        ]
+        ],
+        "nome_un_sigla": "AS"
     },
     {
         "id": "7",
@@ -396,7 +405,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4345-1847"
-        ]
+        ],
+        "nome_un_sigla": "ALGS"
     },
     {
         "id": "8",
@@ -441,7 +451,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4341-4511"
-        ]
+        ],
+        "nome_un_sigla": "AA"
     },
     {
         "id": "320",
@@ -491,7 +502,8 @@ window.escolasDB = [
         "telefones": [
             "2630-5220"
         ],
-        "nome_select_analise": "ALZIRA MARTINS DE MENDONCA, EMEB (SILVINA CRECHE)"
+        "nome_select_analise": "ALZIRA MARTINS DE MENDONCA, EMEB (SILVINA CRECHE)",
+        "nome_un_sigla": "AMM"
     },
     {
         "id": "10",
@@ -529,7 +541,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4122-1506"
-        ]
+        ],
+        "nome_un_sigla": "AHCM"
     },
     {
         "id": "11",
@@ -566,7 +579,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-6498"
-        ]
+        ],
+        "nome_un_sigla": "AMP"
     },
     {
         "id": "12",
@@ -615,7 +629,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-0232"
-        ]
+        ],
+        "nome_un_sigla": "AF"
     },
     {
         "id": "223",
@@ -645,7 +660,8 @@ window.escolasDB = [
         "telefones": [
             "4338-3737"
         ],
-        "nome_select_analise": "CRECHE CONVENIADA ANGELA BASO"
+        "nome_select_analise": "CRECHE CONVENIADA ANGELA BASO",
+        "nome_un_sigla": "ABA"
     },
     {
         "id": "16",
@@ -690,7 +706,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4330-8613"
-        ]
+        ],
+        "nome_un_sigla": "AC"
     },
     {
         "id": "17",
@@ -727,7 +744,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-4838"
-        ]
+        ],
+        "nome_un_sigla": "AT"
     },
     {
         "id": "18",
@@ -772,7 +790,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4330-5658"
-        ]
+        ],
+        "nome_un_sigla": "AMG"
     },
     {
         "id": "19",
@@ -810,7 +829,8 @@ window.escolasDB = [
         "telefones": [
             "4127-4183"
         ],
-        "nome_select_analise": "ANTONIO DE LIMA, EMEB"
+        "nome_select_analise": "ANTONIO DE LIMA, EMEB",
+        "nome_un_sigla": "AL"
     },
     {
         "id": "20",
@@ -857,7 +877,8 @@ window.escolasDB = [
         "telefones": [
             "4357-3034"
         ],
-        "nome_select_analise": "ANTONIO DOS SANTOS FARIAS, EMEB"
+        "nome_select_analise": "ANTONIO DOS SANTOS FARIAS, EMEB",
+        "nome_un_sigla": "ASF"
     },
     {
         "id": "21",
@@ -895,7 +916,8 @@ window.escolasDB = [
         "telefones": [
             "4127-7666"
         ],
-        "nome_select_analise": "ANTONIO JOSE MANTUAN, EMEB"
+        "nome_select_analise": "ANTONIO JOSE MANTUAN, EMEB",
+        "nome_un_sigla": "AJM"
     },
     {
         "id": "22",
@@ -933,7 +955,8 @@ window.escolasDB = [
         "telefones": [
             "4358-2046"
         ],
-        "nome_select_analise": "ANTONIO PEREIRA COUTINHO, EMEB"
+        "nome_select_analise": "ANTONIO PEREIRA COUTINHO, EMEB",
+        "nome_un_sigla": "APC"
     },
     {
         "id": "23",
@@ -978,7 +1001,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4342-2444"
-        ]
+        ],
+        "nome_un_sigla": "ALR"
     },
     {
         "id": "319",
@@ -1015,7 +1039,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "2630-5286"
-        ]
+        ],
+        "nome_un_sigla": "AS"
     },
     {
         "id": "24",
@@ -1053,7 +1078,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4173-2377"
-        ]
+        ],
+        "nome_un_sigla": "AF"
     },
     {
         "id": "25",
@@ -1102,7 +1128,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-4395"
-        ]
+        ],
+        "nome_un_sigla": "AMT"
     },
     {
         "id": "26",
@@ -1143,7 +1170,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-5282"
-        ]
+        ],
+        "nome_un_sigla": "AZ"
     },
     {
         "id": "186",
@@ -1180,7 +1208,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4392-7492"
-        ]
+        ],
+        "nome_un_sigla": "A1"
     },
     {
         "id": "336",
@@ -1222,7 +1251,8 @@ window.escolasDB = [
         "telefones": [
             "4335-0719",
             "4348-7144"
-        ]
+        ],
+        "nome_un_sigla": "A2"
     },
     {
         "id": "208",
@@ -1259,7 +1289,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4337-9152"
-        ]
+        ],
+        "nome_un_sigla": "A3"
     },
     {
         "id": "27",
@@ -1298,7 +1329,8 @@ window.escolasDB = [
         "telefones": [
             "4109-8477"
         ],
-        "nome_select_analise": "AUREO CRUZ, EMEB PROF."
+        "nome_select_analise": "AUREO CRUZ, EMEB PROF.",
+        "nome_un_sigla": "AC"
     },
     {
         "id": "181",
@@ -1331,7 +1363,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4121-5470"
-        ]
+        ],
+        "nome_un_sigla": "ABAS"
     },
     {
         "id": "28",
@@ -1376,7 +1409,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4356-5732"
-        ]
+        ],
+        "nome_un_sigla": "BSC"
     },
     {
         "id": "29",
@@ -1422,7 +1456,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4338-7722"
-        ]
+        ],
+        "nome_un_sigla": "BJM"
     },
     {
         "id": "30",
@@ -1463,7 +1498,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4123-8192"
-        ]
+        ],
+        "nome_un_sigla": "BP"
     },
     {
         "id": "185",
@@ -1505,7 +1541,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4335-5791"
-        ]
+        ],
+        "nome_un_sigla": "B"
     },
     {
         "id": "31",
@@ -1555,7 +1592,8 @@ window.escolasDB = [
         "telefones": [
             "4358-5205"
         ],
-        "nome_select_analise": "BOSKO PRERADOVIC, EMEB"
+        "nome_select_analise": "BOSKO PRERADOVIC, EMEB",
+        "nome_un_sigla": "BP"
     },
     {
         "id": "32",
@@ -1600,7 +1638,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4101-7766"
-        ]
+        ],
+        "nome_un_sigla": "BM"
     },
     {
         "id": "33",
@@ -1637,7 +1676,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-4858"
-        ]
+        ],
+        "nome_un_sigla": "CC"
     },
     {
         "id": "34",
@@ -1674,7 +1714,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4125-4040"
-        ]
+        ],
+        "nome_un_sigla": "CP"
     },
     {
         "id": "35",
@@ -1712,7 +1753,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-8376"
-        ]
+        ],
+        "nome_un_sigla": "CG"
     },
     {
         "id": "36",
@@ -1759,7 +1801,8 @@ window.escolasDB = [
             "43540933",
             "4101-9151"
         ],
-        "nome_select_analise": "CARMEN TABET DE OLIVEIRA, EMEB PROFA."
+        "nome_select_analise": "CARMEN TABET DE OLIVEIRA, EMEB PROFA.",
+        "nome_un_sigla": "CTO"
     },
     {
         "id": "222",
@@ -1809,7 +1852,8 @@ window.escolasDB = [
         "telefones": [
             "2630-5202",
             "26305209"
-        ]
+        ],
+        "nome_un_sigla": "CMJ"
     },
     {
         "id": "191",
@@ -1846,7 +1890,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4341-6006"
-        ]
+        ],
+        "nome_un_sigla": "CCMJ"
     },
     {
         "id": "37",
@@ -1892,7 +1937,8 @@ window.escolasDB = [
         "telefones": [
             "4339-2585"
         ],
-        "nome_select_analise": "CASSIANO FARIA, EMEB PROF."
+        "nome_select_analise": "CASSIANO FARIA, EMEB PROF.",
+        "nome_un_sigla": "CF"
     },
     {
         "id": "38",
@@ -1929,7 +1975,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4343-5952"
-        ]
+        ],
+        "nome_un_sigla": "CR"
     },
     {
         "id": "39",
@@ -1966,7 +2013,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4122-5666"
-        ]
+        ],
+        "nome_un_sigla": "CA"
     },
     {
         "id": "40",
@@ -2003,7 +2051,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4122-4900"
-        ]
+        ],
+        "nome_un_sigla": "CM"
     },
     {
         "id": "41",
@@ -2045,7 +2094,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4354-9127"
-        ]
+        ],
+        "nome_un_sigla": "COT"
     },
     {
         "id": "210",
@@ -2108,7 +2158,8 @@ window.escolasDB = [
         "telefones": [
             "4352-0434",
             "4352-3929"
-        ]
+        ],
+        "nome_un_sigla": "CAD"
     },
     {
         "id": "42",
@@ -2154,7 +2205,8 @@ window.escolasDB = [
         "telefones": [
             "4358-1598"
         ],
-        "nome_select_analise": "CICERO PORFIRIO DOS SANTOS GILBERTO LAZZURI, EMEB"
+        "nome_select_analise": "CICERO PORFIRIO DOS SANTOS GILBERTO LAZZURI, EMEB",
+        "nome_un_sigla": "CPSG"
     },
     {
         "id": "43",
@@ -2204,7 +2256,8 @@ window.escolasDB = [
         "telefones": [
             "4338-6511"
         ],
-        "nome_select_analise": "CLAUDEMIR GOMES DO VALE, EMEB PROF."
+        "nome_select_analise": "CLAUDEMIR GOMES DO VALE, EMEB PROF.",
+        "nome_un_sigla": "CGV"
     },
     {
         "id": "44",
@@ -2243,7 +2296,8 @@ window.escolasDB = [
         "telefones": [
             "4336-1127"
         ],
-        "nome_select_analise": "CLEIA MARIA TEURES DE SOUZA, EMEB"
+        "nome_select_analise": "CLEIA MARIA TEURES DE SOUZA, EMEB",
+        "nome_un_sigla": "CMTS"
     },
     {
         "id": "45",
@@ -2280,7 +2334,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4343-8383"
-        ]
+        ],
+        "nome_un_sigla": "CN"
     },
     {
         "id": "46",
@@ -2321,7 +2376,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-8242"
-        ]
+        ],
+        "nome_un_sigla": "CC"
     },
     {
         "id": "200",
@@ -2363,7 +2419,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-8938"
-        ]
+        ],
+        "nome_un_sigla": "LCE"
     },
     {
         "id": "206",
@@ -2398,7 +2455,8 @@ window.escolasDB = [
         "telefones": [
             "4101-7857",
             "98433-8609"
-        ]
+        ],
+        "nome_un_sigla": "CPD"
     },
     {
         "id": "47",
@@ -2435,7 +2493,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-0678"
-        ]
+        ],
+        "nome_un_sigla": "DC"
     },
     {
         "id": "48",
@@ -2477,7 +2536,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4123-9568"
-        ]
+        ],
+        "nome_un_sigla": "DTM"
     },
     {
         "id": "49",
@@ -2510,7 +2570,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-2001"
-        ]
+        ],
+        "nome_un_sigla": "DeMG"
     },
     {
         "id": "50",
@@ -2555,7 +2616,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4334-1019"
-        ]
+        ],
+        "nome_un_sigla": "EDD"
     },
     {
         "id": "332",
@@ -2590,7 +2652,8 @@ window.escolasDB = [
             "4472-3771",
             "940469577"
         ],
-        "nome_select_analise": "CRECHE CONVENIADA EL ELION"
+        "nome_select_analise": "CRECHE CONVENIADA EL ELION",
+        "nome_un_sigla": "EE1"
     },
     {
         "id": "341",
@@ -2631,7 +2694,8 @@ window.escolasDB = [
             "1599853-6105",
             "99978-5180"
         ],
-        "nome_select_analise": "CRECHE CONVENIADA EL ELION II"
+        "nome_select_analise": "CRECHE CONVENIADA EL ELION II",
+        "nome_un_sigla": "EE2"
     },
     {
         "id": "525",
@@ -2660,7 +2724,8 @@ window.escolasDB = [
         "nome_abreviado_unidade": "Eliane Quinonero",
         "cie_prodesp_unidade": "<>",
         "conveniada": "0",
-        "id_unidade_SOMAR": "0"
+        "id_unidade_SOMAR": "0",
+        "nome_un_sigla": "EQ"
     },
     {
         "id": "51",
@@ -2710,7 +2775,8 @@ window.escolasDB = [
         "telefones": [
             "4345-1680"
         ],
-        "nome_select_analise": "ERMINIA PAGGI, EMEB PROF."
+        "nome_select_analise": "ERMINIA PAGGI, EMEB PROF.",
+        "nome_un_sigla": "EP"
     },
     {
         "id": "331",
@@ -2743,7 +2809,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "41035974"
-        ]
+        ],
+        "nome_un_sigla": "ES1"
     },
     {
         "id": "333",
@@ -2780,7 +2847,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "2598-7022"
-        ]
+        ],
+        "nome_un_sigla": "ES2"
     },
     {
         "id": "347",
@@ -2819,7 +2887,8 @@ window.escolasDB = [
         "telefones": [
             "4339-7779",
             "964637415"
-        ]
+        ],
+        "nome_un_sigla": "ES3"
     },
     {
         "id": "196",
@@ -2857,7 +2926,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4173-3230"
-        ]
+        ],
+        "nome_un_sigla": "JE"
     },
     {
         "id": "52",
@@ -2894,7 +2964,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-3677"
-        ]
+        ],
+        "nome_un_sigla": "EC"
     },
     {
         "id": "53",
@@ -2931,7 +3002,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4358-1845"
-        ]
+        ],
+        "nome_un_sigla": "FP"
     },
     {
         "id": "55",
@@ -2977,7 +3049,8 @@ window.escolasDB = [
         "telefones": [
             "4178-0886"
         ],
-        "nome_select_analise": "FIORENTE ELENA, PADRE, EMEB"
+        "nome_select_analise": "FIORENTE ELENA, PADRE, EMEB",
+        "nome_un_sigla": "FE"
     },
     {
         "id": "56",
@@ -3026,7 +3099,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4351-3022"
-        ]
+        ],
+        "nome_un_sigla": "FACR"
     },
     {
         "id": "57",
@@ -3072,7 +3146,8 @@ window.escolasDB = [
         "telefones": [
             "4109-0720"
         ],
-        "nome_select_analise": "FLORESTAN FERNANDES, EMEB PROF."
+        "nome_select_analise": "FLORESTAN FERNANDES, EMEB PROF.",
+        "nome_un_sigla": "FF"
     },
     {
         "id": "59",
@@ -3109,7 +3184,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4358-0225"
-        ]
+        ],
+        "nome_un_sigla": "FBB"
     },
     {
         "id": "142",
@@ -3151,7 +3227,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4332-6442"
-        ]
+        ],
+        "nome_un_sigla": "FDGT"
     },
     {
         "id": "60",
@@ -3188,7 +3265,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4351-2599"
-        ]
+        ],
+        "nome_un_sigla": "FM"
     },
     {
         "id": "511",
@@ -3226,7 +3304,8 @@ window.escolasDB = [
         "transporte_grupo_atendimento": "G3",
         "email": [
             "ceifuturofelizunidade2@gmail.com"
-        ]
+        ],
+        "nome_un_sigla": "FF2"
     },
     {
         "id": "183",
@@ -3264,7 +3343,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4330-1712"
-        ]
+        ],
+        "nome_un_sigla": "FF3"
     },
     {
         "id": "519",
@@ -3301,7 +3381,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "43341457"
-        ]
+        ],
+        "nome_un_sigla": "FF5"
     },
     {
         "id": "339",
@@ -3345,7 +3426,8 @@ window.escolasDB = [
         "telefones": [
             "4334-1457",
             "95958-8022"
-        ]
+        ],
+        "nome_un_sigla": "FF"
     },
     {
         "id": "61",
@@ -3378,7 +3460,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4330-1758"
-        ]
+        ],
+        "nome_un_sigla": "GMF"
     },
     {
         "id": "62",
@@ -3424,7 +3507,8 @@ window.escolasDB = [
         "telefones": [
             "4330-5961"
         ],
-        "nome_select_analise": "GERALDO HYPOLITO, EMEB PROF."
+        "nome_select_analise": "GERALDO HYPOLITO, EMEB PROF.",
+        "nome_un_sigla": "GH"
     },
     {
         "id": "63",
@@ -3462,7 +3546,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4173-3869"
-        ]
+        ],
+        "nome_un_sigla": "GPF"
     },
     {
         "id": "64",
@@ -3495,7 +3580,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-9340"
-        ]
+        ],
+        "nome_un_sigla": "GS"
     },
     {
         "id": "65",
@@ -3540,7 +3626,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4123-0644"
-        ]
+        ],
+        "nome_un_sigla": "GTST"
     },
     {
         "id": "66",
@@ -3577,7 +3664,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-3576"
-        ]
+        ],
+        "nome_un_sigla": "GD"
     },
     {
         "id": "67",
@@ -3615,7 +3703,8 @@ window.escolasDB = [
         "telefones": [
             "4101-6090",
             "4101-7089"
-        ]
+        ],
+        "nome_un_sigla": "GR"
     },
     {
         "id": "68",
@@ -3652,7 +3741,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4351-6716"
-        ]
+        ],
+        "nome_un_sigla": "GA"
     },
     {
         "id": "69",
@@ -3693,7 +3783,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4396-4077"
-        ]
+        ],
+        "nome_un_sigla": "HVL"
     },
     {
         "id": "70",
@@ -3750,7 +3841,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4101-8120"
-        ]
+        ],
+        "nome_un_sigla": "HZS"
     },
     {
         "id": "182",
@@ -3792,7 +3884,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4354-0272"
-        ]
+        ],
+        "nome_un_sigla": "HG"
     },
     {
         "id": "217",
@@ -3835,7 +3928,8 @@ window.escolasDB = [
         "telefones": [
             "4101-8817"
         ],
-        "nome_select_analise": "HILDA BATAZOLI TEIXEIRA, EMEB PROFA ANTIGA RIACHO GRANDE"
+        "nome_select_analise": "HILDA BATAZOLI TEIXEIRA, EMEB PROFA ANTIGA RIACHO GRANDE",
+        "nome_un_sigla": "HBT"
     },
     {
         "id": "71",
@@ -3872,7 +3966,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-7133"
-        ]
+        ],
+        "nome_un_sigla": "HBL"
     },
     {
         "id": "72",
@@ -3923,7 +4018,8 @@ window.escolasDB = [
         "telefones": [
             "4336-2062"
         ],
-        "nome_select_analise": "ISIDORO BATTISTIN, EMEB"
+        "nome_select_analise": "ISIDORO BATTISTIN, EMEB",
+        "nome_un_sigla": "IB"
     },
     {
         "id": "73",
@@ -3969,7 +4065,8 @@ window.escolasDB = [
         "telefones": [
             "2630-5284",
             "4397-5900 /4101-6840"
-        ]
+        ],
+        "nome_un_sigla": "ID"
     },
     {
         "id": "74",
@@ -4007,7 +4104,8 @@ window.escolasDB = [
         "telefones": [
             "4357-3538"
         ],
-        "nome_select_analise": "IVANEIDE NOGUEIRA, EMEB PROFA."
+        "nome_select_analise": "IVANEIDE NOGUEIRA, EMEB PROFA.",
+        "nome_un_sigla": "IN"
     },
     {
         "id": "75",
@@ -4045,7 +4143,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-1404"
-        ]
+        ],
+        "nome_un_sigla": "JZ"
     },
     {
         "id": "76",
@@ -4091,7 +4190,8 @@ window.escolasDB = [
         "telefones": [
             "4123-0451"
         ],
-        "nome_select_analise": "JANDIRA MARIA CASONATO, EMEB PROFA."
+        "nome_select_analise": "JANDIRA MARIA CASONATO, EMEB PROFA.",
+        "nome_un_sigla": "JMC"
     },
     {
         "id": "77",
@@ -4141,7 +4241,8 @@ window.escolasDB = [
         "telefones": [
             "4125-0595"
         ],
-        "nome_select_analise": "JANETE MALLY BETTI SIMOES, EMEB PROFA."
+        "nome_select_analise": "JANETE MALLY BETTI SIMOES, EMEB PROFA.",
+        "nome_un_sigla": "JMBS"
     },
     {
         "id": "201",
@@ -4174,7 +4275,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-4422"
-        ]
+        ],
+        "nome_un_sigla": "JF1"
     },
     {
         "id": "327",
@@ -4208,7 +4310,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4057-1107"
-        ]
+        ],
+        "nome_un_sigla": "JF2"
     },
     {
         "id": "329",
@@ -4241,7 +4344,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4317-2704"
-        ]
+        ],
+        "nome_un_sigla": "JF3"
     },
     {
         "id": "346",
@@ -4278,7 +4382,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "0"
-        ]
+        ],
+        "nome_un_sigla": "JF4"
     },
     {
         "id": "305",
@@ -4312,7 +4417,8 @@ window.escolasDB = [
         "telefones": [
             "4357-7335",
             "4358-2244"
-        ]
+        ],
+        "nome_un_sigla": "JB"
     },
     {
         "id": "194",
@@ -4346,7 +4452,8 @@ window.escolasDB = [
         "telefones": [
             "4358-2298",
             "4358-3006"
-        ]
+        ],
+        "nome_un_sigla": "JNI"
     },
     {
         "id": "195",
@@ -4384,7 +4491,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-9481"
-        ]
+        ],
+        "nome_un_sigla": "JNI"
     },
     {
         "id": "79",
@@ -4426,7 +4534,8 @@ window.escolasDB = [
         "telefones": [
             "4339-4088"
         ],
-        "nome_select_analise": "JORGE MARCOS DE OLIVEIRA, DOM, EMEB"
+        "nome_select_analise": "JORGE MARCOS DE OLIVEIRA, DOM, EMEB",
+        "nome_un_sigla": "JMO"
     },
     {
         "id": "172",
@@ -4472,7 +4581,8 @@ window.escolasDB = [
         "telefones": [
             "4358-2333"
         ],
-        "nome_select_analise": "JOSE ARNAUD DA SILVA, EMEB (PINHEIRINHO)"
+        "nome_select_analise": "JOSE ARNAUD DA SILVA, EMEB (PINHEIRINHO)",
+        "nome_un_sigla": "JAS"
     },
     {
         "id": "80",
@@ -4510,7 +4620,8 @@ window.escolasDB = [
         "telefones": [
             "4357-5533"
         ],
-        "nome_select_analise": "JOSE AUGUSTO OLIVEIRA SANTOS, EMEB"
+        "nome_select_analise": "JOSE AUGUSTO OLIVEIRA SANTOS, EMEB",
+        "nome_un_sigla": "JAOS"
     },
     {
         "id": "81",
@@ -4579,7 +4690,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4396-8337"
-        ]
+        ],
+        "nome_un_sigla": "JA"
     },
     {
         "id": "82",
@@ -4624,7 +4736,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4347-8702"
-        ]
+        ],
+        "nome_un_sigla": "JC"
     },
     {
         "id": "83",
@@ -4661,7 +4774,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4351-1899"
-        ]
+        ],
+        "nome_un_sigla": "JA"
     },
     {
         "id": "84",
@@ -4698,7 +4812,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-3794"
-        ]
+        ],
+        "nome_un_sigla": "JA"
     },
     {
         "id": "85",
@@ -4743,7 +4858,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4398-7175"
-        ]
+        ],
+        "nome_un_sigla": "JFMC"
     },
     {
         "id": "86",
@@ -4790,7 +4906,8 @@ window.escolasDB = [
         "telefones": [
             "4341-5844"
         ],
-        "nome_select_analise": "JOSE GETULIO ESCOBAR BUENO, EMEB PROF."
+        "nome_select_analise": "JOSE GETULIO ESCOBAR BUENO, EMEB PROF.",
+        "nome_un_sigla": "JGEB"
     },
     {
         "id": "87",
@@ -4839,7 +4956,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-3522"
-        ]
+        ],
+        "nome_un_sigla": "JIF"
     },
     {
         "id": "88",
@@ -4884,7 +5002,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-2727"
-        ]
+        ],
+        "nome_un_sigla": "JLJ"
     },
     {
         "id": "89",
@@ -4921,7 +5040,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4392-2972"
-        ]
+        ],
+        "nome_un_sigla": "JM"
     },
     {
         "id": "90",
@@ -4958,7 +5078,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-5777"
-        ]
+        ],
+        "nome_un_sigla": "JRP"
     },
     {
         "id": "91",
@@ -4991,7 +5112,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4122-4019"
-        ]
+        ],
+        "nome_un_sigla": "JC"
     },
     {
         "id": "92",
@@ -5037,7 +5159,8 @@ window.escolasDB = [
         "telefones": [
             "4178-6618"
         ],
-        "nome_select_analise": "JULIO ATLAS, EMEB ESCRITOR"
+        "nome_select_analise": "JULIO ATLAS, EMEB ESCRITOR",
+        "nome_un_sigla": "JA"
     },
     {
         "id": "93",
@@ -5095,7 +5218,8 @@ window.escolasDB = [
         "telefones": [
             "2630-7775",
             "26307780"
-        ]
+        ],
+        "nome_un_sigla": "JG"
     },
     {
         "id": "141",
@@ -5154,7 +5278,8 @@ window.escolasDB = [
         "telefones": [
             "4357-6992",
             "voip 5202"
-        ]
+        ],
+        "nome_un_sigla": "KZL"
     },
     {
         "id": "94",
@@ -5200,7 +5325,8 @@ window.escolasDB = [
         "telefones": [
             "4368-3278"
         ],
-        "nome_select_analise": "KAZUE FUZINAKA, EMEB PROF."
+        "nome_select_analise": "KAZUE FUZINAKA, EMEB PROF.",
+        "nome_un_sigla": "KF"
     },
     {
         "id": "345",
@@ -5237,7 +5363,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4396-5656"
-        ]
+        ],
+        "nome_un_sigla": "CL"
     },
     {
         "id": "96",
@@ -5275,7 +5402,8 @@ window.escolasDB = [
         "telefones": [
             "4368-1865"
         ],
-        "nome_select_analise": "LAURO GOMES, EMEB"
+        "nome_select_analise": "LAURO GOMES, EMEB",
+        "nome_un_sigla": "LG"
     },
     {
         "id": "97",
@@ -5324,7 +5452,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-4208"
-        ]
+        ],
+        "nome_un_sigla": "LC"
     },
     {
         "id": "98",
@@ -5361,7 +5490,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4125-4747"
-        ]
+        ],
+        "nome_un_sigla": "LN"
     },
     {
         "id": "100",
@@ -5406,7 +5536,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4343-8080"
-        ]
+        ],
+        "nome_un_sigla": "LT"
     },
     {
         "id": "101",
@@ -5463,7 +5594,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4354-9007"
-        ]
+        ],
+        "nome_un_sigla": "LEFL"
     },
     {
         "id": "224",
@@ -5498,7 +5630,8 @@ window.escolasDB = [
         "telefones": [
             "4342-1770"
         ],
-        "nome_select_analise": "CRECHE CONVENIADA LOS ANGELES"
+        "nome_select_analise": "CRECHE CONVENIADA LOS ANGELES",
+        "nome_un_sigla": "LA"
     },
     {
         "id": "102",
@@ -5535,7 +5668,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4341-6722"
-        ]
+        ],
+        "nome_un_sigla": "LF"
     },
     {
         "id": "103",
@@ -5572,7 +5706,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4358-5985"
-        ]
+        ],
+        "nome_un_sigla": "LLS"
     },
     {
         "id": "212",
@@ -5625,7 +5760,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4122-1341"
-        ]
+        ],
+        "nome_un_sigla": "LG"
     },
     {
         "id": "211",
@@ -5696,7 +5832,8 @@ window.escolasDB = [
             "4332-6850",
             "4177-2861"
         ],
-        "nome_select_analise": "LUIZA MARIA DE FARIAS, CEU (CEU SILVINA)"
+        "nome_select_analise": "LUIZA MARIA DE FARIAS, CEU (CEU SILVINA)",
+        "nome_un_sigla": "LMF"
     },
     {
         "id": "221",
@@ -5729,7 +5866,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4347-7809"
-        ]
+        ],
+        "nome_un_sigla": "MB"
     },
     {
         "id": "104",
@@ -5762,7 +5900,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-0485"
-        ]
+        ],
+        "nome_un_sigla": "MTO"
     },
     {
         "id": "105",
@@ -5803,7 +5942,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-0985"
-        ]
+        ],
+        "nome_un_sigla": "MN"
     },
     {
         "id": "54",
@@ -5844,7 +5984,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4352-1367"
-        ]
+        ],
+        "nome_un_sigla": "MPR"
     },
     {
         "id": "106",
@@ -5894,7 +6035,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-2741"
-        ]
+        ],
+        "nome_un_sigla": "MRD"
     },
     {
         "id": "218",
@@ -5932,7 +6074,8 @@ window.escolasDB = [
         "telefones": [
             "2630-5212",
             "2630-5216"
-        ]
+        ],
+        "nome_un_sigla": "MJR"
     },
     {
         "id": "107",
@@ -5982,7 +6125,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4352-4993"
-        ]
+        ],
+        "nome_un_sigla": "MRR"
     },
     {
         "id": "189",
@@ -6015,7 +6159,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "43354853"
-        ]
+        ],
+        "nome_un_sigla": "MC"
     },
     {
         "id": "226",
@@ -6048,7 +6193,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4330-3988"
-        ]
+        ],
+        "nome_un_sigla": "MAR"
     },
     {
         "id": "108",
@@ -6093,7 +6239,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4330-5014"
-        ]
+        ],
+        "nome_un_sigla": "MA"
     },
     {
         "id": "203",
@@ -6135,7 +6282,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4343-4848"
-        ]
+        ],
+        "nome_un_sigla": "LMA"
     },
     {
         "id": "109",
@@ -6173,7 +6321,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4341-5733"
-        ]
+        ],
+        "nome_un_sigla": "MAV"
     },
     {
         "id": "111",
@@ -6211,7 +6360,8 @@ window.escolasDB = [
         "telefones": [
             "4122-3063 / 43306910"
         ],
-        "nome_select_analise": "MARIA JOSE MATTAR JORGE, EMEB PROFA."
+        "nome_select_analise": "MARIA JOSE MATTAR JORGE, EMEB PROFA.",
+        "nome_un_sigla": "MJMJ"
     },
     {
         "id": "113",
@@ -6261,7 +6411,8 @@ window.escolasDB = [
         "telefones": [
             "4343-8933"
         ],
-        "nome_select_analise": "MARIA JUSTINA DE CAMARGO, EMEB PROFA."
+        "nome_select_analise": "MARIA JUSTINA DE CAMARGO, EMEB PROFA.",
+        "nome_un_sigla": "MJC"
     },
     {
         "id": "114",
@@ -6310,7 +6461,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4358-2930"
-        ]
+        ],
+        "nome_un_sigla": "MRB"
     },
     {
         "id": "115",
@@ -6356,7 +6508,8 @@ window.escolasDB = [
         "telefones": [
             "4123-3357"
         ],
-        "nome_select_analise": "MARIA THEREZINHA BESANA, EMEB PROFA."
+        "nome_select_analise": "MARIA THEREZINHA BESANA, EMEB PROFA.",
+        "nome_un_sigla": "MTB"
     },
     {
         "id": "116",
@@ -6393,7 +6546,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-3997"
-        ]
+        ],
+        "nome_un_sigla": "MBC"
     },
     {
         "id": "117",
@@ -6434,7 +6588,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-5619"
-        ]
+        ],
+        "nome_un_sigla": "MNI"
     },
     {
         "id": "118",
@@ -6483,7 +6638,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-6410"
-        ]
+        ],
+        "nome_un_sigla": "MML"
     },
     {
         "id": "119",
@@ -6540,7 +6696,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4177-1824"
-        ]
+        ],
+        "nome_un_sigla": "MA"
     },
     {
         "id": "120",
@@ -6585,7 +6742,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-9001 4127-0798"
-        ]
+        ],
+        "nome_un_sigla": "MMA"
     },
     {
         "id": "168",
@@ -6632,7 +6790,8 @@ window.escolasDB = [
         "telefones": [
             "4396-5566"
         ],
-        "nome_select_analise": "MARLY BUISSA CHIEDDE, EMEBE PROFA."
+        "nome_select_analise": "MARLY BUISSA CHIEDDE, EMEBE PROFA.",
+        "nome_un_sigla": "MBC"
     },
     {
         "id": "121",
@@ -6669,7 +6828,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-5804"
-        ]
+        ],
+        "nome_un_sigla": "MCC1"
     },
     {
         "id": "122",
@@ -6715,7 +6875,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4351-5499"
-        ]
+        ],
+        "nome_un_sigla": "MCC2"
     },
     {
         "id": "123",
@@ -6756,7 +6917,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4125-5959"
-        ]
+        ],
+        "nome_un_sigla": "ML"
     },
     {
         "id": "124",
@@ -6793,7 +6955,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4392-2389"
-        ]
+        ],
+        "nome_un_sigla": "MC"
     },
     {
         "id": "125",
@@ -6838,7 +7001,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4122-4672"
-        ]
+        ],
+        "nome_un_sigla": "NAIP"
     },
     {
         "id": "126",
@@ -6883,7 +7047,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4396-6339"
-        ]
+        ],
+        "nome_un_sigla": "NCF"
     },
     {
         "id": "220",
@@ -6936,7 +7101,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4332-3632"
-        ]
+        ],
+        "nome_un_sigla": "JdN"
     },
     {
         "id": "169",
@@ -6969,7 +7135,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4362-2035"
-        ]
+        ],
+        "nome_un_sigla": "NB"
     },
     {
         "id": "127",
@@ -7018,7 +7185,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4352-5753"
-        ]
+        ],
+        "nome_un_sigla": "NMCM"
     },
     {
         "id": "128",
@@ -7065,7 +7233,8 @@ window.escolasDB = [
         "telefones": [
             "4127-5428"
         ],
-        "nome_select_analise": "NILO CAMPOS GOMES, EMEB PROF."
+        "nome_select_analise": "NILO CAMPOS GOMES, EMEB PROF.",
+        "nome_un_sigla": "NCG"
     },
     {
         "id": "207",
@@ -7103,7 +7272,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-3736"
-        ]
+        ],
+        "nome_un_sigla": "CSJ"
     },
     {
         "id": "343",
@@ -7145,7 +7315,8 @@ window.escolasDB = [
         "telefones": [
             "4358-3311",
             "98380-3377"
-        ]
+        ],
+        "nome_un_sigla": "CMI"
     },
     {
         "id": "129",
@@ -7202,7 +7373,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-5549"
-        ]
+        ],
+        "nome_un_sigla": "OEO"
     },
     {
         "id": "130",
@@ -7247,7 +7419,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4347-0888"
-        ]
+        ],
+        "nome_un_sigla": "OF"
     },
     {
         "id": "131",
@@ -7296,7 +7469,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4338-6289"
-        ]
+        ],
+        "nome_un_sigla": "OMRP"
     },
     {
         "id": "132",
@@ -7333,7 +7507,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4121-6870"
-        ]
+        ],
+        "nome_un_sigla": "OEPL"
     },
     {
         "id": "133",
@@ -7374,7 +7549,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4362-3576"
-        ]
+        ],
+        "nome_un_sigla": "OB"
     },
     {
         "id": "14",
@@ -7423,7 +7599,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4335-2141"
-        ]
+        ],
+        "nome_un_sigla": "OJG"
     },
     {
         "id": "134",
@@ -7460,7 +7637,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-2977"
-        ]
+        ],
+        "nome_un_sigla": "OIO"
     },
     {
         "id": "135",
@@ -7506,7 +7684,8 @@ window.escolasDB = [
         "telefones": [
             "4362-4544"
         ],
-        "nome_select_analise": "OTILIO DE OLIVEIRA, EMEB PROF."
+        "nome_select_analise": "OTILIO DE OLIVEIRA, EMEB PROF.",
+        "nome_un_sigla": "OO"
     },
     {
         "id": "136",
@@ -7544,7 +7723,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-2502"
-        ]
+        ],
+        "nome_un_sigla": "PCM"
     },
     {
         "id": "159",
@@ -7597,7 +7777,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4354-0773"
-        ]
+        ],
+        "nome_un_sigla": "PF"
     },
     {
         "id": "137",
@@ -7634,7 +7815,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4357-4994"
-        ]
+        ],
+        "nome_un_sigla": "PM"
     },
     {
         "id": "138",
@@ -7681,7 +7863,8 @@ window.escolasDB = [
         "telefones": [
             "4178-4944"
         ],
-        "nome_select_analise": "PAULO TEIXEIRA DE CAMARGO, EMEB PROF."
+        "nome_select_analise": "PAULO TEIXEIRA DE CAMARGO, EMEB PROF.",
+        "nome_un_sigla": "PTC"
     },
     {
         "id": "441",
@@ -7727,7 +7910,8 @@ window.escolasDB = [
         "telefones": [
             "4390-0308"
         ],
-        "nome_select_analise": "PEDRA DE CARVALHO, EMEB"
+        "nome_select_analise": "PEDRA DE CARVALHO, EMEB",
+        "nome_un_sigla": "PC"
     },
     {
         "id": "139",
@@ -7773,7 +7957,8 @@ window.escolasDB = [
         "telefones": [
             "4109-8700"
         ],
-        "nome_select_analise": "PEDRO AUGUSTO GOMES CARDIM, EMEB PROF."
+        "nome_select_analise": "PEDRO AUGUSTO GOMES CARDIM, EMEB PROF.",
+        "nome_un_sigla": "PAGC"
     },
     {
         "id": "140",
@@ -7814,7 +7999,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4347-7222"
-        ]
+        ],
+        "nome_un_sigla": "PM"
     },
     {
         "id": "209",
@@ -7843,7 +8029,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4337-5995"
-        ]
+        ],
+        "nome_un_sigla": "CP"
     },
     {
         "id": "520",
@@ -7880,7 +8067,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "6021-5853"
-        ]
+        ],
+        "nome_un_sigla": "PC1"
     },
     {
         "id": "143",
@@ -7931,7 +8119,8 @@ window.escolasDB = [
         "telefones": [
             "4178-3235"
         ],
-        "nome_select_analise": "RAMIRO GONCALEZ FERNANDES, EMEB PROF."
+        "nome_select_analise": "RAMIRO GONCALEZ FERNANDES, EMEB PROF.",
+        "nome_un_sigla": "RGF"
     },
     {
         "id": "524",
@@ -7962,7 +8151,8 @@ window.escolasDB = [
         "email": [
             "dulce.donadelli@saobernardo.sp.gov.br"
         ],
-        "nome_select_analise": "REGINA DULCE DONADELLI PINTO,EMEB"
+        "nome_select_analise": "REGINA DULCE DONADELLI PINTO,EMEB",
+        "nome_un_sigla": "RDDP"
     },
     {
         "id": "213",
@@ -8017,7 +8207,8 @@ window.escolasDB = [
         "telefones": [
             "2630-9500",
             "41257041 - 43305594"
-        ]
+        ],
+        "nome_un_sigla": "RRC1"
     },
     {
         "id": "214",
@@ -8063,7 +8254,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4330-4691"
-        ]
+        ],
+        "nome_un_sigla": "RRC2"
     },
     {
         "id": "144",
@@ -8104,7 +8296,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4367-4716"
-        ]
+        ],
+        "nome_un_sigla": "RM"
     },
     {
         "id": "2",
@@ -8133,7 +8326,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4123-4108"
-        ]
+        ],
+        "nome_un_sigla": "RR"
     },
     {
         "id": "145",
@@ -8167,7 +8361,8 @@ window.escolasDB = [
         "telefones": [
             "4351-4629"
         ],
-        "nome_select_analise": "ROSA DE PACCE DOS SANTOS, EMEB PROFA."
+        "nome_select_analise": "ROSA DE PACCE DOS SANTOS, EMEB PROFA.",
+        "nome_un_sigla": "RPS"
     },
     {
         "id": "146",
@@ -8208,7 +8403,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4125-5222"
-        ]
+        ],
+        "nome_un_sigla": "RB"
     },
     {
         "id": "147",
@@ -8250,7 +8446,8 @@ window.escolasDB = [
         "telefones": [
             "4341-7841"
         ],
-        "nome_select_analise": "SADAO HIGUCHI ,EMEB"
+        "nome_select_analise": "SADAO HIGUCHI ,EMEB",
+        "nome_un_sigla": "SH"
     },
     {
         "id": "148",
@@ -8296,7 +8493,8 @@ window.escolasDB = [
         "telefones": [
             "4392-3974"
         ],
-        "nome_select_analise": "SALVADOR GORI, EMEB PROF."
+        "nome_select_analise": "SALVADOR GORI, EMEB PROF.",
+        "nome_un_sigla": "SG"
     },
     {
         "id": "149",
@@ -8335,7 +8533,8 @@ window.escolasDB = [
         "telefones": [
             "4347-6963"
         ],
-        "nome_select_analise": "SANDRA CRUZ MARTINS FREITAS, EMEB PROFA."
+        "nome_select_analise": "SANDRA CRUZ MARTINS FREITAS, EMEB PROFA.",
+        "nome_un_sigla": "SCMF"
     },
     {
         "id": "330",
@@ -8375,7 +8574,8 @@ window.escolasDB = [
         "telefones": [
             "4330-5148",
             "4338-3737"
-        ]
+        ],
+        "nome_un_sigla": "SC"
     },
     {
         "id": "514",
@@ -8413,7 +8613,8 @@ window.escolasDB = [
         "telefones": [
             "41098967",
             "987170569"
-        ]
+        ],
+        "nome_un_sigla": "ST"
     },
     {
         "id": "150",
@@ -8450,7 +8651,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4122-4611"
-        ]
+        ],
+        "nome_un_sigla": "SD"
     },
     {
         "id": "328",
@@ -8484,7 +8686,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "2758-0779"
-        ]
+        ],
+        "nome_un_sigla": "S1"
     },
     {
         "id": "188",
@@ -8519,7 +8722,8 @@ window.escolasDB = [
         "telefones": [
             "4361-1569",
             "2758-0778"
-        ]
+        ],
+        "nome_un_sigla": "S2"
     },
     {
         "id": "153",
@@ -8553,7 +8757,8 @@ window.escolasDB = [
         "telefones": [
             "4101-7011"
         ],
-        "nome_select_analise": "SONIA REGINA HERNANDEZ DE LIMA, EMEB PROFA."
+        "nome_select_analise": "SONIA REGINA HERNANDEZ DE LIMA, EMEB PROFA.",
+        "nome_un_sigla": "SRHL"
     },
     {
         "id": "154",
@@ -8603,7 +8808,8 @@ window.escolasDB = [
         "telefones": [
             "4397-5010"
         ],
-        "nome_select_analise": "SUZETE APARECIDA DE CAMPOS, EMEB PROFA."
+        "nome_select_analise": "SUZETE APARECIDA DE CAMPOS, EMEB PROFA.",
+        "nome_un_sigla": "SAC"
     },
     {
         "id": "155",
@@ -8650,7 +8856,8 @@ window.escolasDB = [
         "telefones": [
             "4361-8630"
         ],
-        "nome_select_analise": "SYLVIA MARILENA FANTACIN ZANETTI, EMEB PROFA."
+        "nome_select_analise": "SYLVIA MARILENA FANTACIN ZANETTI, EMEB PROFA.",
+        "nome_un_sigla": "SMFZ"
     },
     {
         "id": "9",
@@ -8693,7 +8900,8 @@ window.escolasDB = [
         "telefones": [
             "4104-4319"
         ],
-        "nome_select_analise": "TARSILA DO AMARAL, EMEB"
+        "nome_select_analise": "TARSILA DO AMARAL, EMEB",
+        "nome_un_sigla": "TA"
     },
     {
         "id": "156",
@@ -8738,7 +8946,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4109-2910"
-        ]
+        ],
+        "nome_un_sigla": "TV"
     },
     {
         "id": "157",
@@ -8775,7 +8984,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4347-6180"
-        ]
+        ],
+        "nome_un_sigla": "TD"
     },
     {
         "id": "158",
@@ -8812,7 +9022,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4343-6354"
-        ]
+        ],
+        "nome_un_sigla": "TA"
     },
     {
         "id": "160",
@@ -8850,7 +9061,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4351-4600"
-        ]
+        ],
+        "nome_un_sigla": "VAS"
     },
     {
         "id": "219",
@@ -8891,7 +9103,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "26305210"
-        ]
+        ],
+        "nome_un_sigla": "VC"
     },
     {
         "id": "161",
@@ -8929,7 +9142,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4178-7433"
-        ]
+        ],
+        "nome_un_sigla": "VC"
     },
     {
         "id": "162",
@@ -8974,7 +9188,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4341-8559"
-        ]
+        ],
+        "nome_un_sigla": "VZM"
     },
     {
         "id": "202",
@@ -9008,7 +9223,8 @@ window.escolasDB = [
         "telefones": [
             "4125-6381"
         ],
-        "nome_select_analise": "CRECHE CONVENIADA LAR MADRE VINCENZA"
+        "nome_select_analise": "CRECHE CONVENIADA LAR MADRE VINCENZA",
+        "nome_un_sigla": "LMV"
     },
     {
         "id": "163",
@@ -9045,7 +9261,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4127-5355"
-        ]
+        ],
+        "nome_un_sigla": "VM"
     },
     {
         "id": "164",
@@ -9090,7 +9307,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4368-2289"
-        ]
+        ],
+        "nome_un_sigla": "VC"
     },
     {
         "id": "165",
@@ -9127,7 +9345,8 @@ window.escolasDB = [
         ],
         "telefones": [
             "4368-2533"
-        ]
+        ],
+        "nome_un_sigla": "VB"
     },
     {
         "id": "166",
@@ -9173,7 +9392,8 @@ window.escolasDB = [
         "telefones": [
             "4337-9264"
         ],
-        "nome_select_analise": "WALDEMAR CANCIANI, EMEB PROF."
+        "nome_select_analise": "WALDEMAR CANCIANI, EMEB PROF.",
+        "nome_un_sigla": "WC"
     },
     {
         "id": "167",
@@ -9211,7 +9431,8 @@ window.escolasDB = [
         "telefones": [
             "4337-9925"
         ],
-        "nome_select_analise": "ZORAIDA APARECIDA RAMOS, EMEB PROFA"
+        "nome_select_analise": "ZORAIDA APARECIDA RAMOS, EMEB PROFA",
+        "nome_un_sigla": "ZAR"
     },
     {
         "id": "528",
@@ -9253,6 +9474,7 @@ window.escolasDB = [
         "telefones": [
             "2363-3772",
             "2363-3773"
-        ]
+        ],
+        "nome_un_sigla": "3M"
     }
 ];

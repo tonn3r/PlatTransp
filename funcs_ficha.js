@@ -473,173 +473,95 @@ window.iniciarPaginaFicha = function() {
 };
 
 // Realiza a verificação e o cálculo prévio de distância por endereço e coordenadas, e salva as informações no estado compartilhado.
-window.realizarCalculosIniciaisDistancia = async function() {
-
+window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = false) {
     const docAlvo = document;
 
+    let idSolInput =
+        docAlvo.querySelector('input[name="id_solicitacao"]') ||
+        docAlvo.querySelector('input[name="id"]');
+
+    let idFicha = idSolInput ? (idSolInput.value || "").trim() : '';
+
+    if (!idFicha) {
+        console.warn('[ASSISTENTE] ID da solicitação/ficha não encontrado. Não é possível ler/salvar cache.');
+    }
+
+    const NOME_CACHE_STORAGE = 'cache_calculos_fichas';
+    const CHAVE_REGISTRO = idFicha ? `ficha_${idFicha}` : null;
+
+    // Se NÃO forçado e temos ID válido, tenta recuperar do cache
+    if (!forcarRecalculo && CHAVE_REGISTRO) {
+        const cacheSalvo = window.obterValorCachePersistente(NOME_CACHE_STORAGE, CHAVE_REGISTRO);
+        if (cacheSalvo && cacheSalvo.dadosGeraisRota) {
+            console.log(`[ASSISTENTE] ⚡ Dados de rota recuperados do cache persistente para a ficha: ${idFicha}`);
+            
+            // Restaura o SharedStore global da sessão com os dados cacheados
+            window.setSharedStore({
+                DistDiferentesEntreMapas: cacheSalvo.DistDiferentesEntreMapas,
+                distanciaCoord: cacheSalvo.distanciaCoord,
+                distanciaEnd: cacheSalvo.distanciaEnd
+            });
+            window.setSharedStoreValue('dadosGeraisRota', cacheSalvo.dadosGeraisRota);
+            
+            if (cacheSalvo.modoTransporteAtual) {
+                window.setSharedStoreValue('modoTransporteAtual', cacheSalvo.modoTransporteAtual);
+                // Atualiza o texto visual do botão se for carro
+                const toggleContainer = document.getElementById('mapa-toggle-container');
+                if (toggleContainer && toggleContainer.children[1] && cacheSalvo.modoTransporteAtual === 'carro') {
+                    toggleContainer.children[1].innerHTML = "🚗 De Carro";
+                }
+            }
+            return; // Interrompe a execução poupando APIs externas
+        }
+    }
+
+    // --- SE NÃO TIVER CACHE OU SE FOR FORÇADO, EXECUTA O CÁLCULO TRADICIONAL ---
     let enderecoCompleto = "";
 
-    const inputRua =
-        docAlvo.querySelector('input#endereco') ||
-        docAlvo.querySelector('input[name="endereco"]');
+    const inputRua = docAlvo.querySelector('input#endereco') || docAlvo.querySelector('input[name="endereco"]');
+    const inputNum = docAlvo.querySelector('input#endereco_numero_residencia') || docAlvo.querySelector('input[name="endereco_numero_residencia"]');
+    const inputBairro = docAlvo.querySelector('input#endereco_bairro') || docAlvo.querySelector('input[name="endereco_bairro"]');
 
-    const inputNum =
-        docAlvo.querySelector('input#endereco_numero_residencia') ||
-        docAlvo.querySelector('input[name="endereco_numero_residencia"]');
-
-    const inputBairro =
-        docAlvo.querySelector('input#endereco_bairro') ||
-        docAlvo.querySelector('input[name="endereco_bairro"]');
-
-    let endRua =
-        inputRua
-            ? (inputRua.value || "").trim()
-            : '';
-
-    let endNum =
-        inputNum
-            ? (inputNum.value || "").trim()
-            : '';
-
-    let endBairro =
-        inputBairro
-            ? (inputBairro.value || "").trim()
-            : '';
+    let endRua = inputRua ? (inputRua.value || "").trim() : '';
+    let endNum = inputNum ? (inputNum.value || "").trim() : '';
+    let endBairro = inputBairro ? (inputBairro.value || "").trim() : '';
 
     if (!endRua) {
-
-        const elRua =
-            docAlvo.getElementById('endereco');
-
-        endRua =
-            elRua
-                ? (
-                    elRua.value ||
-                    elRua.innerText ||
-                    ""
-                ).trim()
-                : '';
+        const elRua = docAlvo.getElementById('endereco');
+        endRua = elRua ? (elRua.value || elRua.innerText || "").trim() : '';
     }
-
     if (!endNum) {
-
-        const elNum =
-            docAlvo.getElementById(
-                'endereco_numero_residencia'
-            );
-
-        endNum =
-            elNum
-                ? (
-                    elNum.value ||
-                    elNum.innerText ||
-                    ""
-                ).trim()
-                : '';
+        const elNum = docAlvo.getElementById('endereco_numero_residencia');
+        endNum = elNum ? (elNum.value || elNum.innerText || "").trim() : '';
     }
-
     if (!endBairro) {
-
-        const elBairro =
-            docAlvo.getElementById(
-                'endereco_bairro'
-            );
-
-        endBairro =
-            elBairro
-                ? (
-                    elBairro.value ||
-                    elBairro.innerText ||
-                    ""
-                ).trim()
-                : '';
+        const elBairro = docAlvo.getElementById('endereco_bairro');
+        endBairro = elBairro ? (elBairro.value || elBairro.innerText || "").trim() : '';
     }
 
-    enderecoCompleto =
-        [endRua, endNum, endBairro]
-            .filter(Boolean)
-            .join(", ");
+    enderecoCompleto = [endRua, endNum, endBairro].filter(Boolean).join(", ");
 
-    if (
-        !enderecoCompleto ||
-        enderecoCompleto.length < 5
-    ) {
-
-        const legends =
-            Array.from(
-                docAlvo.querySelectorAll('legend')
-            );
-
-        const legendEnd =
-            legends.find(
-                el =>
-                    el.innerText.trim() ===
-                    'Endereço'
-                    ||
-                    el.innerText.trim() ===
-                    'Residência'
-            );
-
+    if (!enderecoCompleto || enderecoCompleto.length < 5) {
+        const legends = Array.from(docAlvo.querySelectorAll('legend'));
+        const legendEnd = legends.find(el => el.innerText.trim() === 'Endereço' || el.innerText.trim() === 'Residência');
         if (legendEnd) {
-
-            const container =
-                legendEnd.closest('.set_inner') ||
-                legendEnd.parentElement;
-
+            const container = legendEnd.closest('.set_inner') || legendEnd.parentElement;
             if (container) {
-
-                const spanDados =
-                    container.querySelector(
-                        'span.texto_dados'
-                    );
-
+                const spanDados = container.querySelector('span.texto_dados');
                 if (spanDados) {
-
-                    enderecoCompleto =
-                        spanDados.innerText
-                            .replace(/\s+/g, ' ')
-                            .trim();
+                    enderecoCompleto = spanDados.innerText.replace(/\s+/g, ' ').trim();
                 }
             }
         }
     }
 
-    let idSolInput =
-        docAlvo.querySelector(
-            'input[name="id_solicitacao"]'
-        ) ||
-        docAlvo.querySelector(
-            'input[name="id"]'
-        );
+    let urlOrigem = window.location.href;
+    let basePath = urlOrigem.substring(0, urlOrigem.lastIndexOf('/') + 1);
+    let urlFichaNova = basePath + 'ficha_transporte_nova_versao.php?id_solicitacao=' + idFicha;
 
-    let idFicha =
-        idSolInput
-            ? idSolInput.value
-            : '';
+    let dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
 
-    let urlOrigem =
-        window.location.href;
-
-    let basePath =
-        urlOrigem.substring(
-            0,
-            urlOrigem.lastIndexOf('/') + 1
-        );
-
-    let urlFichaNova =
-        basePath +
-        'ficha_transporte_nova_versao.php?id_solicitacao=' +
-        idFicha;
-
-    let dadosGeo =
-        await window.extrairDadosGeograficos(
-            urlFichaNova
-        );
-
-    if (
-        !dadosGeo ||
-        !dadosGeo.geoEscola_Latit
-    ) return;
+    if (!dadosGeo || !dadosGeo.geoEscola_Latit) return;
 
     const isEmAnalise = window.getSharedStoreValue?.('statusFichaEmAnalise');
     if (!isEmAnalise) {
@@ -653,68 +575,37 @@ window.realizarCalculosIniciaisDistancia = async function() {
         return;
     }
 
-    let coordEndereco =
-        await window.obterCoordenadasPorEndereco(
-            enderecoCompleto
-        );
-
+    let coordEndereco = await window.obterCoordenadasPorEndereco(enderecoCompleto);
     let distDiferentes = false;
     let diferencaGeografica = 0;
     let distEndFoot = null;
 
-    if (
-        coordEndereco &&
-        coordEndereco.lat
-    ) {
-
-        diferencaGeografica =
-            window.calcularDistanciaHaversine(
-                dadosGeo.geoEndereco_Latit,
-                dadosGeo.geoEndereco_Longit,
-                coordEndereco.lat,
-                coordEndereco.lon
-            );
-
-        distDiferentes =
-            (diferencaGeografica > 200);
-
+    if (coordEndereco && coordEndereco.lat) {
+        diferencaGeografica = window.calcularDistanciaHaversine(
+            dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit,
+            coordEndereco.lat, coordEndereco.lon
+        );
+        distDiferentes = (diferencaGeografica > 200);
     } else {
-
         coordEndereco = enderecoCompleto;
-
         distDiferentes = false;
     }
 
-    let distCoordFootObj =
-        await window.calcularTrajetoOSRM(
-            dadosGeo.geoEndereco_Latit,
-            dadosGeo.geoEndereco_Longit,
-            dadosGeo.geoEscola_Latit,
-            dadosGeo.geoEscola_Longit,
-            'foot'
-        );
+    let distCoordFootObj = await window.calcularTrajetoOSRM(
+        dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit,
+        dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'foot'
+    );
     let distCoordFoot = distCoordFootObj ? distCoordFootObj.distancia : null;
 
-    if (
-        typeof coordEndereco === 'string'
-    ) {
-
+    if (typeof coordEndereco === 'string') {
         distEndFoot = distCoordFoot;
-
     } else if (distDiferentes) {
-
-        let distEndFootObj =
-            await window.calcularTrajetoOSRM(
-                coordEndereco.lat,
-                coordEndereco.lon,
-                dadosGeo.geoEscola_Latit,
-                dadosGeo.geoEscola_Longit,
-                'foot'
-            );
+        let distEndFootObj = await window.calcularTrajetoOSRM(
+            coordEndereco.lat, coordEndereco.lon,
+            dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'foot'
+        );
         distEndFoot = distEndFootObj ? distEndFootObj.distancia : null;
-
     } else {
-
         distEndFoot = distCoordFoot;
     }
 
@@ -725,130 +616,73 @@ window.realizarCalculosIniciaisDistancia = async function() {
     });
 
     let usarCarro = false;
-
     let perfilFinal = 'foot';
 
-    if (
-        distCoordFoot > 10000 ||
-        distEndFoot > 10000
-    ) {
-
+    if (distCoordFoot > 10000 || distEndFoot > 10000) {
         let distCoordCar = distCoordFoot;
         if (distCoordFoot > 10000) {
             let distCoordCarObj = await window.calcularTrajetoOSRM(
-                dadosGeo.geoEndereco_Latit,
-                dadosGeo.geoEndereco_Longit,
-                dadosGeo.geoEscola_Latit,
-                dadosGeo.geoEscola_Longit,
-                'driving'
+                dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit,
+                dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'driving'
             );
             if (distCoordCarObj) distCoordCar = distCoordCarObj.distancia;
         }
 
-        let distEndCar =
-            distEndFoot;
-
+        let distEndCar = distEndFoot;
         if (distEndFoot > 10000) {
-
-            if (
-                typeof coordEndereco === 'string'
-            ) {
-
-                distEndCar =
-                    distCoordCar;
-
+            if (typeof coordEndereco === 'string') {
+                distEndCar = distCoordCar;
             } else {
-
-                let distEndCarObj =
-                    await window.calcularTrajetoOSRM(
-                        coordEndereco.lat,
-                        coordEndereco.lon,
-                        dadosGeo.geoEscola_Latit,
-                        dadosGeo.geoEscola_Longit,
-                        'driving'
-                    );
+                let distEndCarObj = await window.calcularTrajetoOSRM(
+                    coordEndereco.lat, coordEndereco.lon,
+                    dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'driving'
+                );
                 if (distEndCarObj) distEndCar = distEndCarObj.distancia;
             }
         }
 
-        if (
-            (
-                distCoordFoot > 10000 &&
-                distCoordCar < 5000
-            )
-            ||
-            (
-                distEndFoot > 10000 &&
-                distEndCar < 5000
-            )
-        ) {
-
+        if ((distCoordFoot > 10000 && distCoordCar < 5000) || (distEndFoot > 10000 && distEndCar < 5000)) {
             usarCarro = true;
-
-            distCoordFoot =
-                distCoordCar;
-
-            distEndFoot =
-                distEndCar;
-
-            perfilFinal =
-                'driving';
+            distCoordFoot = distCoordCar;
+            distEndFoot = distEndCar;
+            perfilFinal = 'driving';
         }
     }
 
     let objRota = {
-
-        coordAlunoGPS: {
-            lat: dadosGeo.geoEndereco_Latit,
-            lon: dadosGeo.geoEndereco_Longit
-        },
-
-        coordAlunoEnd:
-            coordEndereco,
-
-        distanciaCoord:
-            distCoordFoot,
-
-        distanciaEnd:
-            distEndFoot,
-
-        perfilOSRM:
-            perfilFinal
+        coordAlunoGPS: { lat: dadosGeo.geoEndereco_Latit, lon: dadosGeo.geoEndereco_Longit },
+        coordAlunoEnd: coordEndereco,
+        distanciaCoord: distCoordFoot,
+        distanciaEnd: distEndFoot,
+        perfilOSRM: perfilFinal
     };
 
-    window.setSharedStoreValue(
-        'dadosGeraisRota',
-        objRota
-    );
+    window.setSharedStoreValue('dadosGeraisRota', objRota);
 
+    let modoTransporte = 'pe';
     if (usarCarro) {
-
-        window.setSharedStoreValue(
-            'modoTransporteAtual',
-            'carro'
-        );
-
-        const toggleContainer =
-            document.getElementById(
-                'mapa-toggle-container'
-            );
-
-        if (
-            toggleContainer &&
-            toggleContainer.children[1]
-        ) {
-
-            toggleContainer.children[1]
-                .innerHTML =
-                    "🚗 De Carro";
+        modoTransporte = 'carro';
+        window.setSharedStoreValue('modoTransporteAtual', 'carro');
+        const toggleContainer = document.getElementById('mapa-toggle-container');
+        if (toggleContainer && toggleContainer.children[1]) {
+            toggleContainer.children[1].innerHTML = "🚗 De Carro";
         }
-
-        if (
-            typeof window.atualizarURLsMapasGlobal ===
-            'function'
-        ) {
+        if (typeof window.atualizarURLsMapasGlobal === 'function') {
             window.atualizarURLsMapasGlobal();
         }
+    }
+
+    // --- SALVA NO CACHE PERSISTENTE ANTES DE CONCLUIR ---
+    if (CHAVE_REGISTRO) {
+        const dadosParaGravar = {
+            DistDiferentesEntreMapas: distDiferentes,
+            distanciaCoord: distCoordFoot,
+            distanciaEnd: distEndFoot,
+            modoTransporteAtual: modoTransporte,
+            dadosGeraisRota: objRota
+        };
+        window.gerenciarEsalvarCachePersistente(NOME_CACHE_STORAGE, CHAVE_REGISTRO, dadosParaGravar);
+        console.log(`[ASSISTENTE] ✅ Dados salvos no cache persistente com sucesso para ficha: ${idFicha}`);
     }
 };
 

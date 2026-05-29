@@ -410,12 +410,34 @@ window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDe
 
     const chaveCache = `${modoMapa}_${googleMode}_${latOrigin},${lonOrigin}_UE_${idUnidadeDestino}`;
 
+    // Mapeamento de pesos/prioridades das fontes
+    const pesosFontes = { 'GOOGLE': 3, 'OSRM': 2, 'HAVERSINE': 1 };
+
     // Consulta o cache unificado com validação automática de expiração
     const dadosEmCacheValido = window.obterValorCachePersistente(STORAGE_KEY_GLOBAL, chaveCache);
-    if (dadosEmCacheValido) {
-        console.info("⚡ [CACHE / calcularTrajetoOSRM] Rota idêntica recuperada do localStorage (Teto Máx: 100 | Validade: 7 dias) para a UE:", idUnidadeDestino);
+    
+    // Se o cache existir e for fruto da API do Google, podemos usá-lo diretamente para economizar cota se não forçado globalmente.
+    // Contudo, se vier do Refresh (estado.buscandoOSRM limpo para recálculo), permitimos que o fluxo tente o Google novamente.
+    if (dadosEmCacheValido && dadosEmCacheValido.fonte === 'GOOGLE') {
+        console.info("⚡ [CACHE / calcularTrajetoOSRM] Rota precisa (GOOGLE) recuperada do localStorage para a UE:", idUnidadeDestino);
         return dadosEmCacheValido;
     }
+
+    // Função interna auxiliar para salvar respeitando estritamente o peso das fontes e o cache anterior
+    const salvarSeguroCache = (novoResultado) => {
+        if (dadosEmCacheValido && dadosEmCacheValido.fonte) {
+            const pesoAtual = pesosFontes[dadosEmCacheValido.fonte] || 0;
+            const pesoNovo = pesosFontes[novoResultado.fonte] || 0;
+            
+            // Se o valor em cache anterior for de prioridade estritamente maior, preserva o antigo
+            if (pesoAtual > pesoNovo) {
+                console.warn(`🛡️ [PROTEÇÃO CACHE] Evitada a sobreposição de uma fonte ${dadosEmCacheValido.fonte} por uma de menor prioridade (${novoResultado.fonte}) para UE: ${idUnidadeDestino}`);
+                return dadosEmCacheValido;
+            }
+        }
+        window.gerenciarEsalvarCachePersistente(STORAGE_KEY_GLOBAL, chaveCache, novoResultado);
+        return novoResultado;
+    };
 
     const chavesDisponiveis = [
         { key: window.apiKeyGoogle,  label: "Chave Google 1" },
@@ -470,8 +492,7 @@ window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDe
 
     if (googleSucesso && dadosRoteamento !== null) {
         const resultadoFinalGoogle = { distancia: dadosRoteamento, fonte: 'GOOGLE' };
-        window.gerenciarEsalvarCachePersistente(STORAGE_KEY_GLOBAL, chaveCache, resultadoFinalGoogle);
-        return resultadoFinalGoogle;
+        return salvarSeguroCache(resultadoFinalGoogle);
     }
 
     console.warn("⚠️ Ambas as chaves do Google falharam ou estão desativadas no Cloud. Acionando Fallback OSRM.");
@@ -480,22 +501,20 @@ window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDe
         const url = `https://router.project-osrm.org/route/v1/${profile}/${lonOrigin},${latOrigin};${lonDest},${latDest}?overview=false`;
         const fetchOptions = signal ? { signal } : {};
         const response = await fetch(url, fetchOptions);
-        if (!response.ok) return null;
+        if (!response.ok) throw new Error("Erro HTTP OSRM");
         const data = await response.json();
         if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
             const distanciaOsrm = Math.round(data.routes[0].distance);
             console.info(`✅ Roteamento obtido via OSRM: ${distanciaOsrm} metros`);
             const resultadoFinalOSRM = { distancia: distanciaOsrm, fonte: 'OSRM' };
-            //window.gerenciarEsalvarCachePersistente(STORAGE_KEY_GLOBAL, chaveCache, resultadoFinalOSRM);
-            return resultadoFinalOSRM;
+            return salvarSeguroCache(resultadoFinalOSRM);
         }
     } catch (e) {
         if (e.name === 'AbortError') return null;
     }
     
     const resultadoFinalHav = { distancia: window.calcularDistanciaHaversine(latOrigin, lonOrigin, latDest, lonDest), fonte: 'HAVERSINE' };
-    //window.gerenciarEsalvarCachePersistente(STORAGE_KEY_GLOBAL, chaveCache, resultadoFinalHav);
-    return resultadoFinalHav;
+    return salvarSeguroCache(resultadoFinalHav);
 };
 
 // --- SECTION: GOOGLE MAPS / NOMINATIM GEOCODING ---
@@ -702,8 +721,6 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
 
         // Inicializa o mapa com controles visuais limpos e ID de mapa obrigatório para elementos avançados
         const mapOptions = {
-            zoom: 14,
-            center: new google.maps.LatLng(origem.lat, origem.lon || origem.lng || origem.lon),
             mapTypeId: google.maps.MapTypeId.ROADMAP,
             mapTypeControl: false,
             streetViewControl: false,
@@ -711,6 +728,10 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
         };
         
         const mapa = new google.maps.Map(elementoMapa, mapOptions);
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(new google.maps.LatLng(origem.lat, origem.lon || origem.lng));
+        bounds.extend(new google.maps.LatLng(destino.lat, destino.lon || destino.lng));
+        mapa.fitBounds(bounds);
 
         // Importa a biblioteca de marcadores avançados em HTML/CSS nativos
         const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
@@ -726,48 +747,95 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
         const localDestino = new google.maps.LatLng(destino.lat, destino.lon || destino.lng);
         const modoTransporte = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
 
-        // Executa o trajeto direto entre aluno e escola alvo
-        directionsService.route({
-            origin: localOrigem,
-            destination: localDestino,
-            travelMode: modoTransporte === 'pe' ? google.maps.TravelMode.WALKING : google.maps.TravelMode.DRIVING
-        }, (response, status) => {
-            if (status === 'OK') {
-                directionsRenderer.setDirections(response);
-                
-                // --- INJEÇÃO DA LEGENDA DE DISTÂNCIA REAL DA API ---
-                try {
-                    const rotaLeg = response.routes[0].legs[0];
-                    const textoDistancia = rotaLeg.distance.text; // Ex: "1.2 km" ou "850 m"
-                    const textoDuracao = rotaLeg.duration.text;  // Ex: "15 min"
-                    
-                    // Cria o elemento do painel de controle flutuante
-                    const painelDistancia = document.createElement("div");
-                    painelDistancia.style.cssText = "margin: 10px; padding: 8px 12px; background: white; color: #222; font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid #ddd; display: flex; flex-direction: column; gap: 2px; min-width: 110px;";
-                    
-                    painelDistancia.innerHTML = `
-                        <div style="color: #1a73e8; font-size: 13px; display: flex; align-items: center; gap: 4px;">
-                            <span>🏁 Distância:</span> <span style="color: #222;">${textoDistancia}</span>
-                        </div>
-                        <div style="color: #5f6368; font-size: 10px; font-weight: normal; padding-left: 18px;">
-                            Tempo estimado: ${textoDuracao} (${modoTransporte === 'pe' ? 'A pé' : 'Carro'})
-                        </div>
-                    `;
-                    
-                    // Insere o painel dinamicamente na UI nativa do mapa do Google (Canto superior esquerdo)
-                    mapa.controls[google.maps.ControlPosition.TOP_LEFT].push(painelDistancia);
-                    console.log(`[PLUGIN-MAPA] Legenda de distância injetada com sucesso: ${textoDistancia}`);
-                } catch (e) {
-                    console.warn("Não foi possível renderizar o painel flutuante de distância:", e);
-                }
+        // Definição de coordenadas normalizadas do destino para conferência estrita e precisa
+        const destinoLatAlvo = Number(destino.lat);
+        const destinoLonAlvo = Number(destino.lon || destino.lng);
+        const cacheKeyMain = `${origem.lat},${origem.lon || origem.lng}->${destinoLatAlvo},${destinoLonAlvo}_${modoTransporte}`;
 
-            } else {
-                console.error("[PLUGIN] Erro ao traçar rota no mapa JS. Revertendo para Fallback:", status);
-                elementoMapa.remove();
-                iframeAtual.style.display = "block";
-                iframeAtual.src = urlFallbackIframe;
+        // Armazenará o texto da distância calculada para reuso no hover do destino
+        let textoDistanciaCompartilhada = "";
+
+        // Função auxiliar reutilizável para renderização do painel flutuante de distância na UI do mapa
+        const injetarPainelControleDistancia = (textoDistancia, textoDuracao) => {
+            try {
+                textoDistanciaCompartilhada = textoDistancia;
+                const painelDistancia = document.createElement("div");
+                painelDistancia.style.cssText = "margin: 10px; padding: 8px 12px; background: white; color: #222; font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 1px solid #ddd; display: flex; flex-direction: column; gap: 2px; min-width: 110px;";
+                
+                painelDistancia.innerHTML = `
+                    <div style="color: #1a73e8; font-size: 13px; display: flex; align-items: center; gap: 4px;">
+                        <span>🏁 Distância:</span> <span style="color: #222;">${textoDistancia}</span>
+                    </div>
+                    <div style="color: #5f6368; font-size: 10px; font-weight: normal; padding-left: 18px;">
+                        Tempo estimado: ${textoDuracao} (${modoTransporte === 'pe' ? 'A pé' : 'Carro'})
+                    </div>
+                `;
+                mapa.controls[google.maps.ControlPosition.TOP_LEFT].push(painelDistancia);
+            } catch (panelErr) {
+                console.warn("Não foi possível processar layout do painel flutuante de distância:", panelErr);
             }
-        });
+        };
+
+        // --- INTERCEPTADOR BIDIRECIONAL DE CHAMADAS DE API (EVITA TRIPLICAÇÃO DO TRAJETO PRINCIPAL) ---
+        if (window.lastGoogleDirectionsResponse && window.lastGoogleDirectionsKey === cacheKeyMain) {
+            console.log("[PLUGIN-MAPA] 🚀 Trajeto principal detectado em Cache Global. Renderizando rota sem novas requisições.");
+            directionsRenderer.setDirections(window.lastGoogleDirectionsResponse);
+            const rotaLeg = window.lastGoogleDirectionsResponse.routes[0].legs[0];
+            injetarPainelControleDistancia(rotaLeg.distance.text, rotaLeg.duration.text);
+        } else {
+            directionsService.route({
+                origin: localOrigem,
+                destination: localDestino,
+                travelMode: modoTransporte === 'pe' ? google.maps.TravelMode.WALKING : google.maps.TravelMode.DRIVING
+            }, (response, status) => {
+                if (status === 'OK') {
+                    directionsRenderer.setDirections(response);
+                    
+                    // Salva a resposta completa para compartilhamento com as demais extensões da ficha
+                    window.lastGoogleDirectionsResponse = response;
+                    window.lastGoogleDirectionsKey = cacheKeyMain;
+
+                    try {
+                        const rotaLeg = response.routes[0].legs[0];
+                        const textoDistancia = rotaLeg.distance.text;
+                        const textoDuracao = rotaLeg.duration.text;
+                        
+                        injetarPainelControleDistancia(textoDistancia, textoDuracao);
+
+                        // Lança os valores calculados de forma temporária no objeto correspondente do array global escolasDB
+                        if (window.escolasDB) {
+                            const escolaAlvoObj = window.escolasDB.find(e => 
+                                Math.abs(Number(e.lat) - destinoLatAlvo) < 0.0001 && 
+                                Math.abs(Number(e.lon || e.lng) - destinoLonAlvo) < 0.0001
+                            );
+                            if (escolaAlvoObj) {
+                                escolaAlvoObj.distanciaGoogleText = textoDistancia;
+                                escolaAlvoObj.duracaoGoogleText = textoDuracao;
+                                escolaAlvoObj.fonteDistancia = "google";
+                            }
+                        }
+
+                        // Alimenta o cache persistente local para uso do funcs_assistente.js
+                        if (window.salvarValorCachePersistente) {
+                            const chaveCacheReg = `dist_${origem.lat}_${origem.lon || origem.lng}_to_${destinoLatAlvo}_${destinoLonAlvo}`;
+                            window.salvarValorCachePersistente("cache_distancias", chaveCacheReg, {
+                                distancia: textoDistancia,
+                                duracao: textoDuracao,
+                                fonte: "google",
+                                timestamp: Date.now()
+                            });
+                        }
+                    } catch (e) {
+                        console.warn("Erro ao extrair e salvar metadados da rota principal de contingência:", e);
+                    }
+                } else {
+                    console.error("[PLUGIN] Erro ao traçar rota no mapa JS. Revertendo para Fallback:", status);
+                    elementoMapa.remove();
+                    iframeAtual.style.display = "block";
+                    iframeAtual.src = urlFallbackIframe;
+                }
+            });
+        }
 
         // --- DETECÇÃO DO NÍVEL DO ALUNO E DADOS DA FICHA EM TEMPO REAL ---
         let nivelNorm = "";
@@ -799,17 +867,17 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
             nivelNorm = nivelNorm.replace(/([0-9]+)\s*[Oº\.]\s*ANO/g, '$1O ANO');
             if (nivelNorm.includes('EJA')) nivelNorm = 'EJA';
             if (nivelNorm.includes('ESPECIAL')) nivelNorm = 'ESPECIAL';
-            isBercarioGeral = nivelNorm.includes('BERCARIO') && nivelNorm !== 'BERCARIO INICIAL' && nivelNorm !== 'BERCARIO FINAL';
+            isBercarioGeral = nivelNorm.includes('BERCARIO');
         }
 
         console.log(`[FILTRO-MAPA] 🔎 Nível do Aluno Identificado para Filtragem: "${nivelNorm}" | É Berçário Geral: ${isBercarioGeral}`);
 
         // --- RENDERIZAÇÃO DOS MARCADORES CUSTOMIZADOS HTML/CSS ---
 
-        // 1. PIN DA ORIGEM (Casa do Aluno) com hover do endereço completo
+        // 1. PIN DA ORIGEM (Casa do Aluno)
         const divCasa = document.createElement("div");
         divCasa.innerHTML = "🏠";
-        divCasa.style.cssText = "font-size: 20px; background: #1a73e8; color: white; padding: 6px; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.4); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 2px solid white;";
+        divCasa.style.cssText = "font-size: 26px; background: transparent; border: none; box-shadow: none; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;";
         
         new AdvancedMarkerElement({
             position: localOrigem,
@@ -818,11 +886,55 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
             content: divCasa
         });
 
-        // 2. PIN DO DESTINO (Escola Escolhida/Atual) com hover do nome da escola alvo
+        // 2. PIN DO DESTINO COM EXPANSÃO ADAPTÁVEL (Escola Alvo)
         const divEscolaDestino = document.createElement("div");
-        divEscolaDestino.innerHTML = "🏫";
-        divEscolaDestino.style.cssText = "font-size: 20px; background: #d93025; color: white; padding: 6px; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.4); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 2px solid white;";
+        divEscolaDestino.style.cssText = "font-family: Verdana, sans-serif; font-size: 26px; font-weight: normal; background: transparent; color: inherit; padding: 0; box-sizing: border-box; border-radius: 12px; box-shadow: none; width: auto; min-width: 32px; height: 32px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid transparent; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; white-space: nowrap; overflow: hidden; z-index: 12;";        
         
+        const spanTextoDestino = document.createElement("span");
+        spanTextoDestino.innerText = "🏫";
+        divEscolaDestino.appendChild(spanTextoDestino);
+
+        const spanDistanciaDestinoHover = document.createElement("span");
+        spanDistanciaDestinoHover.style.cssText = "font-size: 9px; font-weight: normal; color: #e0e0e0; margin-top: 2px; display: none;";
+        divEscolaDestino.appendChild(spanDistanciaDestinoHover);
+
+        divEscolaDestino.addEventListener("mouseenter", () => {
+            divEscolaDestino.style.fontSize = "11px";
+            divEscolaDestino.style.fontWeight = "bold";
+            divEscolaDestino.style.background = "#0d47a1";
+            divEscolaDestino.style.color = "white";
+            divEscolaDestino.style.border = "1px solid white";
+            divEscolaDestino.style.borderRadius = "4px";
+            divEscolaDestino.style.boxShadow = "0 1px 4px rgba(0,0,0,0.3)";
+            divEscolaDestino.style.padding = "6px 10px";
+            divEscolaDestino.style.width = "auto";
+            divEscolaDestino.style.height = "auto";
+            divEscolaDestino.style.minHeight = "32px";
+            divEscolaDestino.style.overflow = "visible";
+            spanTextoDestino.innerText = "🏫 " + nomeEscolaDestino;
+            
+            if (textoDistanciaCompartilhada) {
+                spanDistanciaDestinoHover.innerText = textoDistanciaCompartilhada;
+                spanDistanciaDestinoHover.style.display = "block";
+            }
+        });
+
+        divEscolaDestino.addEventListener("mouseleave", () => {
+            divEscolaDestino.style.fontSize = "26px";
+            divEscolaDestino.style.fontWeight = "normal";
+            divEscolaDestino.style.background = "transparent";
+            divEscolaDestino.style.color = "inherit";
+            divEscolaDestino.style.border = "1px solid transparent";
+            divEscolaDestino.style.borderRadius = "12px";
+            divEscolaDestino.style.boxShadow = "none";
+            divEscolaDestino.style.padding = "0";
+            divEscolaDestino.style.width = "auto";
+            divEscolaDestino.style.height = "32px";
+            divEscolaDestino.style.overflow = "hidden";
+            spanTextoDestino.innerText = "🏫";
+            spanDistanciaDestinoHover.style.display = "none";
+        });
+
         new AdvancedMarkerElement({
             position: localDestino,
             map: mapa,
@@ -830,20 +942,23 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
             content: divEscolaDestino
         });
 
-        // 3. WAYPOINTS (Outras escolas com filtro de nível e transformação dinâmica em hover)
+        // 3. WAYPOINTS (Outras escolas filtradas e sem duplicidade com o local de destino)
         const arrayEscolas = window.escolasDB;
         if (Array.isArray(arrayEscolas)) {
             console.log(`[FILTRO-MAPA] Total de escolas encontradas no banco DB: ${arrayEscolas.length}`);
             let escolasPlotadas = 0;
 
             arrayEscolas.forEach(escola => {
-                if (!escola.lat || !escola.lon || !escola.turmas) return;
+                if (!escola.lat || (!escola.lon && !escola.lng) || !escola.turmas) return;
 
-                // Ignora se for a coordenada exata do destino final
-                if (Number(escola.lat) === Number(destino.lat) && Number(escola.lon) === Number(destino.lon)) return;
+                const escolaLat = Number(escola.lat);
+                const escolaLon = Number(escola.lon || escola.lng); // ✅ CORRIGIDO: Removido referência a 'school.lng' que quebrava o script
 
-                // Executa a regra padrão de filtro de turmas do seu assistente
-                const temTurmaApta = school => school.turmas.some(turma => {
+                // CRITÉRIO EXCLUSOR REFORÇADO: Desconsidera se contiver as mesmas coordenadas exatas do destino do trajeto
+                if (Math.abs(escolaLat - destinoLatAlvo) < 0.0001 && Math.abs(escolaLon - destinoLonAlvo) < 0.0001) return;
+
+                // Identifica as turmas aptas e extrai os períodos para definir a regra de cores das Badges
+                const turmasNivel = escola.turmas.filter(turma => {
                     if (!window.normalizarTexto) return true;
                     const nivelTurmaNorm = window.normalizarTexto(turma.nivel);
                     if (isBercarioGeral) return nivelTurmaNorm.includes('BERCARIO');
@@ -852,59 +967,173 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
                     return nivelTurmaNorm === nivelNorm;
                 });
 
-                if (!temTurmaApta(escola)) return;
+                if (turmasNivel.length === 0) return;
                 escolasPlotadas++;
+
+                // Consolida os períodos encontrados para esta unidade
+                const periodosEncontradosStr = [...new Set(turmasNivel.map(t => t.periodo))].join(' / ');
+
+                // Define o esquema de cores padrão com base nas classes de badge do assistente
+                let corFundoPadrao = "#e8e5fc"; // Padrão / Integral
+                let corTextoPadrao = "#6658d3";
+                let corFundoHover = "#5243c2";   // Tom levemente mais escuro para o hover
+
+                if (periodosEncontradosStr.includes('INTEGRAL')) {
+                    corFundoPadrao = "#e8e5fc";
+                    corTextoPadrao = "#6658d3";
+                    corFundoHover = "#5243c2";
+                } else if (periodosEncontradosStr.includes('PARCIAL')) {
+                    corFundoPadrao = "#bdf7b6";
+                    corTextoPadrao = "#1c660d";
+                    corFundoHover = "#144d09";
+                } else { // Noite / Noturno
+                    corFundoPadrao = "#115185";
+                    corTextoPadrao = "#ffffff";
+                    corFundoHover = "#0b395e";
+                }
 
                 // Limpa o nome ignorando tudo após a vírgula
                 const nomeBase = (escola.nome || "UE").split(',')[0].trim();
 
-                // Extrai abreviação inteligente (se já não for curta, pega as duas primeiras letras após tirar 'EMEB')
-                const iniciais = nomeBase.length <= 6 ? nomeBase : nomeBase.replace("EMEB", "").trim().substring(0, 2).toUpperCase();
+                // Extrai abreviação inteligente tratando possíveis valores nulos ou indefinidos da propriedade
+                let iniciais = escola.nome_un_sigla;
+                if (!iniciais || typeof iniciais !== "string" || iniciais.trim() === "" || iniciais === "undefined") {
+                    iniciais = nomeBase.length <= 6 ? nomeBase : nomeBase.replace(/EMEB|CRECHE/gi, "").trim().substring(0, 2).toUpperCase();
+                }
 
-                // Componente HTML/CSS estruturado para transição de Redondo para Retangular Dinâmico
+                // --- INTEGRALIZAÇÃO DA DISTÂNCIA GOOGLE BIDIRECIONAL (PROPRIEDADES + CACHE) ---
+                let labelDistanciaCalculada = "";
+                const cacheChaveWay = `dist_${origem.lat}_${origem.lon || origem.lng}_to_${escolaLat}_${escolaLon}`;
+
+                // Confere se o valor foi setado na propriedade pelo assistente ou existe em cache persistente real do Google
+                let dadosDistWay = escola.distanciaGoogleText || escola.distanciaReal;
+                if (!dadosDistWay && window.obterValorCachePersistente) {
+                    const cacheLido = window.obterValorCachePersistente("cache_distancias", cacheChaveWay);
+                    if (cacheLido && cacheLido.fonte === "google") {
+                        dadosDistWay = cacheLido.distancia;
+                    }
+                }
+
+                if (dadosDistWay) {
+                    labelDistanciaCalculada = `<br/><strong>Distância real:</strong> ${dadosDistWay}`;
+                }
+
+                // Criação dinâmica da URL de Trajeto Externo partindo da Origem até o Waypoint
+                const pOrigem = encodeURIComponent(`${origem.lat},${origem.lon || origem.lng}`);
+                const pDestino = encodeURIComponent(`${escolaLat},${escolaLon}`);
+                const pModo = modoTransporte === 'pe' ? 'walking' : 'driving';
+                const urlGoogleMapsExterna = `https://www.google.com/maps/dir/?api=1&origin=${pOrigem}&destination=${pDestino}&travelmode=${pModo}`;
+
+                // Função auxiliar em tempo de execução para recuperar e formatar dinamicamente a distância estruturada
+                const obterTextoDistancia = async () => {
+                    if (escola.distanciaGoogleText) return school.distanciaGoogleText;
+                    if (escola.distanciaReal) return escola.distanciaReal;
+                    
+                    if (window.obterValorCachePersistente) {
+                        const cacheLido = window.obterValorCachePersistente("cache_distancias", cacheChaveWay);
+                        if (cacheLido && cacheLido.distancia) return cacheLido.distancia;
+                    }
+
+                    // Se não estiver em cache rápido, aciona seu interceptor/calculador central OSRM/Google/Haversine
+                    if (window.calcularTrajetoOSRM) {
+                        try {
+                            const profileOSRM = modoTransporte === 'pe' ? 'foot' : 'car';
+                            const resultado = await window.calcularTrajetoOSRM(origem.lat, origem.lon || origem.lng, escolaLat, escolaLon, profileOSRM);
+                            if (resultado && resultado.distancia !== undefined) {
+                                const metros = resultado.distancia;
+                                return metros >= 1000 ? `${(metros / 1000).toFixed(1).replace('.', ',')} km` : `${metros} m`;
+                            }
+                        } catch (err) {
+                            console.warn("Falha ao calcular distância dinâmica para o hover do waypoint:", err);
+                        }
+                    }
+                    return "";
+                };
+
+                // Componente HTML/CSS estruturado aplicando dinamicamente as cores de cada período mapped
                 const divWaypoint = document.createElement("div");
-                divWaypoint.style.cssText = "font-family: Verdana, sans-serif; font-size: 10px; font-weight: bold; background: #5f6368; color: white; padding: 4px 8px; border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,0.3); width: 24px; height: 24px; min-width: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid white; opacity: 0.75; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 10;";
+                divWaypoint.style.cssText = `font-family: Verdana, sans-serif; font-size: 10px; font-weight: bold; background: ${corFundoPadrao}; color: ${corTextoPadrao}; padding: 0 6px; box-sizing: border-box; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); width: auto; min-width: 24px; height: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid white; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; white-space: nowrap; overflow: hidden; z-index: 10;`;
                 
                 // Elemento interno para controlar a troca de texto sem quebras de layout
                 const spanTexto = document.createElement("span");
                 spanTexto.innerText = iniciais;
                 divWaypoint.appendChild(spanTexto);
+
+                // Sub-span dedicado exclusivamente para exibir a distância renderizada abaixo do nome base
+                const spanDistanciaHover = document.createElement("span");
+                spanDistanciaHover.style.cssText = "font-size: 9px; font-weight: normal; color: #e0e0e0; margin-top: 2px; display: none;";
+                divWaypoint.appendChild(spanDistanciaHover);
+
+                // Novo Sub-span estruturado para exibir o período do nível do aluno no Hover
+                const spanPeriodoHover = document.createElement("span");
+                spanPeriodoHover.style.cssText = "font-size: 9px; font-weight: normal; color: #ffffff; margin-top: 1px; display: none;";
+                spanPeriodoHover.innerText = `Período: ${periodosEncontradosStr}`;
+                divWaypoint.appendChild(spanPeriodoHover);
+
+                // Injeta de forma fixa o período também no evento Click (Mantendo fundo branco e fonte preta)
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<div style="font-family:Verdana,sans-serif;font-size:11px;color:#333;line-height:1.4;">
+                                <strong>${escola.nome || 'Unidade Escolar'}</strong><br/>
+                                ${escola.rua || ''}, ${escola.numero || ''}<br/>
+                                <span>Bairro: ${escola.bairro || ''}</span><br/>
+                                <strong>Período:</strong> ${periodosEncontradosStr}${labelDistanciaCalculada}<br/>
+                                <a href="${urlGoogleMapsExterna}" target="_blank" style="color:#1a73e8;text-decoration:none;font-weight:bold;display:inline-block;margin-top:5px;">🗺️ Abrir rota no Google Maps</a>
+                              </div>`
+                });
                 
-                // Eventos dinâmicos avançados de expansão e alteração de opacidade
-                divWaypoint.addEventListener("mouseenter", () => {
+                // Eventos dinâmicos avançados de expansão adaptáveis ao tamanho do texto e exibição da distância e período
+                divWaypoint.addEventListener("mouseenter", async () => {
                     divWaypoint.style.borderRadius = "4px";
                     divWaypoint.style.width = "auto";
-                    divWaypoint.style.maxWidth = "220px";
+                    divWaypoint.style.maxWidth = "none";
                     divWaypoint.style.height = "auto";
                     divWaypoint.style.minHeight = "24px";
-                    divWaypoint.style.background = "#202124";
-                    divWaypoint.style.opacity = "1.0";
-                    spanTexto.innerText = nomeBase; // Revela o nome limpo inteiro
+                    divWaypoint.style.padding = "6px 10px";
+                    divWaypoint.style.background = corFundoHover;
+                    divWaypoint.style.color = "#ffffff";
+                    divWaypoint.style.overflow = "visible";
+                    
+                    spanTexto.innerText = nomeBase;
+                    spanPeriodoHover.style.display = "block";
+
+                    // Busca reativa assíncrona da distância real
+                    const textoDist = await obterTextoDistancia();
+                    if (textoDist) {
+                        spanDistanciaHover.innerText = textoDist;
+                        spanDistanciaHover.style.display = "block";
+
+                        // Sincroniza dinamicamente a string do InfoWindow caso o usuário execute um clique posterior
+                        labelDistanciaCalculada = `<br/><strong>Distância real:</strong> ${textoDist}`;
+                        infoWindow.setContent(`<div style="font-family:Verdana,sans-serif;font-size:11px;color:#333;line-height:1.4;">
+                                    <strong>${escola.nome || 'Unidade Escolar'}</strong><br/>
+                                    ${escola.rua || ''}, ${escola.numero || ''}<br/>
+                                    <span>Bairro: ${escola.bairro || ''}</span><br/>
+                                    <strong>Período:</strong> ${periodosEncontradosStr}${labelDistanciaCalculada}<br/>
+                                    <a href="${urlGoogleMapsExterna}" target="_blank" style="color:#1a73e8;text-decoration:none;font-weight:bold;display:inline-block;margin-top:5px;">🗺️ Abrir rota no Google Maps</a>
+                                  </div>`);
+                    }
                 });
 
                 divWaypoint.addEventListener("mouseleave", () => {
-                    divWaypoint.style.borderRadius = "50%";
-                    divWaypoint.style.width = "24px";
+                    divWaypoint.style.borderRadius = "12px";
+                    divWaypoint.style.width = "auto";
+                    divWaypoint.style.maxWidth = "none";
                     divWaypoint.style.height = "24px";
-                    divWaypoint.style.background = "#5f6368";
-                    divWaypoint.style.opacity = "0.75";
-                    spanTexto.innerText = iniciais; // Retorna às iniciais curtas
+                    divWaypoint.style.padding = "0 6px";
+                    divWaypoint.style.background = corFundoPadrao;
+                    divWaypoint.style.color = corTextoPadrao;
+                    divWaypoint.style.overflow = "hidden";
+                    
+                    spanTexto.innerText = iniciais;
+                    spanDistanciaHover.style.display = "none";
+                    spanPeriodoHover.style.display = "none";
                 });
 
-                // CORREÇÃO: Alterado termo incorreto de "school.lon" para "escola.lon" para evitar quebra de script
                 const marker = new AdvancedMarkerElement({
-                    position: new google.maps.LatLng(escola.lat, escola.lon),
+                    position: new google.maps.LatLng(escolaLat, escolaLon), // ✅ CORRIGIDO: schoolLon -> escolaLon
                     map: mapa,
-                    title: nomeBase, // Mostra o nome inteiro limpo na tooltip nativa do browser
+                    title: nomeBase,
                     content: divWaypoint
-                });
-
-                const infoWindow = new google.maps.InfoWindow({
-                    content: `<div style="font-family:Verdana,sans-serif;font-size:11px;color:#333;">
-                                <strong>${escola.nome || 'Unidade Escolar'}</strong><br/>
-                                ${escola.rua || ''}, ${escola.numero || ''}<br/>
-                                <span>Bairro: ${escola.bairro || ''}</span>
-                              </div>`
                 });
 
                 marker.addListener('click', () => {
