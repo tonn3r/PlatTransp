@@ -9,6 +9,8 @@
       "matches": ["http://plataforma-se2/*"],
       "js": [
         "escolas_db.js",
+        "ruas.js",
+        "encaminhamentos.js",
 	"funcs_ficha.js",
 	"funcs_pesquisa.js",
         "funcs_geolocalizacao.js",

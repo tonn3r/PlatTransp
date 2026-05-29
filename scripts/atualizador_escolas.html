@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Atualizador de Escolas DB</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f5f5f5; color: #333; }
+        h2 { color: #0056b3; }
+        .container { display: flex; gap: 20px; margin-bottom: 20px; }
+        .box { flex: 1; display: flex; flex-direction: column; }
+        textarea { height: 300px; font-family: monospace; padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+        label { font-weight: bold; margin-bottom: 5px; }
+        button { padding: 12px 20px; font-size: 16px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #218838; }
+        #outputLog { margin-top: 20px; padding: 15px; background: white; border-left: 5px solid #17a2b8; border-radius: 4px; display: none; }
+    </style>
+</head>
+<body>
+
+    <h2>Atualizador Automático - Banco de Dados de Escolas</h2>
+    <p>Insira os dados brutos nos campos abaixo para fazer a mesclagem automática sem limite de caracteres.</p>
+
+    <div class="container">
+        <div class="box">
+            <label for="jsInput">1. Cole o conteúdo completo de 'escolas_db.js':</label>
+            <textarea id="jsInput" placeholder="window.escolasDB = [ ... ]"></textarea>
+        </div>
+        <div class="box">
+            <label for="csvInput">2. Cole o conteúdo completo do CSV (Separado por ponto e vírgula):</label>
+            <textarea id="csvInput" placeholder="id_unidade;nome_unidade;nome_abreviado_unidade;..."></textarea>
+        </div>
+    </div>
+
+    <button onclick="processarDados()">Processar e Baixar Novo Arquivo</button>
+
+    <div id="outputLog"></div>
+
+    <script>
+        // Função auxiliar para converter string de CSV em Array de Objetos
+        function csvToObjects(csvText) {
+            const lines = csvText.split(/\r?\n/);
+            if (lines.length === 0) return [];
+            
+            // Limpa e extrai o cabeçalho
+            const headerLine = lines[0].replace(/^\\s*/i, '');
+            const headers = headerLine.split(';').map(h => h.trim());
+            
+            const result = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                // Limpa marcações de source que o LLM coloca ou que existam na linha
+                const cleanLine = lines[i].replace(/^\\s*/i, '');
+                const currentline = cleanLine.split(';');
+                
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = currentline[index] ? currentline[index].trim() : "";
+                });
+                result.push(obj);
+            }
+            return result;
+        }
+
+        function processarDados() {
+            const jsInput = document.getElementById('jsInput').value;
+            const csvInput = document.getElementById('csvInput').value;
+            const logBox = document.getElementById('outputLog');
+
+            if (!jsInput || !csvInput) {
+                alert('Por favor, preencha ambos os campos antes de processar.');
+                return;
+            }
+
+            try {
+                // Extrai o JSON de dentro da declaração da window.escolasDB
+                const jsonText = jsInput.substring(jsInput.indexOf('['), jsInput.lastIndexOf(']') + 1);
+                if (!jsonText) throw new Error("Não foi possível encontrar a estrutura de Array [ ... ] no arquivo JS.");
+                
+                const escolasDB = JSON.parse(jsonText);
+                const csvEscolas = csvToObjects(csvInput);
+
+                let atualizadas = 0;
+
+                // Mapeia os dados do CSV para consulta rápida por ID (aceita tanto 'id' quanto 'id_unidade')
+                const csvMap = new Map();
+                csvEscolas.forEach(item => {
+                    const idAtual = item.id_unidade || item.id;
+                    if (idAtual) csvMap.set(idAtual, item);
+                });
+
+                // Atualiza o objeto original dinamicamente criando/injetando qualquer coluna que estiver no CSV
+                escolasDB.forEach(escola => {
+                    const csvData = csvMap.get(escola.id);
+                    
+                    if (csvData) {
+                        // Varre todas as chaves/colunas que vieram do objeto CSV
+                        Object.keys(csvData).forEach(chave => {
+                            // Ignora as colunas de ID para não duplicar ou quebrar os identificadores
+                            if (chave === 'id' || chave === 'id_unidade') return;
+
+                            // Tratamento especial para E-mails (se a coluna for email_unidade, cria a estrutura de Array se necessário)
+                            if (chave.startsWith('email_unidade')) {
+                                if (!escola.email) escola.email = [];
+                                if (csvData[chave] && !escola.email.includes(csvData[chave])) {
+                                    escola.email.push(csvData[chave]);
+                                }
+                                return;
+                            }
+
+                            // Tratamento especial para Telefones (se a coluna for telefone_X_unidade, alimenta a estrutura de Array)
+                            if (chave.startsWith('telefone_') && chave.endsWith('_unidade')) {
+                                if (!escola.telefones) escola.telefones = [];
+                                if (csvData[chave] && !escola.telefones.includes(csvData[chave])) {
+                                    escola.telefones.push(csvData[chave]);
+                                }
+                                return;
+                            }
+
+                            // Para qualquer outra coluna: injeta ou cria o campo dinamicamente se houver valor
+                            if (csvData[chave] !== undefined && csvData[chave] !== "") {
+                                escola[chave] = csvData[chave];
+                            }
+                        });
+
+                        atualizadas++;
+                    }
+                });
+
+                // Gera a string final preservando a estrutura original do arquivo
+                const resultadoFinal = `window.escolasDB = ${JSON.stringify(escolasDB, null, 4)};`;
+
+                // Cria o download automático do arquivo atualizado
+                const blob = new Blob([resultadoFinal], { type: 'application/javascript' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'escolas_db.js';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                logBox.style.display = "block";
+                logBox.innerHTML = `<strong>Sucesso!</strong> Foram encontradas e atualizadas <b>${atualizadas}</b> escolas de um total de <b>${escolasDB.length}</b> registros.<br>O download do arquivo novo iniciou automaticamente.`;
+
+            } catch (error) {
+                alert('Erro ao processar os dados. Verifique se os formatos foram colados corretamente.');
+                logBox.style.display = "block";
+                logBox.innerHTML = `<span style="color:red;"><b>Erro:</b> ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

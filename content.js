@@ -1,12 +1,16 @@
+// Escopo auto-executável: inicializa o Addon, faz chamadas iniciais dependendo da URL e configura o monitoramento do sistema.
 (function() {
     'use strict';
 
     const VERSAO_ATUAL = "3.0"; 
     const URL_VERSAO = "https://raw.githubusercontent.com/tonn3r/PlatTransp/main/version.json";
 
+    // Verifica por uma nova versão do script da extensão através de um link remoto com JSON, emitindo aviso na tela.
     async function verificarAtualizacao() {
         try {
-            const response = await fetch(URL_VERSAO + "?t=" + new Date().getTime());
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const response = await fetch(URL_VERSAO + "?t=" + new Date().getTime(), { signal: controller.signal });
             
             if (!response.ok) {
                 console.warn("Addon PlatTransp: Não foi possível checar a versão (Erro " + response.status + ").");
@@ -14,6 +18,7 @@
             }
 
             const dados = await response.json();
+            clearTimeout(timeoutId);
             
             if (dados.version !== VERSAO_ATUAL) {
                 if (!document.getElementById('alerta-atualizacao-addon')) {
@@ -30,7 +35,7 @@
     }
     
     if (window === window.top) {
-        verificarAtualizacao();
+        // verificarAtualizacao();
     }
 
     const urlAtual = window.location.href;
@@ -41,34 +46,66 @@
         if (typeof window.iniciarPaginaFicha === 'function') window.iniciarPaginaFicha();
     }
 
+    // Interrompe e descarta as solicitações de busca de distância (OSRM) para poupar uso de CPU e memória.
     // Função global que interrompe qualquer cálculo OSRM a decorrer
     window.cancelarProcessamentosAssistente = function() {
         if (window.osrmAbortController) {
-            window.osrmAbortController.abort();
+            try { window.osrmAbortController.abort(); } catch(e) {}
         }
-        window.osrmAbortController = new AbortController();
+        // limpar referência para evitar controllers pendentes
+        window.osrmAbortController = null;
     };
 
+    // Remove os modais, botões e limpa o armazenamento global do Assistente de Análise.
+    function ocultarBotaoAssistente() {
+        const btn = document.getElementById('btn-assistente-transporte');
+        const mod = document.getElementById('modal-assistente-analise');
+        if (btn) {
+            btn.style.display = 'none';
+            btn.remove();
+        }
+        if (mod) mod.remove();
+        window.mapaSincronizado = false;
+        if (typeof window.setSharedStoreValue === 'function') {
+            window.setSharedStoreValue('dadosGeograficos', null);
+        } else {
+            window.dadosGeograficos = null;
+        }
+        window.currentStudentId = null;
+        if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+    }
+
+    // Empacota a função "FechaModal" nativa para rodar nossa limpeza interna sempre que um modal for fechado no SE2.
+    function envolverFechaModal(originalFechaModal) {
+        if (typeof originalFechaModal !== 'function') return originalFechaModal;
+        if (originalFechaModal.__plattransp_wrapped) return originalFechaModal;
+        const wrapped = function(...args) {
+            ocultarBotaoAssistente();
+            return originalFechaModal.apply(this, args);
+        };
+        wrapped.__plattransp_wrapped = true;
+        return wrapped;
+    }
+
+    // Tenta sobrescrever funções vitais e acompanhar iframes carregados para embutir as modificações necessárias sem perdas.
     function monitorarCicloDeVidaModal() {
-        if (typeof window.FechaModal === 'function' && !window.FechaModalMonitorado) {
-            const originalFechaModal = window.FechaModal;
-            window.FechaModalMonitorado = true;
-            
-            window.FechaModal = function(...args) {
-                const btn = document.getElementById('btn-assistente-transporte');
-                const mod = document.getElementById('modal-assistente-analise');
-                if (btn) btn.remove();
-                if (mod) mod.remove();
-                
-                window.mapaSincronizado = false;
-                window.dadosGeograficos = null;
-                window.currentStudentId = null; 
-                
-                // MATA OS PROCESSOS EM BACKGROUND
-                if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-                
-                originalFechaModal.apply(this, args);
-            };
+        if (typeof window.FechaModal === 'function') {
+            window.FechaModal = envolverFechaModal(window.FechaModal);
+        } else {
+            const descriptor = Object.getOwnPropertyDescriptor(window, 'FechaModal');
+            if (!descriptor || descriptor.configurable) {
+                let atual = window.FechaModal;
+                Object.defineProperty(window, 'FechaModal', {
+                    configurable: true,
+                    enumerable: true,
+                    get() {
+                        return atual;
+                    },
+                    set(valor) {
+                        atual = envolverFechaModal(valor);
+                    }
+                });
+            }
         }
 
         const iframePlatform = document.getElementById('img01'); 
@@ -80,7 +117,11 @@
                 if (mod) mod.remove();
                 
                 window.mapaSincronizado = false;
-                window.dadosGeograficos = null;
+                if (typeof window.setSharedStoreValue === 'function') {
+                    window.setSharedStoreValue('dadosGeograficos', null);
+                } else {
+                    window.dadosGeograficos = null;
+                }
                 window.currentStudentId = null;
 
                 if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
@@ -88,11 +129,18 @@
         }
     }
 
-    setInterval(() => {
-        if (typeof window.gerenciarBotaoAssistente === 'function') {
-            window.gerenciarBotaoAssistente();
-        }
-        monitorarCicloDeVidaModal();
-    }, 1000);
+    if (!window._plattransp_monitor_interval_set) {
+        window._plattransp_monitor_interval_set = true;
+        setInterval(() => {
+            try {
+                if (typeof window.gerenciarBotaoAssistente === 'function') {
+                    window.gerenciarBotaoAssistente();
+                }
+                monitorarCicloDeVidaModal();
+            } catch (e) {
+                console.error('Erro em monitor loop:', e);
+            }
+        }, 1500);
+    }
 
 })();

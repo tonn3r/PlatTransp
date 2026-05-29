@@ -1,16 +1,20 @@
+// Configura os scripts, eventos e modificações visuais aplicados à página de pesquisa de alunos/solicitações.
 window.iniciarPaginaPesquisa = function() {
     let paginaAtual = 1;
 
+    // Limpa acentos e caracteres especiais para ajudar nos filtros de texto.
     function removerAcentosEspeciais(str) {
         if (!str) return "";
         return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s]/g, "");
     }
 
+    // Força o gatilho de alteração num elemento, avisando o sistema que o valor mudou.
     function dispararEventoChange(elemento) {
         if (!elemento) return;
-        elemento.dispatchEvent(new Event('change', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
+    // Verifica se há alguma restrição (filtro) ativa nas buscas do painel.
     function temFiltroAtivo() {
         if (typeof $ === 'undefined') return false;
         const unidade = $('#id_unidade_selecionada').val();
@@ -26,6 +30,7 @@ window.iniciarPaginaPesquisa = function() {
                (endereco.trim().length > 0);
     }
 
+    // Mostra ou esconde o botão de "limpar filtros" a depender de existirem filtros ativos.
     function atualizarVisibilidadeBotaoReset() {
         const btn = document.getElementById('btn-limpar-filtros');
         if (btn) {
@@ -33,6 +38,7 @@ window.iniciarPaginaPesquisa = function() {
         }
     }
 
+    // Aplica alterações nas funções originais do sistema para que as buscas preservem outros filtros (nome, status, etc).
     function aplicarPatches() {
         const win = window;
 
@@ -201,6 +207,7 @@ window.iniciarPaginaPesquisa = function() {
         };
     }
 
+    // Ajusta o design, adiciona busca em tempo real com datalist e vincula as funções customizadas ao DOM na listagem inicial.
     function aplicarMelhorias() {
         const selectUnidade = document.getElementById('id_unidade_selecionada');
         if (!selectUnidade || document.getElementById('unidade-autocomplete')) return;
@@ -253,7 +260,7 @@ window.iniciarPaginaPesquisa = function() {
             btnReset.innerHTML = '✕ Limpar Filtros';
             btnReset.type = 'button';
             btnReset.style = "background:#fff; color:#e74c3c; border:1px solid #e74c3c; border-radius:4px; height:30px; padding:0 12px; cursor:pointer; font-weight:bold; font-size:11px; vertical-align: middle; display:none;";
-            btnReset.onclick = () => {
+            vincularEventoUnico(btnReset, 'click', () => {
                 $('#id_unidade_selecionada').val('0');
                 $('#unidade-autocomplete').val('');
                 $('#status_selecionado').val('0');
@@ -264,7 +271,7 @@ window.iniciarPaginaPesquisa = function() {
                 paginaAtual = 1;
                 atualizarVisibilidadeBotaoReset();
                 carregarTabelaHistorico();
-            };
+            });
             tdBotao.appendChild(btnReset);
             trPai.appendChild(tdBotao);
         }
@@ -324,6 +331,7 @@ window.iniciarPaginaPesquisa = function() {
         }
     }
 
+    // Dispara via Ajax a listagem de alunos paginada baseada em avançar/voltar no painel melhorado.
     function dispararPesquisaPaginada(direcao) {
         if (typeof $ === 'undefined') return;
         if (direcao === 'next') paginaAtual++;
@@ -361,6 +369,7 @@ window.iniciarPaginaPesquisa = function() {
         });
     }
 
+    // Cria ou atualiza os botões inferiores de paginação com os botões "Anterior" e "Próxima".
     function atualizarBarraPaginacao() {
         const container = document.getElementById('mostra_alunos');
         if (!container) return;
@@ -380,11 +389,12 @@ window.iniciarPaginaPesquisa = function() {
             `;
             const bPrev = document.getElementById('btn-pag-prev');
             const bNext = document.getElementById('btn-pag-next');
-            if (bPrev) bPrev.onclick = () => dispararPesquisaPaginada('prev');
-            if (bNext) bNext.onclick = () => dispararPesquisaPaginada('next');
+            if (bPrev) vincularEventoUnico(bPrev, 'click', () => dispararPesquisaPaginada('prev'));
+            if (bNext) vincularEventoUnico(bNext, 'click', () => dispararPesquisaPaginada('next'));
         } else if (barra) { barra.remove(); }
     }
 
+    // Preenche a tabela no topo da página de pesquisa com os alunos abertos recentemente guardados no cache.
     function carregarTabelaHistorico() {
         const divPrincipal = document.getElementById('mostra_alunos');
         if (!divPrincipal || divPrincipal.innerHTML.replace(/<br\s*\/?>/gi, '').trim() !== "") return;
@@ -404,15 +414,20 @@ window.iniciarPaginaPesquisa = function() {
         vincularEventosHistorico();
     }
 
+    // Adiciona os event listeners de forma ampla e irrestrita para registrar no histórico
     function vincularEventosHistorico() {
-        document.querySelectorAll('.botao').forEach(b => {
+        // Seletor universal: intercepta cliques em botões explicitamente ou elementos com links contendo o texto-alvo.
+        document.querySelectorAll('.botao, button, a, [onclick]').forEach(b => {
             if (b.dataset.eventoHistoricoVinculado) return; 
-            b.dataset.eventoHistoricoVinculado = "true";
+            
+            const textoBotao = (b.innerText || b.value || "").toLowerCase();
+            if (textoBotao.includes("abrir") || textoBotao.includes("reclama") || textoBotao.includes("v2")) {
+                b.dataset.eventoHistoricoVinculado = "true";
 
-            b.addEventListener('click', function() {
-                const textoBotao = this.innerText.toLowerCase();
-                if (textoBotao.includes("abrir") || textoBotao.includes("reclama")) {
+                b.addEventListener('click', function() {
                     const tr = this.closest('tr');
+                    if (!tr) return;
+
                     const id = (tr.cells[1] ? tr.cells[1].innerText.trim() : null) || (tr.querySelector('strong')?.innerText.trim());
                     
                     if (id) {
@@ -429,11 +444,12 @@ window.iniciarPaginaPesquisa = function() {
                         hist.unshift({ id: id, conteudoHtml: cloneTr.innerHTML });
                         localStorage.setItem('historico_alunos_transporte', JSON.stringify(hist.slice(0, 100)));
                     }
-                }
-            });
+                });
+            }
         });
     }
 
+    // Pega os parâmetros do endereço (URL) do navegador para preencher os filtros da página automaticamente.
     function processarParametrosURL() {
         const params = new URLSearchParams(window.location.search);
         let realizarBuscaAutomatica = false;
@@ -538,7 +554,7 @@ window.iniciarPaginaPesquisa = function() {
             }
         }
         atualizarBarraPaginacao();
-        vincularEventosHistorico();
+        vincularEventosHistorico(); // Continua monitorando os novos registros de forma contínua
     });
 
     const target = document.getElementById('mostra_alunos');
@@ -554,5 +570,5 @@ window.iniciarPaginaPesquisa = function() {
                 processarParametrosURL(); 
             }, 500);
         }
-    }, 200);
+    }, 500);
 };
