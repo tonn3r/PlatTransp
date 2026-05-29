@@ -578,7 +578,9 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
     let coordEndereco = await window.obterCoordenadasPorEndereco(enderecoCompleto);
     let distDiferentes = false;
     let diferencaGeografica = 0;
-    let distEndFoot = null;
+    
+    let distCoordObj = null;
+    let distEndObj = null;
 
     if (coordEndereco && coordEndereco.lat) {
         diferencaGeografica = window.calcularDistanciaHaversine(
@@ -591,98 +593,66 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
         distDiferentes = false;
     }
 
-    let distCoordFootObj = await window.calcularTrajetoOSRM(
+    // Executa as chamadas inteligentes auto-calculáveis
+    distCoordObj = await window.calcularTrajetoOSRM(
         dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit,
-        dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'foot'
+        dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit
     );
-    let distCoordFoot = distCoordFootObj ? distCoordFootObj.distancia : null;
 
     if (typeof coordEndereco === 'string') {
-        distEndFoot = distCoordFoot;
+        distEndObj = distCoordObj;
     } else if (distDiferentes) {
-        let distEndFootObj = await window.calcularTrajetoOSRM(
+        distEndObj = await window.calcularTrajetoOSRM(
             coordEndereco.lat, coordEndereco.lon,
-            dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'foot'
+            dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit
         );
-        distEndFoot = distEndFootObj ? distEndFootObj.distancia : null;
     } else {
-        distEndFoot = distCoordFoot;
+        distEndObj = distCoordObj;
     }
+
+    const distCoordFinal = distCoordObj ? distCoordObj.distancia : null;
+    const distEndFinal = distEndObj ? distEndObj.distancia : null;
+    // O perfil final armazenado será baseado no trajeto da coordenada do GPS do aluno
+    const perfilFinalAdotado = distCoordObj ? distCoordObj.modoUtilizado : 'foot';
 
     window.setSharedStore({
         DistDiferentesEntreMapas: distDiferentes,
-        distanciaCoord: distCoordFoot,
-        distanciaEnd: distEndFoot
+        distanciaCoord: distCoordFinal,
+        distanciaEnd: distEndFinal
     });
-
-    let usarCarro = false;
-    let perfilFinal = 'foot';
-
-    if (distCoordFoot > 10000 || distEndFoot > 10000) {
-        let distCoordCar = distCoordFoot;
-        if (distCoordFoot > 10000) {
-            let distCoordCarObj = await window.calcularTrajetoOSRM(
-                dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit,
-                dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'driving'
-            );
-            if (distCoordCarObj) distCoordCar = distCoordCarObj.distancia;
-        }
-
-        let distEndCar = distEndFoot;
-        if (distEndFoot > 10000) {
-            if (typeof coordEndereco === 'string') {
-                distEndCar = distCoordCar;
-            } else {
-                let distEndCarObj = await window.calcularTrajetoOSRM(
-                    coordEndereco.lat, coordEndereco.lon,
-                    dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit, 'driving'
-                );
-                if (distEndCarObj) distEndCar = distEndCarObj.distancia;
-            }
-        }
-
-        if ((distCoordFoot > 10000 && distCoordCar < 5000) || (distEndFoot > 10000 && distEndCar < 5000)) {
-            usarCarro = true;
-            distCoordFoot = distCoordCar;
-            distEndFoot = distEndCar;
-            perfilFinal = 'driving';
-        }
-    }
 
     let objRota = {
         coordAlunoGPS: { lat: dadosGeo.geoEndereco_Latit, lon: dadosGeo.geoEndereco_Longit },
         coordAlunoEnd: coordEndereco,
-        distanciaCoord: distCoordFoot,
-        distanciaEnd: distEndFoot,
-        perfilOSRM: perfilFinal
+        distanciaCoord: distCoordFinal,
+        distanciaEnd: distEndFinal,
+        perfilOSRM: perfilFinalAdotado
     };
 
     window.setSharedStoreValue('dadosGeraisRota', objRota);
+    window.setSharedStoreValue('modoTransporteAtual', perfilFinalAdotado === 'driving' ? 'carro' : 'pe');
 
-    let modoTransporte = 'pe';
-    if (usarCarro) {
-        modoTransporte = 'carro';
-        window.setSharedStoreValue('modoTransporteAtual', 'carro');
-        const toggleContainer = document.getElementById('mapa-toggle-container');
-        if (toggleContainer && toggleContainer.children[1]) {
-            toggleContainer.children[1].innerHTML = "🚗 De Carro";
-        }
-        if (typeof window.atualizarURLsMapasGlobal === 'function') {
-            window.atualizarURLsMapasGlobal();
-        }
+    // Remove referências visuais ao antigo container manipulador se ele ainda existir no DOM
+    const toggleContainer = document.getElementById('mapa-toggle-container');
+    if (toggleContainer) {
+        toggleContainer.style.display = 'none'; 
+    }
+
+    if (typeof window.atualizarURLsMapasGlobal === 'function') {
+        window.atualizarURLsMapasGlobal();
     }
 
     // --- SALVA NO CACHE PERSISTENTE ANTES DE CONCLUIR ---
     if (CHAVE_REGISTRO) {
         const dadosParaGravar = {
             DistDiferentesEntreMapas: distDiferentes,
-            distanciaCoord: distCoordFoot,
-            distanciaEnd: distEndFoot,
-            modoTransporteAtual: modoTransporte,
+            distanciaCoord: distCoordFinal,
+            distanciaEnd: distEndFinal,
+            modoTransporteAtual: perfilFinalAdotado === 'driving' ? 'carro' : 'pe',
             dadosGeraisRota: objRota
         };
         window.gerenciarEsalvarCachePersistente(NOME_CACHE_STORAGE, CHAVE_REGISTRO, dadosParaGravar);
-        console.log(`[ASSISTENTE] ✅ Dados salvos no cache persistente com sucesso para ficha: ${idFicha}`);
+        console.log(`[ASSISTENTE] ✅ Dados salvos no cache com sucesso automático para ficha: ${idFicha}`);
     }
 };
 

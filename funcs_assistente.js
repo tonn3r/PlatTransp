@@ -1978,11 +1978,13 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
                 if (estado.distanciasOSRM[idEsc] === 'Erro' || estado.distanciasOSRM[idEsc] === null) {
                     let escDados = listaExibirBase.find(e => String(e.id) === idEsc);
                     let distHaversine = escDados ? Math.round(escDados.distancia / 100) * 100 : 0;
-                    let iconPath = estado.perfilOSRM === 'foot' ? 'mdi-walk' : 'mdi-car';
+                    let perfilReal = (estado.perfisReaisOSRM && estado.perfisReaisOSRM[idEsc]) || estado.perfilOSRM;
+                    let iconPath = perfilReal === 'foot' ? 'mdi-walk' : 'mdi-car';
                     distTexto = `<span class="text-muted"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> +- ${distHaversine}m (estimativa)</span>`;
                 } else {
                     let distArredondada = Arredondar(estado.distanciasOSRM[idEsc], idEsc);
-                    let iconPath = estado.perfilOSRM === 'foot' ? 'mdi-walk' : 'mdi-car';
+                    let perfilReal = (estado.perfisReaisOSRM && estado.perfisReaisOSRM[idEsc]) || estado.perfilOSRM;
+                    let iconPath = perfilReal === 'foot' ? 'mdi-walk' : 'mdi-car';
                     let sinalExato = (estado.fontesOSRM && (estado.fontesOSRM[idEsc] === 'OSRM' || estado.fontesOSRM[idEsc] === 'HAVERSINE')) ? '+-' : '';
                     distTexto = `<span class="text-warning"><span class="mdi ${iconPath}" style="font-size: 14px; margin-right: 2px;"></span> Trajeto: <b>${sinalExato}${distArredondada}m</b></span>`;
                 }
@@ -2121,7 +2123,8 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
                 urlConfere = `https://maps.google.com/maps?saddr=${latOrigemLista}+${lonOrigemLista}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;
             }
             
-            let iconPath = estado.perfilOSRM === 'foot' ? 'mdi-walk' : 'mdi-car';
+            let perfilReal = (estado.perfisReaisOSRM && estado.perfisReaisOSRM[esc.id]) || estado.perfilOSRM;
+            let iconPath = perfilReal === 'foot' ? 'mdi-walk' : 'mdi-car';
             let txtDist = `<span class="text-warning"><span class="mdi mdi-refresh" style="font-size: 14px; margin-right: 2px;"></span> <i>Calculando trajeto...</i></span>`;
             if (estado.distanciasOSRM[esc.id] !== undefined) {
                 if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) {
@@ -2150,6 +2153,9 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
     }
     listaHtml += `</ul></div>`;
     
+    const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
+    const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
+
     let linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=-23.706568332542187%2C-46.562466610927814&z=13`;
     if(latAluno && lonAluno) {linkMapaRede =  `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latAluno}%2C${lonAluno}&z=18`;
 }else if(latOrigemLista && lonOrigemLista) {linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latOrigemLista}%2C${lonOrigemLista}&z=18`;
@@ -2224,6 +2230,8 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
                                     estado.distanciasOSRM[esc.id] = resultadoCalc.distancia;
                                     if (!estado.fontesOSRM) estado.fontesOSRM = {};
                                     estado.fontesOSRM[esc.id] = resultadoCalc.fonte;
+                                    if (!estado.perfisReaisOSRM) estado.perfisReaisOSRM = {};
+                                    estado.perfisReaisOSRM[esc.id] = resultadoCalc.modoUtilizado;
                                     window.setSharedStoreValue?.('distanciaPreenchidaAtual', distanciaCalculadaFinal);
                                 } else {
                                     estado.distanciasOSRM[esc.id] = 'Erro';
@@ -2248,6 +2256,8 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
                                 estado.distanciasOSRM[esc.id] = resultadoCalc.distancia;
                                 if (!estado.fontesOSRM) estado.fontesOSRM = {};
                                 estado.fontesOSRM[esc.id] = resultadoCalc.fonte;
+                                if (!estado.perfisReaisOSRM) estado.perfisReaisOSRM = {};
+                                estado.perfisReaisOSRM[esc.id] = resultadoCalc.modoUtilizado;
                             } else {
                                 estado.distanciasOSRM[esc.id] = 'Erro';
                             }
