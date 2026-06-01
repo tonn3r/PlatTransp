@@ -336,7 +336,7 @@ window.iniciarPaginaPesquisa = function() {
         if (typeof $ === 'undefined') return;
         if (direcao === 'next') paginaAtual++;
         else if (direcao === 'prev' && paginaAtual > 1) paginaAtual--;
-        const reg = (paginaAtual - 1) * 100;
+        const reg = (paginaAtual - 1) * 300;
         let ord = $('#ordenar_por').val();
         
         const nomePesq = removerAcentosEspeciais($('#nome_aluno_pesquisado').val() || "");
@@ -375,7 +375,7 @@ window.iniciarPaginaPesquisa = function() {
         if (!container) return;
         const numLinhas = container.querySelectorAll('tr').length;
         let barra = document.getElementById('barra-paginacao-flutuante');
-        if (numLinhas >= 101 || paginaAtual > 1) {
+        if (numLinhas >= 301 || paginaAtual > 1) {
             if (!barra) {
                 barra = document.createElement('div');
                 barra.id = 'barra-paginacao-flutuante';
@@ -385,7 +385,7 @@ window.iniciarPaginaPesquisa = function() {
             barra.innerHTML = `
                 ${paginaAtual > 1 ? '<button id="btn-pag-prev" style="cursor:pointer; background:none; border:1px solid white; color:white; border-radius:20px; padding:5px 15px;">« Anterior</button>' : ''}
                 <span>Página <strong>${paginaAtual}</strong></span>
-                ${numLinhas >= 101 ? '<button id="btn-pag-next" style="cursor:pointer; background:#ecf0f1; border:none; color:#2c3e50; border-radius:20px; padding:5px 15px; font-weight:bold;">Próxima »</button>' : ''}
+                ${numLinhas >= 301 ? '<button id="btn-pag-next" style="cursor:pointer; background:#ecf0f1; border:none; color:#2c3e50; border-radius:20px; padding:5px 15px; font-weight:bold;">Próxima »</button>' : ''}
             `;
             const bPrev = document.getElementById('btn-pag-prev');
             const bNext = document.getElementById('btn-pag-next');

@@ -190,7 +190,10 @@ function buscarMatchRua(ruasDB, idUnidade, cepVal, endRuaNorm, endBairroNorm) {
 }
 
 /** Lê a array ruasData e salva os dados encontrados sobre a rua na variável. */
-function analisarHistoricoRua(ruaMatch, ruasDB, cepVal, endRuaNorm, endBairroNorm) {
+window.analisarHistoricoRua = async function(ruaMatch, ruasDB, cepVal, endRuaNorm, endBairroNorm, logradouro, numeroStr, idUnidade) {
+    // ==========================================
+    // PARTE 1: Verificação no Banco Local (ruasDB)
+    // ==========================================
     const motivo_rua = ruaMatch?.resultado_motivo || '';
     
     let bloqueiaDificuldadeAcesso = false;
@@ -234,7 +237,7 @@ function analisarHistoricoRua(ruaMatch, ruasDB, cepVal, endRuaNorm, endBairroNor
         }
     }
 
-    return {
+    let resultadoFinal = {
         motivo: motivo_rua,
         temMatch: !!ruaMatch,
         ehAreaRural: motivo_rua === 'ÁREA RURAL',
@@ -242,9 +245,109 @@ function analisarHistoricoRua(ruaMatch, ruasDB, cepVal, endRuaNorm, endBairroNor
         ehDistanciaMaior1500: motivo_rua === 'DISTÂNCIA MAIOR QUE 1500 METROS',
         ehDistanciaMenor1500: motivo_rua === 'DISTÂNCIA MENOR QUE 1500 METROS',
         ehEscolaPorOpcao: motivo_rua === 'ESCOLA POR OPÇÃO',
-        bloqueiaDificuldadeAcesso: bloqueiaDificuldadeAcesso
+        bloqueiaDificuldadeAcesso: bloqueiaDificuldadeAcesso,
+        totalAlunosRua: 0, // Inicia em zero para contagem manual rigorosa
+        irmaosAtendidos: 0,
+        historicoDificuldadeAcesso: 0,
+        historicoAreaRural: 0,
+        erroFetch: false
     };
-}
+
+    // ==========================================
+    // PARTE 2: Fetch POST Direto no Endpoint (Histórico Real)
+    // ==========================================
+    if (!logradouro || !idUnidade) {
+        console.warn("[ASSISTENTE] ⚠️ Fetch abortado: Faltam parâmetros (logradouro ou idUnidade)");
+        return resultadoFinal;
+    }
+
+    const anoSelect = document.getElementById('ano_selecionado');
+    const anoLetivo = anoSelect ? anoSelect.value : new Date().getFullYear().toString();
+
+    const baseUrl = "/administrador/modulos/transporte_escolar/lista_alunos_transporte.php";
+    
+    const formData = new URLSearchParams();
+    formData.append("ano", anoLetivo);
+    formData.append("id_unidade", idUnidade);
+    formData.append("funcao_utilizada", "6"); 
+    formData.append("registro_inicial", "0");
+    formData.append("pagina", "1");
+    formData.append("endereco", window.removerAcentosEspeciais ? window.removerAcentosEspeciais(logradouro).replace(/\s+/g, '%') : logradouro.replace(/\s+/g, '%'));
+    formData.append("ordenar_por", "2");
+
+    const urlVisivelParaLog = `${window.location.origin}/administrador/modulos/transporte_escolar/solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(logradouro)}&id_unidade_selecionada=${idUnidade}`;
+
+    try {
+        const response = await fetch(baseUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData.toString()
+        });
+
+        if (!response.ok) {
+            resultadoFinal.erroFetch = true;
+            console.warn(`[ASSISTENTE] ⚠️ Falha no fetch da API (Status: ${response.status}) -> ${urlVisivelParaLog}`);
+            return resultadoFinal;
+        }
+        
+        const htmlTabela = await response.text();
+        
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlTabela, 'text/html');
+        
+        const linhasDeAlunos = Array.from(doc.querySelectorAll('tr')).filter(tr => {
+             const celulas = tr.querySelectorAll('td');
+             return celulas.length > 12 && celulas[0].querySelector('img');
+        });
+        
+        if (linhasDeAlunos.length === 0) {
+             console.log(`[ASSISTENTE] 🌐 Fetch Concluído, mas nenhum aluno listado -> Link: ${urlVisivelParaLog}`);
+             return resultadoFinal;
+        }
+        
+        const regexNumero = new RegExp(`\\b${numeroStr}\\b`, 'i');
+        const logradouroUpper = window.normalizarTexto(logradouro);
+        
+        linhasDeAlunos.forEach(linha => {
+            const colunas = linha.querySelectorAll('td');
+            const enderecoTabela = window.normalizarTexto(colunas[10].innerText || "");
+            const detalhes = window.normalizarTexto(colunas[11].innerText || "");
+            const status = window.normalizarTexto(colunas[12].innerText || "");
+            
+            // Checa rigorosamente se não está cancelado nem indeferido, mantendo apenas deferidos e em atendimento
+            const isEmAtendimento = !status.includes('CANCELADO') && !status.includes('INDEFERIDO') && (status.includes('EM ATENDIMENTO') || status.includes('DEFERIDO'));
+            
+            if (isEmAtendimento) {
+                // SÓ conta o "totalAlunosRua" se passar no crivo "Em Atendimento / Deferido"
+                resultadoFinal.totalAlunosRua++;
+                
+                if (detalhes.includes('DIFICULDADE DE ACESSO')) {
+                    resultadoFinal.historicoDificuldadeAcesso++;
+                }
+                if (detalhes.includes('AREA RURAL') || detalhes.includes('ÁREA RURAL') || detalhes.includes('REA RURAL') || detalhes.includes('REA RURAL')) {
+                    resultadoFinal.historicoAreaRural++;
+                }
+                
+                if (enderecoTabela.includes(logradouroUpper) && regexNumero.test(enderecoTabela)) {
+                    resultadoFinal.irmaosAtendidos++;
+                }
+            }
+        });
+        
+        doc.open(); doc.write(''); doc.close();
+        
+        console.log(`[ASSISTENTE] 🌐 Fetch API Concluído | Alunos Validados (Ativos): ${resultadoFinal.totalAlunosRua} (de ${linhasDeAlunos.length} linhas) | Dificuldade: ${resultadoFinal.historicoDificuldadeAcesso} | Área Rural: ${resultadoFinal.historicoAreaRural} | Irmãos no nº ${numeroStr}: ${resultadoFinal.irmaosAtendidos} -> ${urlVisivelParaLog}`);
+        
+        return resultadoFinal;
+        
+    } catch (error) {
+        console.error(`[ASSISTENTE] ❌ Erro crítico ao analisar histórico da rua via Fetch API: ${urlVisivelParaLog}`, error);
+        resultadoFinal.erroFetch = true;
+        return resultadoFinal;
+    }
+};
 
 // Constrói a URL para pesquisar solicitações anteriores de transporte na mesma rua.
 function montarUrlPesquisaRua(endRua) {
@@ -535,7 +638,7 @@ function calcularSugestaoDeficiencia(doc) {
 }
 
 // Coleta todos os dados do aluno presentes na tela e em bancos de dados locais e os organiza num objeto de contexto.
-function extrairContextoFicha(doc) {
+async function extrairContextoFicha(doc) {
     const ruasDB = window.ruasData || [];
     const escolasDB = window.escolasDB || [];
     const dbEncaminhamentos = obterBancoEncaminhamentos();
@@ -578,7 +681,7 @@ function extrairContextoFicha(doc) {
     const endRuaNorm = window.normalizarTexto(endRua.split(',')[0]);
     const endBairroNorm = window.normalizarTexto(endBairro);
     const ruaMatch = buscarMatchRua(ruasDB, idUnidade, cepVal, endRuaNorm, endBairroNorm);
-    const historicoRua = analisarHistoricoRua(ruaMatch, ruasDB, cepVal, endRuaNorm, endBairroNorm);
+    let historicoRua = await window.analisarHistoricoRua(ruaMatch, ruasDB, cepVal, endRuaNorm, endBairroNorm, endRua.split(',')[0].trim(), endNum, idUnidade);
     if (ruaMatch) console.log('[ASSISTENTE] Match de rua:', historicoRua.motivo);
 
     let isEspecial = nivel.nivelNorm === 'ESPECIAL';
@@ -1381,7 +1484,7 @@ window.abrirModalAssistente = async function() {
     if (window.abrindoModalAssistente) return;
     window.abrindoModalAssistente = true;
     
-    const ctx = extrairContextoFicha(window.getAlvoDocument());
+    const ctx = await extrairContextoFicha(window.getAlvoDocument());
     const doc = ctx.doc;
     if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] abrirModalAssistente');
 
@@ -2473,68 +2576,112 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
 
         if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuldadeAcesso === null) || (ctx.ehEJA && historicoRua.ehDificuldadeAcesso))) {
 
-            if (historicoRua.bloqueiaDificuldadeAcesso) {
-                estado.dificuldadeAcesso = false; 
-                estado.telaFinal = { titulo: "INDEFERIR", mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções." };
-                return renderizarPasso();
-            }
+                if (historicoRua.bloqueiaDificuldadeAcesso) {
+                    estado.dificuldadeAcesso = false; 
+                    estado.telaFinal = { titulo: "INDEFERIR", mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções." };
+                    return renderizarPasso();
+                }
 
-            if (historicoRua.ehDificuldadeAcesso && estado.escolaProximaUser === true && estado.distancia > 350) {
-                estado.dificuldadeAcesso = true;
-                estado.telaFinal = {
-                    titulo: "DEFERIR",
-                    mensagem: "Essa rua costuma ser atendida por DIFICULDADE DE ACESSO.",
-                    motivoAnalise: "DIFICULDADE DE ACESSO",
-                    textoDetalhes: "Essa rua costuma ser atendida por DIFICULDADE DE ACESSO.",
-                    urlPesquisaRua: urlPesquisaRua
-                };
-                return renderizarPasso();
-            }
+                if (historicoRua.ehDificuldadeAcesso && estado.escolaProximaUser === true && estado.distancia > 350) {
+                    estado.dificuldadeAcesso = true;
+                    estado.telaFinal = {
+                        titulo: "DEFERIR",
+                        mensagem: "Essa rua costuma ser atendida por DIFICULDADE DE ACESSO.",
+                        motivoAnalise: "DIFICULDADE DE ACESSO",
+                        textoDetalhes: "Essa rua costuma ser atendida por DIFICULDADE DE ACESSO.",
+                        urlPesquisaRua: urlPesquisaRua
+                    };
+                    return renderizarPasso();
+                }
 
-            let MsgDificuldadeAcesso = "";
-            if (!ruaMatch || !ruaMatch.resultado_motivo === "DIFICULDADE DE ACESSO") {
-                MsgDificuldadeAcesso = "<b>Esse local não está cadastrado para atendimento por dificuldade de acesso. </b>";
-            }
-        
-            conteudo.innerHTML = `
-                <h3 class="section-title text-warning">
-                    <span class="mdi mdi-highway" style="font-size: 22px; margin-right: 6px;"></span> Dificuldade de Acesso
-                </h3>
+                // ======= LÓGICA DE MENSAGENS VISUAIS =======
+                let MsgDificuldadeAcesso = "";
                 
-                <p>${MsgDificuldadeAcesso}O trajeto da residência até a escola possui alguma dificuldade de acesso excepcional?</p>
-                <p>São consideradas dificuldade de acesso:</p>
-                <ul>
-                  <li>Rodovias;</li>
-                  <li>Estradas de terra;</li>
-                  <li>Vias sem nenhum tipo de calçada;</li>
-                  <li>Locais que proíbam expressamente a passagem de pedestres.</li>
-                </ul>
-                <p>Não são motivos para dificuldade de acesso:</p>
-                <ul>
-                <li>Becos e vielas;</li>
-                <li>Favelas;</li>
-                <li>Escadas, rampas e passarelas;</li>
-                <li>Assaltos e problemas de segurança pública;</li>
-                <li>Presença de moradores de rua ou usuários de drogas;</li>
-                <li>Ruas íngremes;</li>
-                <li>Calçadas desniveladas.</li>
-                </ul>
-                <div style="text-align:center; margin-bottom:15px;">
-                    <a href="${urlPesquisaRua}" target="_blank" class="btn btn-outline" style="text-decoration:none;">
-                        <span class="mdi mdi-map-search" style="font-size: 16px; margin-right: 4px;"></span> Ver atendimentos da rua
-                    </a>
-                </div>
+                // Mensagem Padrão baseada na Parte 1 (Banco Local)
+                if (!ruaMatch || ruaMatch.resultado_motivo !== "DIFICULDADE DE ACESSO") {
+                    MsgDificuldadeAcesso = "<div style='background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #ffeeba;'><b>Esse local não está cadastrado no nosso banco principal para atendimento por dificuldade de acesso.</b></div>";
+                }
 
-                <div class="action-group">
-                    <button id="btn-dif-sim" class="btn btn-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Sim, há dificuldade</button>
-                    <button id="btn-dif-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não</button>
-                </div>
-            `;
-            
-            vincularEventoUnico(document.getElementById('btn-dif-sim'), 'click', () => { salvarHistorico(); estado.dificuldadeAcesso = true; if (estado.escolaProximaUser === false) { renderizarPasso(); } else { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido devido a Dificuldade de Acesso comprovada na rota." }; renderizarPasso(); } });
-            vincularEventoUnico(document.getElementById('btn-dif-nao'), 'click', () => { salvarHistorico(); estado.dificuldadeAcesso = false; estado.telaFinal = { titulo: "INDEFERIR", mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções." }; renderizarPasso(); });
-            return;
-        }
+                // Processamento de Mensagens Dinâmicas da Parte 2 (Fetch de Histórico)
+                let alertasFetch = "";
+                let hasIrmaos = historicoRua.irmaosAtendidos > 0;
+                let hasDificuldade = historicoRua.historicoDificuldadeAcesso > 0;
+                let hasAreaRural = historicoRua.historicoAreaRural > 0;
+
+                if (hasIrmaos || hasDificuldade || hasAreaRural) {
+                    MsgDificuldadeAcesso = ""; // Limpa a mensagem padrão para dar destaque aos alertas específicos
+                    alertasFetch += "<div style='background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #c3e6cb;'>";
+                    alertasFetch += "<b><span class='mdi mdi-information-outline'></span> Identificamos registros importantes nesta rua:</b><br><ul style='margin-top: 5px; margin-bottom: 0;'>";
+                    
+                    // Condição 1: Tem irmão e tem dificuldade/área rural na rua
+                    if (hasIrmaos && (hasDificuldade || hasAreaRural)) {
+                         let maiorMotivo = hasDificuldade >= hasAreaRural ? "Dificuldade de Acesso" : "Área Rural";
+                         let qtdMaiorMotivo = hasDificuldade >= hasAreaRural ? historicoRua.historicoDificuldadeAcesso : historicoRua.historicoAreaRural;
+                         alertasFetch += `<li>Há <b>${historicoRua.irmaosAtendidos}</b> passageiro(s) sendo atendido(s) no mesmo número.</li>`;
+                         alertasFetch += `<li>E <b>${qtdMaiorMotivo}</b> passageiros no restante da rua por <b>${maiorMotivo}</b>.</li>`;
+                    } 
+                    // Condição 2: Somente irmão
+                    else if (hasIrmaos) {
+                        alertasFetch += `<li>Já atendemos <b>${historicoRua.irmaosAtendidos}</b> outro(s) passageiro(s) na mesma residência.</li>`;
+                    } 
+                    // Condição 3: Sem irmãos, mas com registros na rua
+                    else {
+                        if (hasDificuldade >= hasAreaRural) {
+                            alertasFetch += `<li>Nós já atendemos <b>${historicoRua.historicoDificuldadeAcesso}</b> passageiros por <b>Dificuldade de Acesso</b> nessa rua.</li>`;
+                        } else {
+                            alertasFetch += `<li>Nós já atendemos <b>${historicoRua.historicoAreaRural}</b> passageiros nessa rua por ser <b>Área Rural</b>.</li>`;
+                        }
+                    }
+                    
+                    alertasFetch += "</ul></div>";
+                }
+                
+                conteudo.innerHTML = `
+                    <h3 class="section-title text-warning">
+                        <span class="mdi mdi-highway" style="font-size: 22px; margin-right: 6px;"></span> Dificuldade de Acesso
+                    </h3>
+                    
+                    ${alertasFetch}
+                    ${MsgDificuldadeAcesso}`;
+                    
+                    if (!(hasIrmaos || hasDificuldade || hasAreaRural)) {
+                conteudo.innerHTML += `
+                    <p style="margin-top:10px;">O trajeto da residência até a escola possui alguma dificuldade de acesso excepcional?</p>
+                    <p>São consideradas dificuldade de acesso:</p>
+                    <ul>
+                      <li>Rodovias;</li>
+                      <li>Estradas de terra;</li>
+                      <li>Vias sem nenhum tipo de calçada;</li>
+                      <li>Locais que proíbam expressamente a passagem de pedestres.</li>
+                    </ul>
+                    <p>Não são motivos para dificuldade de acesso:</p>
+                    <ul>
+                    <li>Becos e vielas;</li>
+                    <li>Favelas;</li>
+                    <li>Escadas, rampas e passarelas;</li>
+                    <li>Assaltos e problemas de segurança pública;</li>
+                    <li>Presença de moradores de rua ou usuários de drogas;</li>
+                    <li>Ruas íngremes;</li>
+                    <li>Calçadas desniveladas.</li>
+                    </ul>`
+                    }else{conteudo.innerHTML += `<p style="margin-top:10px;">A informação acima procede? Você pode visualizar os atendimentos da rua no botão abaixo:</p>`}
+
+                    conteudo.innerHTML += `<div style="text-align:center; margin-bottom:15px;">
+                        <a href="${urlPesquisaRua}" target="_blank" class="btn btn-outline" style="text-decoration:none;">
+                            <span class="mdi mdi-map-search" style="font-size: 16px; margin-right: 4px;"></span> Ver atendimentos da rua
+                        </a>
+                    </div>
+
+                    <div class="action-group">
+                        <button id="btn-dif-sim" class="btn btn-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Sim, há dificuldade</button>
+                        <button id="btn-dif-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não</button>
+                    </div>
+                `;
+                
+                vincularEventoUnico(document.getElementById('btn-dif-sim'), 'click', () => { salvarHistorico(); estado.dificuldadeAcesso = true; if (estado.escolaProximaUser === false) { renderizarPasso(); } else { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido devido a Dificuldade de Acesso comprovada na rota." }; renderizarPasso(); } });
+                vincularEventoUnico(document.getElementById('btn-dif-nao'), 'click', () => { salvarHistorico(); estado.dificuldadeAcesso = false; estado.telaFinal = { titulo: "INDEFERIR", mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções." }; renderizarPasso(); });
+                return;
+            }
 
         const excecaoGarantida = (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA' || estado.dificuldadeAcesso === true);
         let msgExcecao = "";
