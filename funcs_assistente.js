@@ -623,6 +623,7 @@ function extrairContextoFicha(doc) {
         nivelAlunoNorm: nivel.nivelNorm,
         isBercarioGeral: nivel.isBercarioGeral,
         ehCreche: nivel.isBercarioGeral || nivel.nivelNorm.includes('BERCARIO') || nivel.nivelNorm === 'INFANTIL I' || nivel.nivelNorm === 'INFANTIL II',
+        ehEJA: nivel.nivelAlunoOriginal === "EJA Anos Iniciais 1o Segmento" || nivel.nivelAlunoOriginal === "EJA Anos Iniciais 2o Segmento" || nivel.nivelNorm === "EJA Anos Iniciais 1o Segmento" || nivel.nivelNorm === "EJA Anos Iniciais 2o Segmento" || nivel.nivelAlunoOriginal === "EJA Anos Finais 1o Segmento" || nivel.nivelAlunoOriginal === "EJA Anos Finais 2o Segmento" || nivel.nivelNorm === "EJA Anos Finais 1o Segmento" || nivel.nivelNorm === "EJA Anos Finais 2o Segmento" || nivel.nivelNorm === 'EJA ' || nivel.nivelNorm?.includes('EJA ') || nivel.nivelNorm === ' EJA' || nivel.nivelNorm?.includes(' EJA') || nivel.nivelAlunoOriginal === 'EJA ' || nivel.nivelAlunoOriginal?.includes('EJA ') || nivel.nivelAlunoOriginal === ' EJA' || nivel.nivelAlunoOriginal?.includes(' EJA'),
         isEspecial,
         iframeMapa: doc.getElementById('map_endereco'),
         inputDistanciaFicha: doc.querySelector('input[name="distancia_aferida"], #distancia_aferida'),
@@ -1181,26 +1182,31 @@ window.atualizarInputDistancia = function(distancia) {
     if (distancia === 'endereco' || distancia === 'coordenada') return;
     const numero = Number(distancia);
     if (!Number.isFinite(numero) || numero <= 0) return;
-    let baseFinal = 50; // Valor padrão
-
-if (distancia != null && !isNaN(distancia)) {
-    let dist = Number(distancia);
-    if (dist >= 10000) {
+    
+    // Define a base de arredondamento correta baseada na distância
+    let baseArred = 50; // Valor padrão para 300m a 999m
+    if (numero >= 10000) {
         baseArred = 500;
-    } else if (dist >= 1000) {
+    } else if (numero >= 1000) {
         baseArred = 100;
-    }else if (dist < 300) {
+    } else if (numero < 300) {
         baseArred = 10;
     }
-}
-    const valorFinal = Math.round(numero / baseFinal) * baseFinal;
+    
+    // Realiza o arredondamento matemático
+    const metrosArredondados = Math.round(numero / baseArred) * baseArred;
+    
+    // Converte para o padrão visual esperado pela plataforma (formato KM)
+    const valorKm = (metrosArredondados / 1000).toFixed(2);
+    
     const tentarAtualizar = (tentativa = 0) => {
         const input = document.getElementById('input-assistente-dist');
         if (!input) {
             if (tentativa < 10) setTimeout(() => tentarAtualizar(tentativa + 1), 200);
             return;
         }
-        input.value = valorFinal;
+        // Exibe no input o formato padrão "X.XX km" limpo e arredondado
+        input.value = `${valorKm} km`;
     };
     tentarAtualizar();
 };
@@ -1576,6 +1582,7 @@ window.abrirModalAssistente = async function() {
         }
 
         if (estado.telaFinal) {
+            // Verifica comprovante se for mudança de endereço, mas apenas se o resultado for DEFERIDO ou nulo. (indeferimento não precisa de documento)
             if (isMudanca && estado.mudancaOk === null && !estado.telaFinal.titulo.includes('INDEFERIR')) {
                 conteudo.innerHTML = `
                     <h3 class="section-title text-warning">
@@ -1621,6 +1628,10 @@ window.abrirModalAssistente = async function() {
                 } else {
                     textoDetalhes = "Está na parcial mais próxima";
                 }
+            }
+
+            if (tipoAcao === 'INDEFERIR' && ctx.ehEJA === true && (estado.deficiencia !== 'ALUNO' && estado.deficiencia !== 'FAMILIA') && estado.dificuldadeAcesso !== true && estado.ehAreaRural !== true) {
+                textoDetalhes = textoDetalhes ? `${textoDetalhes}` : "Alunos de EJA recebem passe escolar.  Só são atendidas as pessoas com deficiência.";
             }
 
 // Se não houver termoBusca definido no estado, tentamos calcular baseados no tipo de ação
@@ -1733,8 +1744,9 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
 const precisaDeficienciaEspecial = estado.isEspecial && estado.deficiencia === null;
 const precisaDeficienciaDistancia = (estado.distancia !== null && estado.distancia < 1500 && estado.deficiencia === null) || (temSugestaoDeficiencia === true && estado.deficiencia === null && estado.distancia !== null && estado.pularDeficiencia !== true);
 const precisaDeficiencia_ = (estado.areaRuralProcessada || (temSugestaoDeficiencia && estado.ehEncaminhado !== null)) && estado.pularDeficiencia === false && estado.deficiencia === null;
+const precisaDeficienciaEJA = ((ctx.ehEJA && temSugestaoDeficiencia && estado.deficiencia === null) || (ctx.ehEJA && estado.deficiencia === null && estado.distancia !== null && estado.pularDeficiencia !== true));
 
-if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficiencia_) {
+if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficiencia_ || precisaDeficienciaEJA) {
     let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
     let estiloAluno = "background:#27ae60;";
     let estiloFamilia = "background:#2980b9;";
@@ -1756,10 +1768,10 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
     }
 
     // Títulos e subtítulos dinâmicos
-    let tituloBoxStr = precisaDeficienciaEspecial ? "Exceção: Ensino Especial" : "Deficiência";
+    let tituloBoxStr = (precisaDeficienciaEspecial || estado.isEspecial) ? "Exceção: Ensino Especial" : "Deficiência";
     let subTituloBox = "";
-    if (precisaDeficienciaEspecial) {
-        subTituloBox = "O aluno está matriculado e necessita de ensino especial.";
+    if ((precisaDeficienciaEspecial || estado.isEspecial) && (temSugestaoDeficiencia || estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA')) {
+        subTituloBox = "PCD em escola de ensino especial";
     } else if (estado.distancia !== null && estado.distancia < 1500) {
         subTituloBox = "A distância aferida é <b>inferior a 1500m</b>.";
     }
@@ -1883,22 +1895,30 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
                 
     //funcao arredondar distancia:
     const Arredondar = (distanciaBase = 0, idEscola = 0) => {
-        let valorOriginal = 0;
+    let valorOriginal = 0;
 
-        if (idEscola > 0 && estado.distanciasOSRM[idEscola] !== undefined && estado.distanciasOSRM[idEscola] !== 'Erro' && estado.distanciasOSRM[idEscola] !== null) {
-            valorOriginal = Number(estado.distanciasOSRM[idEscola]);
-        } else if (idEscola > 0 && Number(distanciaBase) > 0 && (estado.distanciasOSRM[idEscola] === 'Erro' || estado.distanciasOSRM[idEscola] === null)) {
-            valorOriginal = Number(distanciaBase);
-        } else if (Number(distanciaBase) > 0) {
-            valorOriginal = Number(distanciaBase);
-        } else {
-            return distanciaBase;
-        }
+    if (idEscola > 0 && estado.distanciasOSRM[idEscola] !== undefined && estado.distanciasOSRM[idEscola] !== 'Erro' && estado.distanciasOSRM[idEscola] !== null) {
+        valorOriginal = Number(estado.distanciasOSRM[idEscola]);
+    } else if (idEscola > 0 && Number(distanciaBase) > 0 && (estado.distanciasOSRM[idEscola] === 'Erro' || estado.distanciasOSRM[idEscola] === null)) {
+        valorOriginal = Number(distanciaBase);
+    } else if (Number(distanciaBase) > 0) {
+        valorOriginal = Number(distanciaBase);
+    } else {
+        return distanciaBase;
+    }
 
-        let numBase = valorOriginal >= 1000 ? 100 : 50;
-        if(valorOriginal < 300) {numBase = 10;}
-        return Math.round(valorOriginal / numBase) * numBase;
-    };
+    // Aplicação estrita dos limites de arredondamento
+    let numBase = 50;
+    if (valorOriginal >= 10000) {
+        numBase = 500;
+    } else if (valorOriginal >= 1000) {
+        numBase = 100;
+    } else if (valorOriginal < 300) {
+        numBase = 10;
+    }
+    
+    return Math.round(valorOriginal / numBase) * numBase;
+};
 
     dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota') || dadosGeraisRotaSessao;
     if (estado.buscandoOSRM && !forcarRecalculo) {
@@ -2451,7 +2471,7 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
             return renderizarPasso();
         }
 
-        if (estado.distancia < 1500 && estado.deficiencia === false && estado.dificuldadeAcesso === null) {
+        if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuldadeAcesso === null) || (ctx.ehEJA && historicoRua.ehDificuldadeAcesso))) {
 
             if (historicoRua.bloqueiaDificuldadeAcesso) {
                 estado.dificuldadeAcesso = false; 
@@ -2475,7 +2495,7 @@ if (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficien
             if (!ruaMatch || !ruaMatch.resultado_motivo === "DIFICULDADE DE ACESSO") {
                 MsgDificuldadeAcesso = "<b>Esse local não está cadastrado para atendimento por dificuldade de acesso. </b>";
             }
-                
+        
             conteudo.innerHTML = `
                 <h3 class="section-title text-warning">
                     <span class="mdi mdi-highway" style="font-size: 22px; margin-right: 6px;"></span> Dificuldade de Acesso

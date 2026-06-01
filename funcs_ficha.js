@@ -260,6 +260,135 @@ window.aplicarLinkPesquisaEndereco = function() {
     }
 };
 
+// Adiciona botões de copiar ao lado do RA, Data de Nascimento, Nome da Mãe e do Pai
+window.adicionarBotoesCopiarDados = function() {
+    console.log("[COPIAR_DADOS] Iniciando a função adicionarBotoesCopiarDados...");
+
+    // Injeta a fonte do Material Symbols no cabeçalho
+    if (!document.getElementById('google-material-symbols-font')) {
+        console.log("[COPIAR_DADOS] Injetando stylesheet do Material Symbols...");
+        const linkElem = document.createElement('link');
+        linkElem.id = 'google-material-symbols-font';
+        linkElem.rel = 'stylesheet';
+        linkElem.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=content_copy';
+        document.head.appendChild(linkElem);
+    } else {
+        console.log("[COPIAR_DADOS] Stylesheet do Material Symbols já está presente.");
+    }
+
+    const labelsAlvo = ["RA Prodesp", "Data de nascimento", "Mãe / Responsável", "Pai / Responsável"];
+    
+    // Busca todas as tabelas na página
+    const tabelas = document.querySelectorAll('table');
+    let tabelasValidasEncontradas = 0;
+
+    tabelas.forEach((tabela) => {
+        const linhas = tabela.querySelectorAll('tr');
+        
+        // Itera sobre as linhas da tabela (garantindo que existe uma próxima linha para ler o valor)
+        for (let i = 0; i < linhas.length - 1; i++) {
+            
+            // Usamos .children em vez de querySelectorAll para evitar que tabelas aninhadas quebrem a contagem do índice (index)
+            const tdsEtiquetas = Array.from(linhas[i].children).filter(el => el.tagName === 'TD' || el.tagName === 'TH');
+            const tdsValores = Array.from(linhas[i + 1].children).filter(el => el.tagName === 'TD' || el.tagName === 'TH');
+
+            const possuiEtiqueta = tdsEtiquetas.some(td => td.classList.contains('etiqueta'));
+
+            if (possuiEtiqueta) {
+                tabelasValidasEncontradas++;
+
+                tdsEtiquetas.forEach((tdEtiqueta, index) => {
+                    const textoEtiqueta = tdEtiqueta.innerText.trim();
+                    
+                    if (labelsAlvo.includes(textoEtiqueta)) {
+                        console.log(`[COPIAR_DADOS] Coluna alvo identificada: '${textoEtiqueta}'`);
+
+                        // Como usamos .children, o index da linha de cima é exatamente o mesmo da linha de baixo
+                        if (tdsValores[index]) {
+                            const tdValor = tdsValores[index];
+                            const textoOriginal = tdValor.innerText.trim();
+
+                            if (textoOriginal === "") {
+                                console.log(`[COPIAR_DADOS] Valor de '${textoEtiqueta}' está vazio. Ícone não será inserido.`);
+                                return;
+                            }
+
+                            // Verifica se o ícone já foi inserido
+                            if (!tdValor.querySelector('.material-symbols-outlined')) {
+                                console.log(`[COPIAR_DADOS] Inserindo ícone para copiar o valor: '${textoOriginal}'`);
+
+                                const spanTexto = document.createElement('span');
+                                spanTexto.innerText = textoOriginal;
+                                
+                                const btnCopy = document.createElement('span');
+                                btnCopy.className = 'material-symbols-outlined';
+                                btnCopy.innerText = 'content_copy';
+                                btnCopy.style.cssText = 'margin-right: 5px; margin-left: 1px; cursor: pointer; color: #2980b9; font-size: 14px; vertical-align: middle; user-select: none; font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 16;';
+                                btnCopy.title = `Copiar ${textoEtiqueta}`;
+
+                                btnCopy.onclick = function(e) {
+                                    e.stopPropagation();
+
+                                    const handleSuccess = () => {
+                                        console.log(`[COPIAR_DADOS] Sucesso ao copiar: '${textoOriginal}'`);
+                                        const corOriginal = btnCopy.style.color;
+                                        btnCopy.style.color = '#27ae60'; // Feedback visual (verde)
+                                        setTimeout(() => btnCopy.style.color = corOriginal, 1500);
+                                    };
+
+                                    const handleError = (err) => {
+                                        console.error(`[COPIAR_DADOS] Erro na área de transferência:`, err);
+                                    };
+
+                                    // Tenta usar a API moderna primeiro (se o contexto for seguro)
+                                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                                        navigator.clipboard.writeText(textoOriginal)
+                                            .then(handleSuccess)
+                                            .catch(handleError);
+                                    } else {
+                                        // Fallback para ambientes sem HTTPs (document.execCommand)
+                                        console.log(`[COPIAR_DADOS] API clipboard não disponível. Tentando fallback execCommand.`);
+                                        try {
+                                            const textArea = document.createElement("textarea");
+                                            textArea.value = textoOriginal;
+                                            // Torna o textarea invisível
+                                            textArea.style.position = "fixed";
+                                            textArea.style.top = "0";
+                                            textArea.style.left = "0";
+                                            textArea.style.opacity = "0";
+                                            
+                                            document.body.appendChild(textArea);
+                                            textArea.focus();
+                                            textArea.select();
+                                            
+                                            const successful = document.execCommand('copy');
+                                            document.body.removeChild(textArea);
+                                            
+                                            if (successful) {
+                                                handleSuccess();
+                                            } else {
+                                                throw new Error("execCommand falhou");
+                                            }
+                                        } catch (err) {
+                                            handleError(err);
+                                        }
+                                    }
+                                };
+
+                                tdValor.innerHTML = ''; 
+                                tdValor.appendChild(spanTexto);
+                                tdValor.appendChild(btnCopy);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    console.log(`[COPIAR_DADOS] Execução finalizada. Tabelas estruturais analisadas com sucesso: ${tabelasValidasEncontradas}`);
+};
+
 // Inicia o processo automático de captura de informações (como RA e status) e chama outras funções auxiliares quando a página da ficha é carregada.
 window.iniciarPaginaFicha = function() {
 
@@ -292,6 +421,10 @@ window.iniciarPaginaFicha = function() {
         'function'
     ) {
         window.aplicarLinkPesquisaEndereco();
+    }
+
+    if (typeof window.adicionarBotoesCopiarDados === 'function') {
+        window.adicionarBotoesCopiarDados();
     }
 
 

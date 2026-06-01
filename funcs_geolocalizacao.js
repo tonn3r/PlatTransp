@@ -562,19 +562,37 @@ window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDe
         }
     }
 
+    // Define os valores brutos finais baseados na exceção
+    let distanciaBruta = usarExcecaoCarro && resultadoCarro ? resultadoCarro.distancia : resultadoFoot.distancia;
+    let fonteFinal = usarExcecaoCarro && resultadoCarro ? resultadoCarro.fonte : resultadoFoot.fonte;
+    let modoFinal = usarExcecaoCarro && resultadoCarro ? 'driving' : 'foot';
+
+    // Nova Lógica de Arredondamento Personalizado
+    let distanciaArredondada;
+    if (distanciaBruta < 300) {
+        // Abaixo de 300: arredondar de 10 em 10
+        distanciaArredondada = Math.round(distanciaBruta / 10) * 10;
+    } else if (distanciaBruta >= 1000) {
+        // A partir de 1000: arredondar de 100 em 100
+        distanciaArredondada = Math.round(distanciaBruta / 100) * 100;
+    } else {
+        // Restante (300 a 999): arredondar de 50 em 50
+        distanciaArredondada = Math.round(distanciaBruta / 50) * 50;
+    }
+
     if (usarExcecaoCarro && resultadoCarro) {
         console.log(`Exceção aplicada: Distância de carro (${resultadoCarro.distancia}m) utilizada devido à extensão do trajeto a pé.`);
         return {
-            distancia: resultadoCarro.distancia,
-            fonte: resultadoCarro.fonte,
-            modoUtilizado: 'driving'
+            distancia: distanciaArredondada,
+            fonte: fonteFinal,
+            modoUtilizado: modoFinal
         };
     }
 
     return {
-        distancia: resultadoFoot.distancia,
-        fonte: resultadoFoot.fonte,
-        modoUtilizado: 'foot'
+        distancia: distanciaArredondada,
+        fonte: fonteFinal,
+        modoUtilizado: modoFinal
     };
 };
 
@@ -1128,7 +1146,7 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
                                     perfilTransporteEfetivo = resultado.parametro === 'carro' ? 'driving' : 'walking';
                                 }
                                 const metros = resultado.distancia;
-                                let texto = metros >= 1000 ? `${(metros / 1000).toFixed(1).replace('.', ',')} km` : `${metros} m`;
+                                let texto = metros >= 5000 ? `${(metros / 1000).toFixed(1).replace('.', ',')} km` : `${metros} m`;
                                 
                                 // Verifica a propriedade .fonte do retorno do OSRM
                                 const fonteOSRM = resultado.fonte || "osrm";
