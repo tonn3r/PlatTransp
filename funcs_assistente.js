@@ -260,12 +260,8 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
         return resultadoFinal;
     }
 
-    // =========================================================================
-    // 1. CAPTURA SEGURA DOS DADOS DO ALUNO ATUAL (FICHA ABERTA NO MOMENTO)
-    // =========================================================================
     const ctxSeguro = (typeof ctx !== 'undefined') ? ctx : (window.dadosGeograficos || {});
     
-    // Captura e normalização do RA Atual
     let raAlunoAtual = ctxSeguro.ra_aluno || ctxSeguro.raAluno || "";
     if (!raAlunoAtual && typeof window.getSharedStoreValue === 'function') {
         raAlunoAtual = window.getSharedStoreValue('ra_aluno') || window.getSharedStoreValue('raAluno');
@@ -276,10 +272,8 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
                      document.querySelector('[id*="ra_prodesp"]');
         if (elRa) raAlunoAtual = elRa.value;
     }
-    // Remove tudo que não for número e corta os zeros à esquerda para comparação precisa
     const raAtualLimpo = String(raAlunoAtual || "").replace(/\D/g, '').replace(/^0+/, '');
 
-    // Captura e normalização do ID Solicitação Atual
     let idSolicitacaoAtual = ctxSeguro.idSolicitacao || ctxSeguro.id_solicitacao || "";
     if (!idSolicitacaoAtual && typeof window.getSharedStoreValue === 'function') {
         idSolicitacaoAtual = window.getSharedStoreValue('idSolicitacao') || window.getSharedStoreValue('id_solicitacao');
@@ -290,9 +284,7 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
                         document.getElementById('id_solicitacao');
         if (elIdSol) idSolicitacaoAtual = elIdSol.value;
     }
-    // Remove tudo que não for número e corta os zeros à esquerda para comparação precisa
     const idSolAtualLimpo = String(idSolicitacaoAtual || "").replace(/\D/g, '').replace(/^0+/, '');
-    // =========================================================================
 
     const anoSelect = document.getElementById('ano_selecionado');
     const anoLetivo = anoSelect ? anoSelect.value : new Date().getFullYear().toString();
@@ -318,7 +310,6 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
 
         if (!response.ok) {
             resultadoFinal.erroFetch = true;
-            console.warn(`[ASSISTENTE] ⚠️ Falha no fetch da API (Status: ${response.status}) -> ${urlVisivelParaLog}`);
             return resultadoFinal;
         }
         
@@ -326,90 +317,98 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlTabela, 'text/html');
         
-        const linhasDeAlunos = Array.from(doc.querySelectorAll('tr')).filter(tr => {
+        const lines = Array.from(doc.querySelectorAll('tr')).filter(tr => {
              const celulas = tr.querySelectorAll('td');
              return celulas.length > 12 && celulas[0].querySelector('img');
         });
         
-        if (linhasDeAlunos.length === 0) {
-             console.log(`[ASSISTENTE] 🌐 Fetch Concluído, mas nenhum aluno listado -> Link: ${urlVisivelParaLog}`);
+        if (lines.length === 0) {
              return resultadoFinal;
         }
         
         const regexNumero = new RegExp(`\\b${numeroStr}\\b`, 'i');
         const logradouroUpper = window.normalizarTexto(logradouro);
         
-        // Assegura que o array de dados dos irmãos existe
         resultadoFinal.dadosIrmaos = [];
+        resultadoFinal.irmaosAtendidos = 0; // Reinicia contador específico de irmãos válidos para o fluxo
 
-        linhasDeAlunos.forEach(linha => {
+        lines.forEach(linha => {
             const colunas = linha.querySelectorAll('td');
             
-            // 2ª Coluna (índice 1) = ID Solicitação | Fallback seguro para o índice 0 caso a tabela mude
             const idSolicitacaoTabela = (colunas[1] ? colunas[1].innerText.trim() : "") || (colunas[0] ? colunas[0].innerText.trim() : "");
-            
-            // 8ª Coluna (índice 7) = RA Aluno | Fallback seguro para o índice 6
             const raTabela = (colunas[7] ? colunas[7].innerText.trim() : "") || (colunas[6] ? colunas[6].innerText.trim() : "");
-            
-            // Nome do aluno costuma vir logo após o RA (coluna 9 / índice 8 ou coluna 8 / índice 7)
             const nomeTabela = colunas[8] ? colunas[8].innerText.trim() : (colunas[7] ? colunas[7].innerText.trim() : "");
             
-            // Normaliza os valores capturados da tabela para a checagem exata
             const idSolTabelaLimpo = idSolicitacaoTabela.replace(/\D/g, '').replace(/^0+/, '');
             const raTabelaLimpo = raTabela.replace(/\D/g, '').replace(/^0+/, '');
 
-            // =========================================================================
-            // 2. REGRA DE EXCLUSÃO CRÍTICA: DESCONSIDERAR ALUNO ATUAL
-            // =========================================================================
             if ((idSolAtualLimpo && idSolTabelaLimpo === idSolAtualLimpo) || (raAtualLimpo && raTabelaLimpo === raAtualLimpo)) {
-                return; // Dá um "skip" (pula) esta iteração do forEach sem computar nada
+                return; 
             }
-            // =========================================================================
 
             const enderecoTabela = window.normalizarTexto(colunas[10].innerText || "");
             const detalhes = window.normalizarTexto(colunas[11].innerText || "");
             const status = window.normalizarTexto(colunas[12].innerText || "");
             
-            const LinhasValidas = !status.includes('CANCELADO') && !status.includes('ANALISE') && !status.includes('ANÁLISE') && !detalhes.includes('DEFICIEN') && !detalhes.includes('DEFICIÊN') && !detalhes.includes('CADEIRANTE') && !detalhes.includes('CADEIRA DE RODAS') && !detalhes.includes('AUTISMO') && !detalhes.includes('AUTISTA')
-             && !detalhes.includes('CASOS OMISSOS') && !detalhes.includes('ART.') && !detalhes.includes('ENCAMINHAD') && !detalhes.includes('PRIORIZAD') && !detalhes.includes('MANDADO') && !detalhes.includes('JUDICIAL');
+            // Definição estrita se este registro é fisicamente um irmão no mesmo número
+            const ehIrmao = enderecoTabela.includes(logradouroUpper) && regexNumero.test(enderecoTabela);
+            const emAtend = status.includes('EM ATENDIMENTO') || status.includes('DEFERIDO');
+            const indeferido = status.includes('INDEFERIDO') || (status.includes('CANCELADO') && (detalhes.includes('MUDANÇA DE ENDEREÇO') || detalhes.includes('ATENDIMENTO INDEVIDO'))); // Considera como indeferido se for cancelado por mudança de endereço, mesmo que o status seja "cancelado"
+            // Filtros originais restritivos do sistema
+            const atendeFiltrosPadrao = !status.includes('CANCELADO') && !status.includes('ANALISE') && !status.includes('ANÁLISE') && !detalhes.includes('DEFICIEN') && !detalhes.includes('DEFICIÊN') && !detalhes.includes('CADEIRANTE') && !detalhes.includes('CADEIRA DE RODAS') && !detalhes.includes('AUTISMO') && !detalhes.includes('AUTISTA') && !detalhes.includes('CASOS OMISSOS') && !detalhes.includes('ART.') && !detalhes.includes('ENCAMINHAD') && !detalhes.includes('PRIORIZAD') && !detalhes.includes('MANDADO') && !detalhes.includes('JUDICIAL');
+            
+            // Nova regra condicionada por você: Linha é válida se passar nos filtros normais OU se for comprovadamente um irmão
+            const LinhasValidas = ehIrmao || atendeFiltrosPadrao;
             
             if (LinhasValidas) {
-                resultadoFinal.totalAlunosRua++;
-                
-                if (detalhes.includes('DIFICULDADE DE ACESSO') && !status.includes('INDEFERIDO')) {
-                    resultadoFinal.historicoDificuldadeAcesso++;
-                }
-                if (!status.includes('INDEFERIDO') && (detalhes.includes('AREA RURAL') || detalhes.includes('ÁREA RURAL') || detalhes.includes('REA RURAL') || detalhes.includes('REA RURAL'))) {
-                    resultadoFinal.historicoAreaRural++;
-                }
-                if (!status.includes('INDEFERIDO') && (detalhes.includes('DISTANCIA MAIOR QUE 1500 METROS') || detalhes.includes('DISTÂNCIA MAIOR QUE 1500 METROS'))) {
-                    resultadoFinal.historicoDistMaior++;
-                }
-                if (status.includes('INDEFERIDO') && (detalhes.includes('NCIA MENOR QUE 1500') || detalhes.includes('DISTANCIA MENOR QUE 1500 METROS') || detalhes.includes('DISTÂNCIA MENOR QUE 1500 METROS'))) {
-                    resultadoFinal.historicoDistMenor++;
-                }
-                if (status.includes('INDEFERIDO') && (detalhes.includes('ESCOLA POR OPÇÃO') || detalhes.includes('ESCOLA DE OPÇAO') && detalhes.includes('ESCOLA POR OPCÃO') || detalhes.includes('ESCOLA DE OPCAO') || detalhes.includes('ESCOLA POR OP'))) {
-                    resultadoFinal.historicoEscolaOpcao++;
+                // Estatísticas gerais da rua só incrementam se o registro passar no filtro geral limpo
+                if (atendeFiltrosPadrao) {
+                    resultadoFinal.totalAlunosRua++;
+                    
+                    if (detalhes.includes('DIFICULDADE DE ACESSO') && !status.includes('INDEFERIDO')) {
+                        resultadoFinal.historicoDificuldadeAcesso++;
+                    }
+                    if (!status.includes('INDEFERIDO') && (detalhes.includes('AREA RURAL') || detalhes.includes('ÁREA RURAL') || detalhes.includes('REA RURAL'))) {
+                        resultadoFinal.historicoAreaRural++;
+                    }
+                    if (!status.includes('INDEFERIDO') && (detalhes.includes('DISTANCIA MAIOR QUE 1500 METROS') || detalhes.includes('DISTÂNCIA MAIOR QUE 1500 METROS'))) {
+                        resultadoFinal.historicoDistMaior++;
+                    }
+                    if (status.includes('INDEFERIDO') && (detalhes.includes('NCIA MENOR QUE 1500') || detalhes.includes('DISTANCIA MENOR QUE 1500 METROS') || detalhes.includes('DISTÂNCIA MENOR QUE 1500 METROS'))) {
+                        resultadoFinal.historicoDistMenor++;
+                    }
+                    if (status.includes('INDEFERIDO') && (detalhes.includes('ESCOLA POR OPÇÃO') || detalhes.includes('ESCOLA DE OPÇAO') || detalhes.includes('ESCOLA POR OP'))) {
+                        resultadoFinal.historicoEscolaOpcao++;
+                    }
                 }
 
-                if (enderecoTabela.includes(logradouroUpper) && regexNumero.test(enderecoTabela)) {
-                    resultadoFinal.irmaosAtendidos++;
+                // Ingestão no array de dados residenciais
+                if (ehIrmao) {
+                    // É considerado apto para deferimento se NÃO for cancelado/análise e se passar no filtro de motivos padrão
+                    const validoParaDeferir = emAtend;
+                    
+                    if (validoParaDeferir) {
+                        resultadoFinal.irmaosAtendidos++; 
+                    }else if (indeferido) {
+                        resultadoFinal.irmaosIndeferidos++;
+                    }
+
                     resultadoFinal.dadosIrmaos.push({
                         nome: nomeTabela,
                         ra: raTabela,
                         id_solicitacao: idSolicitacaoTabela,
-                        status_motivo: detalhes
+                        status: colunas[12].innerText.trim(), // preserva caixa original para exibição
+                        status_motivo: colunas[11].innerText.trim(),
+                        validoParaDeferir: validoParaDeferir
                     });
                 }
             }
         });
         
         doc.open(); doc.write(''); doc.close();
-        console.log(`[ASSISTENTE] 🌐 Fetch API Concluído | Alunos Validados (Ativos Filtrados): ${resultadoFinal.totalAlunosRua} (de ${linhasDeAlunos.length} linhas) | Dificuldade: ${resultadoFinal.historicoDificuldadeAcesso} | Área Rural: ${resultadoFinal.historicoAreaRural} | Distância Maior: ${resultadoFinal.historicoDistMaior} | Distância Menor: ${resultadoFinal.historicoDistMenor} | Irmãos no nº ${numeroStr}: ${resultadoFinal.irmaosAtendidos} -> ${urlVisivelParaLog}`);
-        
         return resultadoFinal;
     } catch (error) {
-        console.error(`[ASSISTENTE] ❌ Erro crítico ao analisar histórico da rua via Fetch API: ${urlVisivelParaLog}`, error);
+        console.error(`[ASSISTENTE] Erro no Fetch`, error);
         resultadoFinal.erroFetch = true;
         return resultadoFinal;
     }
@@ -2015,7 +2014,7 @@ window.abrirModalAssistente = async function() {
         opcoesMaisProx: '',
         opcoesMaisProxCount: 0,
         opcoesMaisProxItems: [],
-        forcarEtapa: null
+        fetchRealizado: false
     };
     
     // Salva as distâncias obtidas ou em erro no cache local para persistência.
@@ -3021,7 +3020,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
         return renderizarPasso();
     }
 
-    // ======= EXIBIÇÃO DE LOADING =======
+// ======= EXIBIÇÃO DE LOADING =======
     conteudo.innerHTML = `
         <h3 class="section-title text-warning">
             <span class="mdi mdi-highway" style="font-size: 22px; margin-right: 6px;"></span> Dificuldade de Acesso
@@ -3033,21 +3032,59 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
     `;
 
     // ======= EXECUÇÃO DO FETCH (PARTE 2) =======
-    // Puxa o nome da rua, número e unidade do contexto global do Assistente (ctx)
-    historicoRua = await window.analisarRuaFetch(historicoRua, ctx.endRua.split(',')[0].trim(), ctx.endNum, ctx.idUnidade);
+    if (!estado.fetchRealizado && !historicoRua.dadosIrmaos) {
+        historicoRua = await window.analisarRuaFetch(historicoRua, ctx.endRua.split(',')[0].trim(), ctx.endNum, ctx.idUnidade);
+        estado.fetchRealizado = true;
+    }
+
+    // Medidas de totais para regras de automação baseadas no fetch
+    let totalEncontrado = historicoRua.historicoDificuldadeAcesso + historicoRua.historicoAreaRural + (historicoRua.irmaosAtendidos || 0) + (historicoRua.irmaosIndeferidos || 0) + historicoRua.historicoDistMaior + historicoRua.historicoDistMenor + historicoRua.historicoEscolaOpcao;
+    
+    // Mudança crucial: hasIrmaos agora é verdadeiro se tiver atendidos OU indeferidos no mesmo número
+    let hasIrmaos = (historicoRua.irmaosAtendidos > 0) || (historicoRua.irmaosIndeferidos > 0);
+    let hasDificuldade = historicoRua.historicoDificuldadeAcesso > 0;
+    let hasAreaRural = historicoRua.historicoAreaRural > 0;
+
+    // =========================================================================
+    // NOVA REGRA 1: CONSENSO DE DIFICULDADE DE ACESSO (DEFERIMENTO AUTOMÁTICO)
+    // =========================================================================
+    if (!historicoRua.erroFetch && historicoRua.historicoDificuldadeAcesso >= 10 && (historicoRua.totalAlunosRua - historicoRua.historicoDificuldadeAcesso) < 9) {
+        salvarHistorico();
+        estado.dificuldadeAcesso = true;
+        
+        if (estado.escolaProximaUser !== false) {
+            estado.telaFinal = {
+                titulo: "DEFERIR",
+                mensagem: `Deferido automaticamente por consenso: Há um histórico massivo (${historicoRua.historicoDificuldadeAcesso} atendimentos) confirmando Dificuldade de Acesso nesta rua.`,
+                motivoAnalise: "DIFICULDADE DE ACESSO",
+                textoDetalhes: `Consenso de Dificuldade de Acesso (${historicoRua.historicoDificuldadeAcesso} alunos ativos).`
+            };
+        }
+        return renderizarPasso(); 
+    }
+
+    // =========================================================================
+    // NOVA REGRA 2: VAZIO ABSOLUTO (PULAR ETAPA PARA TELA FINAL DE INDEFERIDO)
+    // =========================================================================
+    const semMatchBancoLocal = !ctx.ruaMatch || (ctx.ruaMatch.resultado_motivo !== "DIFICULDADE DE ACESSO" && ctx.ruaMatch.resultado_motivo !== "AREA RURAL" && ctx.ruaMatch.resultado_motivo !== "ÁREA RURAL");
+    
+    if (!historicoRua.erroFetch && semMatchBancoLocal && !hasIrmaos && !hasDificuldade && !hasAreaRural) {
+        salvarHistorico();
+        estado.dificuldadeAcesso = false; 
+        
+        estado.telaFinal = { 
+            titulo: "INDEFERIR", 
+            mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções.",
+            textoDetalhes: "Nenhum registro encontrado: Esta via não está mapeada no Banco Local de Ruas e não possui nenhum outro aluno sendo atendido por Dificuldade de Acesso ou Área Rural."
+        };
+        return renderizarPasso(); 
+    }
 
     // ======= LÓGICA DE MENSAGENS VISUAIS =======
     let MsgDificuldadeAcesso = "";
     let alertasFetch = "";
-
     
-    let hasIrmaos = historicoRua.irmaosAtendidos > 0;
     let hasEscolaPorOpcao = historicoRua.historicoEscolaOpcao > 0;
-    
-    let totalEncontrado = historicoRua.historicoDificuldadeAcesso + historicoRua.historicoAreaRural + historicoRua.irmaosAtendidos + historicoRua.historicoDistMaior + historicoRua.historicoDistMenor + historicoRua.historicoEscolaOpcao;
-    
-    let hasDificuldade = historicoRua.historicoDificuldadeAcesso > 0;
-    let hasAreaRural = historicoRua.historicoAreaRural > 0;
     let hasDistMaior = historicoRua.historicoDistMaior > 0;
     let hasDistMenor = historicoRua.historicoDistMenor > 0;
     let destaqueSim = false;
@@ -3057,93 +3094,94 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
         destaqueSim = true;
         destaqueNao = false;
     }else{
-    if(!historicoRua.erroFetch && (totalEncontrado===0 || (!hasAreaRural && !hasDificuldade))){
-        destaqueSim = false;
-        destaqueNao = true;
-    }
+        if(!historicoRua.erroFetch && (totalEncontrado===0 || (!hasAreaRural && !hasDificuldade))){
+            destaqueSim = false;
+            destaqueNao = true;
+        }
     }
 
-    // Função auxiliar para incluir o plural nas mensagens de alertas
     const plural = (q, singular, pluralStr) => q > 1 ? pluralStr : singular;
     
     if (!historicoRua.erroFetch) {
-    if ((!ctx.ruaMatch || (ctx.ruaMatch.resultado_motivo !== "DIFICULDADE DE ACESSO" && ctx.ruaMatch.resultado_motivo !== "AREA RURAL" && ctx.ruaMatch.resultado_motivo !== "ÁREA RURAL")) && (!hasIrmaos && !hasDificuldade && !hasAreaRural)) {
-        MsgDificuldadeAcesso = "<div style='background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #ffeeba;'><b>A rua não está mapeada para atendermos por dificuldade de acesso. Além disso, não há ninguém sendo atendido por dificuldade de acesso nessa rua.</b></div>";
-    destaqueNao = true; destaqueSim = false;
-    }else{
-
-    if (hasIrmaos || hasDificuldade || hasAreaRural || totalEncontrado > 0) {
-        MsgDificuldadeAcesso = ""; 
-        alertasFetch += "<div style='background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #c3e6cb;'>";
-        
-        if (hasIrmaos) {
-            let linkIrmaos = "";
-            let textoMotivo = "";
-
-            if (historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length > 0) {
-                // Compila os motivos únicos para evitar repetições na tela (Ex: se ambos forem Área Rural)
-                const motivosUnicos = [...new Set(historicoRua.dadosIrmaos.map(i => i.status_motivo).filter(Boolean))];
-                textoMotivo = motivosUnicos.length > 0 ? ` (Motivo: <b>${motivosUnicos.join(' / ')}</b>)` : "";
-            }
-
-            if (historicoRua.irmaosAtendidos === 1 && historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length === 1) {
-                const idIrmao = historicoRua.dadosIrmaos[0].id_solicitacao;
-                linkIrmaos = `<a href="ficha_transporte.php?id_solicitacao=${idIrmao}" target="_blank" style="color: #155724; text-decoration: underline;"><b>1</b> outro passageiro na mesma residência</a>`;
-            } else {
-                const logradouroFormatado = encodeURIComponent(ctx.endRua.split(',')[0].trim());
-                const urlMultIrmaos = `solicitacoes_transporte_realizadas.php?endereco=${logradouroFormatado}&id_unidade_selecionada=${ctx.idUnidade}`;
-                linkIrmaos = `<a href="${urlMultIrmaos}" target="_blank" style="color: #155724; text-decoration: underline;"><b>${historicoRua.irmaosAtendidos}</b> outros passageiros na mesma residência</a>`;
-            }
-
-            alertasFetch += `<b><span class='mdi mdi-information-outline'></span> Já atendemos ${linkIrmaos}${textoMotivo}.</b><br>`;
-        }
-        
-        if (!hasIrmaos && (historicoRua.historicoDificuldadeAcesso > 6 || (historicoRua.historicoDificuldadeAcesso > 1 && (totalEncontrado - historicoRua.historicoDificuldadeAcesso) < 2))) {
-            alertasFetch += `<b><span class='mdi mdi-information-outline'></span> Há <b>${historicoRua.historicoDificuldadeAcesso}</b> ${plural(historicoRua.historicoDificuldadeAcesso, 'atendimento', 'atendimentos')} por <b>dificuldade de acesso</b> nesta rua.</b><br>`;
-        }
-        else if (!hasIrmaos && (historicoRua.historicoAreaRural > 6 || (historicoRua.historicoAreaRural > 1 && (totalEncontrado - historicoRua.historicoAreaRural) < 2))) {
-            alertasFetch += `<b><span class='mdi mdi-information-outline'></span> Há <b>${historicoRua.historicoAreaRural}</b> ${plural(historicoRua.historicoAreaRural, 'atendimento', 'atendimentos')} por <b>área rural</b> nesta rua.</b><br>`;
-        }
-        else if (hasDificuldade || hasAreaRural || hasEscolaPorOpcao || hasDistMaior || hasDistMenor) {
-             
-            if(!hasDificuldade && !hasAreaRural) {
-                alertasFetch += `<b><span class='mdi mdi-information-outline'></span> NINGUÉM é atendido por dificuldade de acesso nessa rua. Mas ${plural(totalEncontrado, 'foi encontrado', 'foram encontrados')}:</b><br><ul style='margin-top: 5px; margin-bottom: 0;'>`;
+        if (semMatchBancoLocal && (!hasIrmaos && !hasDificuldade && !hasAreaRural)) {
+            MsgDificuldadeAcesso = "<div style='background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #ffeeba;'><b>A rua não está mapeada para atendermos por dificuldade de acesso. Além disso, não há ninguém sendo atendido por dificuldade de acesso nessa rua.</b></div>";
             destaqueNao = true; destaqueSim = false;
-            } else {
-                alertasFetch += `<b><span class='mdi mdi-information-outline'></span> ${plural(totalEncontrado, 'Foi encontrado', 'Foram encontrados')} nesta rua:</b><br><ul style='margin-top: 5px; margin-bottom: 0;'>`;   
-            }
+        } else {
+            if (hasIrmaos || hasDificuldade || hasAreaRural || totalEncontrado > 0) {
+                MsgDificuldadeAcesso = ""; 
+                
+                // Define a cor do card baseado na existência de irmãos válidos ou apenas indeferidos
+                const corCard = (historicoRua.irmaosAtendidos > 0 || hasDificuldade || hasAreaRural) ? "background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;" : "background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;";
+                alertasFetch += `<div style='padding: 10px; border-radius: 5px; margin-bottom: 15px; ${corCard}'>`;
+                
+                if (hasIrmaos) {
+                    let linkIrmaos = "";
+                    let textoMotivo = "";
 
-            if (hasDificuldade) {
-                alertasFetch += `<li>E <b>${historicoRua.historicoDificuldadeAcesso}</b> ${plural(historicoRua.historicoDificuldadeAcesso, 'atendimento', 'atendimentos')} por <b>dificuldade de acesso</b>.</li>`;
-            }
-            if (hasAreaRural) {
-                alertasFetch += `<li>E <b>${historicoRua.historicoAreaRural}</b> ${plural(historicoRua.historicoAreaRural, 'atendimento', 'atendimentos')} por ser <b>área rural</b>.</li>`;
-            }
-            if (hasDistMaior) {
-                alertasFetch += `<li><b>${historicoRua.historicoDistMaior}</b> ${plural(historicoRua.historicoDistMaior, 'atendido', 'atendidos')} por distância maior que 1500m.</li>`;
-            }
-            if (hasDistMenor) {
-                alertasFetch += `<li><b>${historicoRua.historicoDistMenor}</b> ${plural(historicoRua.historicoDistMenor, 'indeferido', 'indeferidos')} por distância menor que 1500m.</li>`;
-            }
-            if (hasEscolaPorOpcao) {
-                alertasFetch += `<li><b>${historicoRua.historicoEscolaOpcao}</b> ${plural(historicoRua.historicoEscolaOpcao, 'indeferido', 'indeferidos')} por escola de opção.</li>`;
-            }
-            alertasFetch += "</ul>";
-        } 
-        
-        alertasFetch += "</div>";
-    }else if (totalEncontrado === 0) {
-        alertasFetch = "";
-        MsgDificuldadeAcesso = ""; 
-    }else if(!hasDificuldade && !hasAreaRural) {
+                    if (historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length > 0) {
+                        const motivosUnicos = [...new Set(historicoRua.dadosIrmaos.map(i => i.status_motivo).filter(Boolean))];
+                        textoMotivo = motivosUnicos.length > 0 ? ` (Motivos: <b>${motivosUnicos.join(' / ')}</b>)` : "";
+                    }
+
+                    const logradouroFormatado = encodeURIComponent(ctx.endRua.split(',')[0].trim());
+                    const urlMultIrmaos = `solicitacoes_transporte_realizadas.php?endereco=${logradouroFormatado}&id_unidade_selecionada=${ctx.idUnidade}`;
+                    
+                    // Texto do link compilando atendidos e indeferidos de forma transparente
+                    linkIrmaos = `<a href="${urlMultIrmaos}" target="_blank" style="color: inherit; text-decoration: underline;"><b>${historicoRua.irmaosAtendidos || 0} atendidos</b> e <b>${historicoRua.irmaosIndeferidos || 0} indeferidos</b> na mesma residência</a>`;
+
+                    alertasFetch += `<b><span class='mdi mdi-information-outline'></span> Histórico residencial: Encontramos ${linkIrmaos}${textoMotivo}.</b><br>`;
+                    
+                    // Se houver apenas irmãos indeferidos e nenhum histórico positivo na rua, sugere o botão "Não"
+                    if ((historicoRua.irmaosAtendidos || 0) === 0 && !hasDificuldade && !hasAreaRural) {
+                        destaqueNao = true; destaqueSim = false;
+                    }
+                }
+                
+                if (!hasIrmaos && (historicoRua.historicoDificuldadeAcesso > 6 || (historicoRua.historidadeDificuldadeAcesso > 1 && (totalEncontrado - historicoRua.historicoDificuldadeAcesso) < 2))) {
+                    alertasFetch += `<b><span class='mdi mdi-information-outline'></span> Há <b>${historicoRua.historicoDificuldadeAcesso}</b> ${plural(historicoRua.historicoDificuldadeAcesso, 'atendimento', 'atendimentos')} por <b>dificuldade de acesso</b> nesta rua.</b><br>`;
+                }
+                else if (!hasIrmaos && (historicoRua.historicoAreaRural > 6 || (historicoRua.historicoAreaRural > 1 && (totalEncontrado - historicoRua.historicoAreaRural) < 2))) {
+                    alertasFetch += `<b><span class='mdi mdi-information-outline'></span> Há <b>${historicoRua.historicoAreaRural}</b> ${plural(historicoRua.historicoAreaRural, 'atendimento', 'atendimentos')} por <b>área rural</b> nesta rua.</b><br>`;
+                }
+                else if (hasDificuldade || hasAreaRural || hasEscolaPorOpcao || hasDistMaior || hasDistMenor) {
+                     
+                    if(!hasDificuldade && !hasAreaRural) {
+                        alertasFetch += `<b><span class='mdi mdi-information-outline'></span> NINGUÉM é atendido por dificuldade de acesso/rural nessa rua. Mas constam no histórico:</b><br><ul style='margin-top: 5px; margin-bottom: 0;'>`;
+                    } else {
+                        alertasFetch += `<b><span class='mdi mdi-information-outline'></span> ${plural(totalEncontrado, 'Foi encontrado', 'Foram encontrados')} nesta rua:</b><br><ul style='margin-top: 5px; margin-bottom: 0;'>`;   
+                    }
+
+                    if (hasDificuldade) {
+                        alertasFetch += `<li><b>${historicoRua.historicoDificuldadeAcesso}</b> ${plural(historicoRua.historicoDificuldadeAcesso, 'atendimento', 'atendimentos')} por <b>dificuldade de acesso</b>.</li>`;
+                    }
+                    if (hasAreaRural) {
+                        alertasFetch += `<li><b>${historicoRua.historicoAreaRural}</b> ${plural(historicoRua.historicoAreaRural, 'atendimento', 'atendimentos')} por ser <b>área rural</b>.</li>`;
+                    }
+                    if (hasDistMaior) {
+                        alertasFetch += `<li><b>${historicoRua.historicoDistMaior}</b> ${plural(historicoRua.historicoDistMaior, 'atendido', 'atendidos')} por distância maior que 1500m.</li>`;
+                    }
+                    if (hasDistMenor) {
+                        alertasFetch += `<li><b>${historicoRua.historicoDistMenor}</b> ${plural(historicoRua.historicoDistMenor, 'indeferido', 'indeferidos')} por distância menor que 1500m.</li>`;
+                    }
+                    if (hasEscolaPorOpcao) {
+                        alertasFetch += `<li><b>${historicoRua.historicoEscolaOpcao}</b> ${plural(historicoRua.historicoEscolaOpcao, 'indeferido', 'indeferidos')} por escola de opção.</li>`;
+                    }
+                    alertasFetch += "</ul>";
+                } 
+                
+                alertasFetch += "</div>";
+            }else if (totalEncontrado === 0) {
+                alertasFetch = "";
+                MsgDificuldadeAcesso = ""; 
+            }else if(!hasDificuldade && !hasAreaRural) {
                 alertasFetch += `<b><span class='mdi mdi-information-outline'></span> NINGUÉM é atendido por dificuldade de acesso nessa rua.</b>`;
                 MsgDificuldadeAcesso = ""; 
-    }else{
-        alertasFetch = "";
-        MsgDificuldadeAcesso = ""; 
+            }else{
+                alertasFetch = "";
+                MsgDificuldadeAcesso = ""; 
+            }
+        }
     }
-}
-}
     
     // Substitui o Loading pelo conteúdo final gerado
     const loadingEl = document.getElementById('loading-historico-rua');
@@ -3154,7 +3192,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
             
         let btnSimClass = "btn btn-success";
         let btnNaoClass = "btn btn-danger";
-            if (destaqueSim) {
+        if (destaqueSim) {
             btnSimClass = "btn btn-success destaque";
             btnNaoClass = "btn btn-danger dimmed";
         } else if (destaqueNao) {
@@ -3204,7 +3242,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
     }
     
     return;
-        } //FIM DA etapa DIFICULDADE DE ACESSO
+} //FIM DA etapa DIFICULDADE DE ACESSO
 
         const excecaoGarantida = (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA' || estado.dificuldadeAcesso === true);
         let msgExcecao = "";
@@ -3233,7 +3271,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
                     estado.isEncaminhamentoDispensado = true;
                 }
 
-
+//etapa encaminhamento
 if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGarantida) && estado.ehEncaminhado === null) {
 
     if (estado.isEncaminhamentoDispensado) {
@@ -3245,18 +3283,16 @@ if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGa
 
     // >>> CHAMADA DO MOTOR DE COMPARAÇÃO CRUZADA <<<
     const dadosMaisRecentes = encaminhamentoResolvido?.maisRecente;
-    let objetoCompatibilidade = { compativel: false, escolaCompativel: false, enderecoCompativel: false };
+    let objetoCompatibilidade = { compativel: false, schoolCompativel: false, enderecoCompativel: false };
 
     if (dadosMaisRecentes) {
         const contextoSeguro = (typeof ctx !== 'undefined') ? ctx : (window.dadosGeograficos || {});
 
         if (typeof verificarCompatibilidadeEncaminhamento === 'function') {
-            // Guarda o objeto de retorno completo da validação cruzada
             objetoCompatibilidade = await verificarCompatibilidadeEncaminhamento(contextoSeguro, dadosMaisRecentes);
         }
 
         if (typeof montarHtmlEncaminhamento === 'function') {
-            // CORREÇÃO DE PARÂMETRO: Envia explicitamente as propriedades BOOLEANAS internas (.escolaCompativel, etc), e não o objeto truthy
             encaminhamentoResolvido.msgEncaminhamentoHtml = montarHtmlEncaminhamento(
                 dadosMaisRecentes, 
                 { 
@@ -3268,10 +3304,9 @@ if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGa
             );
         }
 
-        // CORREÇÃO LÓGICA E DE LOOP: Avalia se a propriedade booleana (.compativel) é de fato true, e não o objeto em si
         if (objetoCompatibilidade && objetoCompatibilidade.compativel === true) {
             salvarHistorico();
-            estado.ehEncaminhado = true; // Aplica a flag de interrupção ANTES de rodar a renderização em cascata
+            estado.ehEncaminhado = true; 
             estado.telaFinal = { 
                 titulo: "DEFERIR", 
                 textoDetalhes: `Encaminhado conforme arquivo ${dadosMaisRecentes.descricao || ''}`,
@@ -3290,8 +3325,99 @@ if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGa
     }
     // >>> FIM DA COMPARAÇÃO AUTOMÁTICA <<<
 
+
+    // =========================================================================
+    // EXECUÇÃO DO FETCH DO HISTÓRICO CASO NÃO SEJA ENCONTRADO ENCAMINHAMENTO NO BD
+    // =========================================================================
+    // Executa apenas se o fetch ainda NÃO foi feito e se a distância for maior que 1500m (não passou por Dificuldade de Acesso)
+    if (!estado.fetchRealizado && !historicoRua.dadosIrmaos) {
+        console.log("Iniciando fetch em busca de irmãos");
+        // Exibição de Loading temporário idêntico ao anterior
+        conteudo.innerHTML = `
+            <h3 class="section-title text-warning">
+                <span class="mdi mdi-highway" style="font-size: 22px; margin-right: 6px;"></span> Encaminhamento Escolar
+            </h3>
+            <div id="loading-historico-rua" style="text-align: center; padding: 30px;">
+                <span class="mdi mdi-loading mdi-spin" style="font-size: 32px; color: #1a73e8;"></span>
+                <p style="margin-top: 10px; color: #555; font-size: 13px;">Buscando por familiares ou passageiros ativos na mesma residência...</p>
+            </div>
+        `;
+
+        if (!historicoRua) {
+        historicoRua = { totalAlunosRua: 0, irmaosAtendidos: 0, dadosIrmaos: [], historicoDificuldadeAcesso: 0, historicoAreaRural: 0, historicoDistMaior: 0, historicoDistMenor: 0, historicoEscolaOpcao: 0 };
+        }
+
+        // Executa o fetch reaproveitando a função global
+        historicoRua = await window.analisarRuaFetch(historicoRua, ctx.endRua.split(',')[0].trim(), ctx.endNum, ctx.idUnidade);
+        estado.fetchRealizado = true; // Trava lógica para nunca mais disparar o fetch nesta sessão da ficha
+        console.log("Fetch concluído. Dados de irmãos encontrados:", historicoRua.dadosIrmaos);
+    }
+
+
+    // =========================================================================
+    // COMPILAÇÃO DOS COMPLEMENTOS VISUAIS DE IRMÃOS ENCONTRADOS
+    // =========================================================================
+    let htmlComplementarIrmaos = "";
+
+    if (historicoRua && historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length > 0) {
+        const qtdIrmaos = historicoRua.dadosIrmaos.length;
+        const totalAtendidos = historicoRua.irmaosAtendidos || 0;
+        const totalIndeferidos = historicoRua.irmaosIndeferidos || 0;
+        const temAtendidos = totalAtendidos > 0;
+
+        // Estilização dinâmica: Verde se houver irmão atendido, Amarelo/Laranja se houver apenas indeferidos
+        const bgCor = temAtendidos ? "#d4edda" : "#fff3cd";
+        const textoCor = temAtendidos ? "#155724" : "#856404";
+        const bordaCor = temAtendidos ? "#c3e6cb" : "#ffeeba";
+        const iconeMdi = temAtendidos ? "mdi-account-multiple-check" : "mdi-account-multiple-remove";
+
+        if (qtdIrmaos <= 3) {
+            // Caso 1: Até 3 irmãos -> Exibe dados detalhados, status e links
+            htmlComplementarIrmaos += `<div style='background-color: ${bgCor}; color: ${textoCor}; padding: 12px; border-radius: 5px; margin-bottom: 15px; border: 1px solid ${bordaCor};'>`;
+            htmlComplementarIrmaos += `<b><span class='mdi ${iconeMdi}'></span> Foi encontrado vínculo familiar direto na mesma residência (${totalAtendidos} atendido(s) / ${totalIndeferidos} indeferido(s)):</b>`;
+            htmlComplementarIrmaos += `<ul style='margin-top: 8px; margin-bottom: 0; padding-left: 20px;'>`;
+            
+            historicoRua.dadosIrmaos.forEach(irmao => {
+                const linkFicha = `ficha_transporte.php?id_solicitacao=${irmao.id_solicitacao}`;
+                // Badges dinâmicos para o status do irmão
+                const badgeClass = irmao.validoParaDeferir ? "badge-success" : "badge-danger";
+                
+                htmlComplementarIrmaos += `
+                    <li style="margin-bottom: 5px;">
+                        Aluno: <b>${irmao.nome}</b> (RA: ${irmao.ra})<br>
+                        Status: <span class="badge ${badgeClass}">${irmao.status}</span> | Motivo: <i>${irmao.status_motivo || 'Não informado'}</i><br>
+                        <a href="${linkFicha}" target="_blank" style="color: ${textoCor}; text-decoration: underline; font-size: 12px;"><b><span class="mdi mdi-open-in-new"></span> Abrir Ficha do Passageiro</b></a>
+                    </li>`;
+            });
+            
+            htmlComplementarIrmaos += `</ul></div>`;
+        } else {
+            // Caso 2: Mais de 3 irmãos -> Compila os Status e os Motivos em uma string simplificada
+            const statusUnicos = [...new Set(historicoRua.dadosIrmaos.map(i => i.status).filter(Boolean))];
+            const motivosUnicos = [...new Set(historicoRua.dadosIrmaos.map(i => i.status_motivo).filter(Boolean))];
+            
+            htmlComplementarIrmaos += `
+                <div style='background-color: ${bgCor}; color: ${textoCor}; padding: 12px; border-radius: 5px; margin-bottom: 15px; border: 1px solid ${bordaCor};'>
+                    <b><span class='mdi mdi-alert-circle-outline'></span> Histórico Massivo Residencial:</b><br>
+                    Há um total de <b>${qtdIrmaos}</b> passageiros históricos encontrados exatamente no mesmo endereço.<br>
+                    <span class="mdi mdi-chevron-right"></span> <b>Distribuição:</b> <span class="badge badge-success">${totalAtendidos} Atendidos</span> / <span class="badge badge-danger">${totalIndeferidos} Indeferidos ou Cancelados</span><br>
+                    <span class="mdi mdi-chevron-right"></span> <b>Status detectados no local:</b> ${statusUnicos.join(' / ')}<br>
+                    <span class="mdi mdi-chevron-right"></span> <b>Motivos compilados:</b> ${motivosUnicos.join(' / ')}<br>
+                    <div style="margin-top: 8px;">
+                        <a href="solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ctx.endRua.split(',')[0].trim())}&id_unidade_selecionada=${ctx.idUnidade}" target="_blank" style="color: ${textoCor}; text-decoration: underline;">
+                            <b><span class="mdi mdi-map-search"></span> Ver todos os cadastros do endereço</b>
+                        </a>
+                    </div>
+                </div>`;
+        }
+    }
+
+    // Renderiza a interface padrão mesclando o HTML original gerado pelo BD com as informações de irmãos descobertas
     const msgEncaminhamentoHtml = encaminhamentoResolvido.msgEncaminhamentoHtml || '';
-    conteudo.innerHTML = `${msgEncaminhamentoHtml}`;
+    conteudo.innerHTML = `
+        ${htmlComplementarIrmaos}
+        ${msgEncaminhamentoHtml}
+    `;
     
     vincularEventoUnico(document.getElementById('btn-enc-sim'), 'click', () => { 
         salvarHistorico(); 
@@ -3307,7 +3433,8 @@ if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGa
         renderizarPasso(); 
     });
     return;
-}
+}// etapa encaminhamento
+
     }
 
     window.abrindoModalAssistente = false;
