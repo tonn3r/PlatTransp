@@ -335,7 +335,25 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
         lines.forEach(linha => {
             const colunas = linha.querySelectorAll('td');
             
-            const idSolicitacaoTabela = (colunas[1] ? colunas[1].innerText.trim() : "") || (colunas[0] ? colunas[0].innerText.trim() : "");
+            // obter ID solicitacao
+            let idSolicitacaoTabela = "";
+                if (colunas[1]) {
+                    // 1ª Tentativa: Busca o valor de forma limpa de dentro da tag <strong> se ela existir
+                const strongEl = colunas[1].querySelector('strong');
+                if (strongEl) {
+        idSolicitacaoTabela = strongEl.innerText.trim();
+                } else {
+        // 2ª Tentativa: Se não houver strong, remove tudo a partir da primeira barra da data "/"
+        const textoPuro = colunas[1].innerText.trim();
+        idSolicitacaoTabela = textoPuro.split('/')[0].replace(/\D/g, '').trim();
+            }
+    
+                // Fallback de Segurança Máxima: Se o ID capturado ainda for longo demais, mantém apenas os 6 primeiros dígitos
+                if (idSolicitacaoTabela.length > 7) {
+            idSolicitacaoTabela = idSolicitacaoTabela.substring(0, 6);
+             }
+            }
+
             const raTabela = (colunas[7] ? colunas[7].innerText.trim() : "") || (colunas[6] ? colunas[6].innerText.trim() : "");
             const nomeTabela = colunas[8] ? colunas[8].innerText.trim() : (colunas[7] ? colunas[7].innerText.trim() : "");
             
@@ -549,15 +567,7 @@ function resolverEncaminhamentoAluno(doc, dbEncaminhamentos, ctx, estado) {
     return { raAluno, maisRecente, msgEncaminhamentoHtml };
 }
 
-/**
- * Cria o texto básico de instruções para o SOMARH, incluindo dados copiados e informações da ficha se aplicável.
- */
-/**
- * Cria o texto básico de instruções para o SOMARH.
- * @param {Object} ctx - Contexto da ficha
- * @param {Object} estado - Estado da aplicação
- * @param {Boolean} forcarOcultarDetalhes - Se true, não renderiza a infoExtraHtml (as listas de escolas e validações)
- */
+
 /**
  * Cria o texto básico de instruções para o SOMARH de forma condicional e programática.
  */
@@ -2061,6 +2071,7 @@ window.abrirModalAssistente = async function() {
         if (historico.length > 0) {
             if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
             estado = historico.pop();
+            estado.telaFinal = false;
             estado.buscandoOSRM = false; 
             renderizarPasso();
         }
@@ -2106,6 +2117,108 @@ window.abrirModalAssistente = async function() {
         }
 
         if (estado.telaFinal) {
+            
+            
+            // =========================================================================
+            // VERIFICAÇÃO DE IRMÃOS
+            // =========================================================================
+            if (historicoRua && historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length > 0 && estado.verificacaoIrmaosConcluida !== true) {
+                
+                const resultadoCalculado = estado.telaFinal.titulo; // "DEFERIR" ou "INDEFERIR"
+                const irmaosAtendidos = historicoRua.irmaosAtendidos || 0;
+                const irmaosIndeferidos = historicoRua.irmaosIndeferidos || 0;
+
+                // Condição 1: Assistente vai indeferir, mas existem irmãos sendo ATENDIDOS
+                // Condição 2: Assistente vai deferir, mas existem irmãos INDEFERIDOS
+                const deveIntervir = (resultadoCalculado.includes("INDEFERIR") && irmaosAtendidos > 0) || 
+                                     (resultadoCalculado.includes("DEFERIR") && irmaosIndeferidos > 0);
+
+                if (deveIntervir) {
+                    const qtdIrmaos = historicoRua.dadosIrmaos.length;
+                    const temAtendidos = irmaosAtendidos > 0;
+                    const bgCor = temAtendidos ? "#d4edda" : "#fff3cd";
+                    const textoCor = temAtendidos ? "#155724" : "#856404";
+                    const bordaCor = temAtendidos ? "#c3e6cb" : "#ffeeba";
+                    const iconeMdi = temAtendidos ? "mdi-account-multiple-check" : "mdi-account-multiple-remove";
+
+                    let htmlIrmaos = `<h3 class="section-title text-primary"><span class="mdi mdi-human-male-female" style="font-size: 22px; margin-right: 6px;"></span> Validação de Vínculo de Irmãos</h3>`;
+                    htmlIrmaos += `<div style='background-color: ${bgCor}; color: ${textoCor}; padding: 12px; border-radius: 5px; margin-bottom: 15px; border: 1px solid ${bordaCor};'>`;
+                    htmlIrmaos += `<b><span class='mdi ${iconeMdi}'></span> O Assistente calculou <span class="badge ${resultadoCalculado.includes('DEFERIR') ? 'badge-success' : 'badge-danger'}">${resultadoCalculado}</span>, porém detectou histórico familiar divergente no mesmo endereço (${irmaosAtendidos} atendido(s) / ${irmaosIndeferidos} indeferido(s)):</b>`;
+                    htmlIrmaos += `<ul style='margin-top: 8px; margin-bottom: 8px; padding-left: 20px;'>`;
+
+                    // Lista detalhada (limita exibição a até 3 itens de forma limpa)
+historicoRua.dadosIrmaos.slice(0, 3).forEach(irmao => {
+    // Captura segura e dinâmica do contexto da URL atual da página
+    const windowAlvo = document.defaultView || window;
+    const docAlvo = (typeof window.getAlvoDocument === 'function' ? window.getAlvoDocument() : windowAlvo.document);
+    const docHref = docAlvo?.location?.href || windowAlvo.location.href;
+    
+    // Determina dinamicamente o arquivo correto com base na versão que o usuário está usando
+    const nomeArquivoFicha = (docHref.includes('ficha_transporte.php') && !docHref.includes('nova_versao'))
+        ? 'ficha_transporte.php'
+        : 'ficha_transporte_nova_versao.php';
+
+    const linkFicha = `modulos/transporte_escolar/${nomeArquivoFicha}?id_solicitacao=${irmao.id_solicitacao}`;
+    const badgeClass = irmao.validoParaDeferir ? "badge-success" : "badge-danger";
+    
+    htmlIrmaos += `
+        <li style="margin-bottom: 5px; font-size: 13px;">
+            Aluno: <b>${irmao.nome}</b> (RA: ${irmao.ra})<br>
+            Status: <span class="badge ${badgeClass}">${irmao.status}</span> | Motivo: <i>${irmao.status_motivo || 'Não informado'}</i><br>
+            <a href="${linkFicha}" target="_blank" style="color: ${textoCor}; text-decoration: underline; font-size: 12px;"><b><span class="mdi mdi-open-in-new"></span> Abrir Ficha</b></a>
+        </li>`;
+});
+
+                    if (qtdIrmaos > 3) {
+                        htmlIrmaos += `<li><i>E mais ${qtdIrmaos - 3} passageiro(s) registrado(s) neste local.</i></li>`;
+                    }
+                    htmlIrmaos += `</ul></div>`;
+
+                    htmlIrmaos += `
+                        <p><b>Atenção:</b> Confirme se o passageiro atual realmente possui vínculo familiar direto com os alunos listados acima (verifique nomes dos pais, responsáveis e complemento do endereço).</p>
+                        <p>O aluno atual deve seguir o mesmo critério dos irmãos?</p>
+                        
+                        <div class="action-group" style="margin-top: 15px;">
+                            <button id="btn-irmao-sim" class="btn btn-primary"><span class="mdi mdi-check-all"></span> Sim, copiar análise dos irmãos</button>
+                            <button id="btn-irmao-nao" class="btn btn-secondary"><span class="mdi mdi-scale-balance"></span> Não, manter minha análise</button>
+                        </div>
+                    `;
+
+                    conteudo.innerHTML = htmlIrmaos;
+
+                    // Ação SIM: Segue a tendência majoritária/histórica dos irmãos encontrados
+                    vincularEventoUnico(document.getElementById('btn-irmao-sim'), 'click', () => {
+                        salvarHistorico();
+                        estado.verificacaoIrmaosConcluida = true;
+                        if (temAtendidos) {
+                            estado.telaFinal = { 
+                                titulo: "DEFERIR", 
+                                mensagem: "Deferido para acompanhar o histórico de atendimento ativo de irmão(s) residente(s) no mesmo endereço." 
+                            };
+                        } else {
+                            estado.telaFinal = { 
+                                titulo: "INDEFERIR", 
+                                mensagem: "Indeferido para acompanhar o histórico unificado de indeferimento familiar no mesmo endereço." 
+                            };
+                        }
+                        renderizarPasso();
+                    });
+
+                    // Ação NÃO: Ignora o critério de irmãos e mantém o cálculo feito anteriormente
+                    vincularEventoUnico(document.getElementById('btn-irmao-nao'), 'click', () => {
+                        salvarHistorico();
+                        estado.verificacaoIrmaosConcluida = true;
+                        renderizarPasso(); // Segue diretamente para a tela final previamente calculada
+                    });
+
+                    return; // Interrompe o fluxo para colher a resposta do usuário antes da tela final
+                }
+            }
+            // ===========fim da tela irmãos
+
+
+            
+            
             // Verifica comprovante se for mudança de endereço, mas apenas se o resultado for DEFERIDO ou nulo. (indeferimento não precisa de documento)
             if (isMudanca && estado.mudancaOk === null && !estado.telaFinal.titulo.includes('INDEFERIR')) {
                 conteudo.innerHTML = `
@@ -2999,7 +3112,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
         }
 
         //etapa DIFICULDADE DE ACESSO
-        if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuldadeAcesso === null) || (ctx.ehEJA && historicoRua.ehDificuldadeAcesso))) {
+if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuldadeAcesso === null) || (ctx.ehEJA && historicoRua.ehDificuldadeAcesso))) {
 
     // A avaliação automática baseada no Banco Local continua rodando imediatamente sem travar
     if (historicoRua.bloqueiaDificuldadeAcesso) {
@@ -3020,7 +3133,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
         return renderizarPasso();
     }
 
-// ======= EXIBIÇÃO DE LOADING =======
+    // ======= EXIBIÇÃO DE LOADING =======
     conteudo.innerHTML = `
         <h3 class="section-title text-warning">
             <span class="mdi mdi-highway" style="font-size: 22px; margin-right: 6px;"></span> Dificuldade de Acesso
@@ -3038,10 +3151,8 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
     }
 
     // Medidas de totais para regras de automação baseadas no fetch
-    let totalEncontrado = historicoRua.historicoDificuldadeAcesso + historicoRua.historicoAreaRural + (historicoRua.irmaosAtendidos || 0) + (historicoRua.irmaosIndeferidos || 0) + historicoRua.historicoDistMaior + historicoRua.historicoDistMenor + historicoRua.historicoEscolaOpcao;
+    let totalEncontrado = historicoRua.historicoDificuldadeAcesso + historicoRua.historicoAreaRural + historicoRua.historicoDistMaior + historicoRua.historicoDistMenor + historicoRua.historicoEscolaOpcao;
     
-    // Mudança crucial: hasIrmaos agora é verdadeiro se tiver atendidos OU indeferidos no mesmo número
-    let hasIrmaos = (historicoRua.irmaosAtendidos > 0) || (historicoRua.irmaosIndeferidos > 0);
     let hasDificuldade = historicoRua.historicoDificuldadeAcesso > 0;
     let hasAreaRural = historicoRua.historicoAreaRural > 0;
 
@@ -3068,7 +3179,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
     // =========================================================================
     const semMatchBancoLocal = !ctx.ruaMatch || (ctx.ruaMatch.resultado_motivo !== "DIFICULDADE DE ACESSO" && ctx.ruaMatch.resultado_motivo !== "AREA RURAL" && ctx.ruaMatch.resultado_motivo !== "ÁREA RURAL");
     
-    if (!historicoRua.erroFetch && semMatchBancoLocal && !hasIrmaos && !hasDificuldade && !hasAreaRural) {
+    if (!historicoRua.erroFetch && semMatchBancoLocal && !hasDificuldade && !hasAreaRural) {
         salvarHistorico();
         estado.dificuldadeAcesso = false; 
         
@@ -3093,8 +3204,8 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
     if(!historicoRua.erroFetch && (historicoRua.historicoDificuldadeAcesso > 6 || (historicoRua.historicoDificuldadeAcesso > 1 && (totalEncontrado - historicoRua.historicoDificuldadeAcesso) < 2))){
         destaqueSim = true;
         destaqueNao = false;
-    }else{
-        if(!historicoRua.erroFetch && (totalEncontrado===0 || (!hasAreaRural && !hasDificuldade))){
+    } else {
+        if(!historicoRua.erroFetch && (totalEncontrado === 0 || (!hasAreaRural && !hasDificuldade))){
             destaqueSim = false;
             destaqueNao = true;
         }
@@ -3103,44 +3214,20 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
     const plural = (q, singular, pluralStr) => q > 1 ? pluralStr : singular;
     
     if (!historicoRua.erroFetch) {
-        if (semMatchBancoLocal && (!hasIrmaos && !hasDificuldade && !hasAreaRural)) {
+        if (semMatchBancoLocal && (!hasDificuldade && !hasAreaRural)) {
             MsgDificuldadeAcesso = "<div style='background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #ffeeba;'><b>A rua não está mapeada para atendermos por dificuldade de acesso. Além disso, não há ninguém sendo atendido por dificuldade de acesso nessa rua.</b></div>";
             destaqueNao = true; destaqueSim = false;
         } else {
-            if (hasIrmaos || hasDificuldade || hasAreaRural || totalEncontrado > 0) {
+            if (hasDificuldade || hasAreaRural || totalEncontrado > 0) {
                 MsgDificuldadeAcesso = ""; 
                 
-                // Define a cor do card baseado na existência de irmãos válidos ou apenas indeferidos
-                const corCard = (historicoRua.irmaosAtendidos > 0 || hasDificuldade || hasAreaRural) ? "background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;" : "background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;";
+                const corCard = (hasDificuldade || hasAreaRural) ? "background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;" : "background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;";
                 alertasFetch += `<div style='padding: 10px; border-radius: 5px; margin-bottom: 15px; ${corCard}'>`;
                 
-                if (hasIrmaos) {
-                    let linkIrmaos = "";
-                    let textoMotivo = "";
-
-                    if (historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length > 0) {
-                        const motivosUnicos = [...new Set(historicoRua.dadosIrmaos.map(i => i.status_motivo).filter(Boolean))];
-                        textoMotivo = motivosUnicos.length > 0 ? ` (Motivos: <b>${motivosUnicos.join(' / ')}</b>)` : "";
-                    }
-
-                    const logradouroFormatado = encodeURIComponent(ctx.endRua.split(',')[0].trim());
-                    const urlMultIrmaos = `solicitacoes_transporte_realizadas.php?endereco=${logradouroFormatado}&id_unidade_selecionada=${ctx.idUnidade}`;
-                    
-                    // Texto do link compilando atendidos e indeferidos de forma transparente
-                    linkIrmaos = `<a href="${urlMultIrmaos}" target="_blank" style="color: inherit; text-decoration: underline;"><b>${historicoRua.irmaosAtendidos || 0} atendidos</b> e <b>${historicoRua.irmaosIndeferidos || 0} indeferidos</b> na mesma residência</a>`;
-
-                    alertasFetch += `<b><span class='mdi mdi-information-outline'></span> Histórico residencial: Encontramos ${linkIrmaos}${textoMotivo}.</b><br>`;
-                    
-                    // Se houver apenas irmãos indeferidos e nenhum histórico positivo na rua, sugere o botão "Não"
-                    if ((historicoRua.irmaosAtendidos || 0) === 0 && !hasDificuldade && !hasAreaRural) {
-                        destaqueNao = true; destaqueSim = false;
-                    }
-                }
-                
-                if (!hasIrmaos && (historicoRua.historicoDificuldadeAcesso > 6 || (historicoRua.historidadeDificuldadeAcesso > 1 && (totalEncontrado - historicoRua.historicoDificuldadeAcesso) < 2))) {
+                if (historicoRua.historicoDificuldadeAcesso > 6 || (historicoRua.historicoDificuldadeAcesso > 1 && (totalEncontrado - historicoRua.historicoDificuldadeAcesso) < 2)) {
                     alertasFetch += `<b><span class='mdi mdi-information-outline'></span> Há <b>${historicoRua.historicoDificuldadeAcesso}</b> ${plural(historicoRua.historicoDificuldadeAcesso, 'atendimento', 'atendimentos')} por <b>dificuldade de acesso</b> nesta rua.</b><br>`;
                 }
-                else if (!hasIrmaos && (historicoRua.historicoAreaRural > 6 || (historicoRua.historicoAreaRural > 1 && (totalEncontrado - historicoRua.historicoAreaRural) < 2))) {
+                else if (historicoRua.historicoAreaRural > 6 || (historicoRua.historicoAreaRural > 1 && (totalEncontrado - historicoRua.historicoAreaRural) < 2)) {
                     alertasFetch += `<b><span class='mdi mdi-information-outline'></span> Há <b>${historicoRua.historicoAreaRural}</b> ${plural(historicoRua.historicoAreaRural, 'atendimento', 'atendimentos')} por <b>área rural</b> nesta rua.</b><br>`;
                 }
                 else if (hasDificuldade || hasAreaRural || hasEscolaPorOpcao || hasDistMaior || hasDistMenor) {
@@ -3170,13 +3257,13 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
                 } 
                 
                 alertasFetch += "</div>";
-            }else if (totalEncontrado === 0) {
+            } else if (totalEncontrado === 0) {
                 alertasFetch = "";
                 MsgDificuldadeAcesso = ""; 
-            }else if(!hasDificuldade && !hasAreaRural) {
+            } else if(!hasDificuldade && !hasAreaRural) {
                 alertasFetch += `<b><span class='mdi mdi-information-outline'></span> NINGUÉM é atendido por dificuldade de acesso nessa rua.</b>`;
                 MsgDificuldadeAcesso = ""; 
-            }else{
+            } else {
                 alertasFetch = "";
                 MsgDificuldadeAcesso = ""; 
             }
@@ -3200,7 +3287,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
             btnSimClass = "btn btn-success dimmed";
         } 
 
-        if (!(hasIrmaos || hasDificuldade || hasAreaRural)) {
+        if (!(hasDificuldade || hasAreaRural)) {
             htmlComplementar += `
                 <p style="margin-top:10px;">O trajeto da residência até a escola possui alguma dificuldade de acesso excepcional?</p>
                 <p>São consideradas dificuldade de acesso:</p>
@@ -3326,96 +3413,10 @@ if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGa
     // >>> FIM DA COMPARAÇÃO AUTOMÁTICA <<<
 
 
-    // =========================================================================
-    // EXECUÇÃO DO FETCH DO HISTÓRICO CASO NÃO SEJA ENCONTRADO ENCAMINHAMENTO NO BD
-    // =========================================================================
-    // Executa apenas se o fetch ainda NÃO foi feito e se a distância for maior que 1500m (não passou por Dificuldade de Acesso)
-    if (!estado.fetchRealizado && !historicoRua.dadosIrmaos) {
-        console.log("Iniciando fetch em busca de irmãos");
-        // Exibição de Loading temporário idêntico ao anterior
-        conteudo.innerHTML = `
-            <h3 class="section-title text-warning">
-                <span class="mdi mdi-highway" style="font-size: 22px; margin-right: 6px;"></span> Encaminhamento Escolar
-            </h3>
-            <div id="loading-historico-rua" style="text-align: center; padding: 30px;">
-                <span class="mdi mdi-loading mdi-spin" style="font-size: 32px; color: #1a73e8;"></span>
-                <p style="margin-top: 10px; color: #555; font-size: 13px;">Buscando por familiares ou passageiros ativos na mesma residência...</p>
-            </div>
-        `;
-
-        if (!historicoRua) {
-        historicoRua = { totalAlunosRua: 0, irmaosAtendidos: 0, dadosIrmaos: [], historicoDificuldadeAcesso: 0, historicoAreaRural: 0, historicoDistMaior: 0, historicoDistMenor: 0, historicoEscolaOpcao: 0 };
-        }
-
-        // Executa o fetch reaproveitando a função global
-        historicoRua = await window.analisarRuaFetch(historicoRua, ctx.endRua.split(',')[0].trim(), ctx.endNum, ctx.idUnidade);
-        estado.fetchRealizado = true; // Trava lógica para nunca mais disparar o fetch nesta sessão da ficha
-        console.log("Fetch concluído. Dados de irmãos encontrados:", historicoRua.dadosIrmaos);
-    }
-
-
-    // =========================================================================
-    // COMPILAÇÃO DOS COMPLEMENTOS VISUAIS DE IRMÃOS ENCONTRADOS
-    // =========================================================================
-    let htmlComplementarIrmaos = "";
-
-    if (historicoRua && historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length > 0) {
-        const qtdIrmaos = historicoRua.dadosIrmaos.length;
-        const totalAtendidos = historicoRua.irmaosAtendidos || 0;
-        const totalIndeferidos = historicoRua.irmaosIndeferidos || 0;
-        const temAtendidos = totalAtendidos > 0;
-
-        // Estilização dinâmica: Verde se houver irmão atendido, Amarelo/Laranja se houver apenas indeferidos
-        const bgCor = temAtendidos ? "#d4edda" : "#fff3cd";
-        const textoCor = temAtendidos ? "#155724" : "#856404";
-        const bordaCor = temAtendidos ? "#c3e6cb" : "#ffeeba";
-        const iconeMdi = temAtendidos ? "mdi-account-multiple-check" : "mdi-account-multiple-remove";
-
-        if (qtdIrmaos <= 3) {
-            // Caso 1: Até 3 irmãos -> Exibe dados detalhados, status e links
-            htmlComplementarIrmaos += `<div style='background-color: ${bgCor}; color: ${textoCor}; padding: 12px; border-radius: 5px; margin-bottom: 15px; border: 1px solid ${bordaCor};'>`;
-            htmlComplementarIrmaos += `<b><span class='mdi ${iconeMdi}'></span> Foi encontrado vínculo familiar direto na mesma residência (${totalAtendidos} atendido(s) / ${totalIndeferidos} indeferido(s)):</b>`;
-            htmlComplementarIrmaos += `<ul style='margin-top: 8px; margin-bottom: 0; padding-left: 20px;'>`;
-            
-            historicoRua.dadosIrmaos.forEach(irmao => {
-                const linkFicha = `ficha_transporte.php?id_solicitacao=${irmao.id_solicitacao}`;
-                // Badges dinâmicos para o status do irmão
-                const badgeClass = irmao.validoParaDeferir ? "badge-success" : "badge-danger";
-                
-                htmlComplementarIrmaos += `
-                    <li style="margin-bottom: 5px;">
-                        Aluno: <b>${irmao.nome}</b> (RA: ${irmao.ra})<br>
-                        Status: <span class="badge ${badgeClass}">${irmao.status}</span> | Motivo: <i>${irmao.status_motivo || 'Não informado'}</i><br>
-                        <a href="${linkFicha}" target="_blank" style="color: ${textoCor}; text-decoration: underline; font-size: 12px;"><b><span class="mdi mdi-open-in-new"></span> Abrir Ficha do Passageiro</b></a>
-                    </li>`;
-            });
-            
-            htmlComplementarIrmaos += `</ul></div>`;
-        } else {
-            // Caso 2: Mais de 3 irmãos -> Compila os Status e os Motivos em uma string simplificada
-            const statusUnicos = [...new Set(historicoRua.dadosIrmaos.map(i => i.status).filter(Boolean))];
-            const motivosUnicos = [...new Set(historicoRua.dadosIrmaos.map(i => i.status_motivo).filter(Boolean))];
-            
-            htmlComplementarIrmaos += `
-                <div style='background-color: ${bgCor}; color: ${textoCor}; padding: 12px; border-radius: 5px; margin-bottom: 15px; border: 1px solid ${bordaCor};'>
-                    <b><span class='mdi mdi-alert-circle-outline'></span> Histórico Massivo Residencial:</b><br>
-                    Há um total de <b>${qtdIrmaos}</b> passageiros históricos encontrados exatamente no mesmo endereço.<br>
-                    <span class="mdi mdi-chevron-right"></span> <b>Distribuição:</b> <span class="badge badge-success">${totalAtendidos} Atendidos</span> / <span class="badge badge-danger">${totalIndeferidos} Indeferidos ou Cancelados</span><br>
-                    <span class="mdi mdi-chevron-right"></span> <b>Status detectados no local:</b> ${statusUnicos.join(' / ')}<br>
-                    <span class="mdi mdi-chevron-right"></span> <b>Motivos compilados:</b> ${motivosUnicos.join(' / ')}<br>
-                    <div style="margin-top: 8px;">
-                        <a href="solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ctx.endRua.split(',')[0].trim())}&id_unidade_selecionada=${ctx.idUnidade}" target="_blank" style="color: ${textoCor}; text-decoration: underline;">
-                            <b><span class="mdi mdi-map-search"></span> Ver todos os cadastros do endereço</b>
-                        </a>
-                    </div>
-                </div>`;
-        }
-    }
 
     // Renderiza a interface padrão mesclando o HTML original gerado pelo BD com as informações de irmãos descobertas
     const msgEncaminhamentoHtml = encaminhamentoResolvido.msgEncaminhamentoHtml || '';
     conteudo.innerHTML = `
-        ${htmlComplementarIrmaos}
         ${msgEncaminhamentoHtml}
     `;
     
