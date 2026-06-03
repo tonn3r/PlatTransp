@@ -159,114 +159,159 @@ window.aplicarLinkPesquisaEndereco = function() {
     const docAlvo = document;
 
     let elEndereco = null;
-    let textoOriginal = "";
+    let textoOriginalLink = "";
 
     const legends = Array.from(docAlvo.querySelectorAll('legend'));
-
-    const legendEnderecos = legends.find(
-        el => el.innerText.trim() === 'Endereço'
-    );
+    const legendEnderecos = legends.find(el => el.innerText.trim() === 'Endereço');
 
     if (legendEnderecos) {
         const container = legendEnderecos.closest('.set_inner');
-
         if (container) {
             elEndereco = container.querySelector('span.texto_dados b u');
-
             if (elEndereco) {
-                textoOriginal = elEndereco.innerText;
+                textoOriginalLink = elEndereco.innerText;
             }
         }
     }
 
-    if (!textoOriginal) {
+    if (!textoOriginalLink) {
         const elInput = docAlvo.getElementById('endereco');
-
         if (elInput) {
-            textoOriginal = elInput.value || elInput.innerText;
+            textoOriginalLink = elInput.value || elInput.innerText;
             elEndereco = elInput;
         }
     }
 
-    
-    if (!textoOriginal) return;
+    if (!textoOriginalLink) return;
 
-    let ruaLimpa = textoOriginal.split(',')[0].trim();
+    // ==========================================
+    // MONTAGEM DO ENDEREÇO COMPLETO PARA CÓPIA
+    // ==========================================
+    const inputRua = docAlvo.querySelector('input#endereco') || docAlvo.querySelector('input[name="endereco"]');
+    const inputNum = docAlvo.querySelector('input#endereco_numero_residencia') || docAlvo.querySelector('input[name="endereco_numero_residencia"]');
+    const inputBairro = docAlvo.querySelector('input#endereco_bairro') || docAlvo.querySelector('input[name="endereco_bairro"]');
+    const inputCep = docAlvo.querySelector('input#endereco_cep') || docAlvo.querySelector('input[name="cep"]');
 
-    const prefixos =
-        /^(RUA|R\.|AVENIDA|AV\.|AV|TRAVESSA|TRV\.|VIELA|PRA[ÇC]A|ESTRADA|ALAMEDA|RODOVIA|LADEIRA|BECO|MARGINAL)\s+/i;
+    let endRua = inputRua ? (inputRua.value || "").trim() : '';
+    let endNum = inputNum ? (inputNum.value || "").trim() : '';
+    let endBairro = inputBairro ? (inputBairro.value || "").trim() : '';
+    let endCep = inputCep ? (inputCep.value || "").trim() : '';
 
+    if (!endRua && elEndereco) {
+        endRua = elEndereco.innerText.split(',')[0].trim();
+    }
+
+    // Formatação: "Rua, Numero - Bairro (CEP: 00000-000)"
+    let textoEnderecoParaCopia = [endRua, endNum].filter(Boolean).join(", ");
+    if (endBairro) textoEnderecoParaCopia += ` - ${endBairro}`;
+    if (endCep) textoEnderecoParaCopia += ` (CEP: ${endCep})`;
+
+    // ==========================================
+    // PREPARAÇÃO DA URL DE PESQUISA (Rua Limpa)
+    // ==========================================
+    let ruaLimpa = textoOriginalLink.split(',')[0].trim();
+    const prefixos = /^(RUA|R\.|AVENIDA|AV\.|AV|TRAVESSA|TRV\.|VIELA|PRA[ÇC]A|ESTRADA|ALAMEDA|RODOVIA|LADEIRA|BECO|MARGINAL)\s+/i;
     ruaLimpa = ruaLimpa.replace(prefixos, '').trim();
-
     const particulas = /\b(DO|DA|DOS|DAS)\b/gi;
+    ruaLimpa = ruaLimpa.replace(particulas, '').replace(/\s+/g, ' ').trim();
 
-    ruaLimpa = ruaLimpa
-        .replace(particulas, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    const baseUrl =
-        window.location.href.split('ficha_transporte')[0];
-
+    const baseUrl = window.location.href.split('ficha_transporte')[0];
     const moduloPath = "modulos/transporte_escolar/";
+    const prefixo = baseUrl.includes(moduloPath) ? "" : moduloPath;
+    const urlPesquisa = `${baseUrl}${prefixo}solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ruaLimpa)}`;
 
-    const prefixo =
-        baseUrl.includes(moduloPath)
-            ? ""
-            : moduloPath;
+    // ==========================================
+    // CRIAÇÃO DO BOTÃO DE COPIAR
+    // ==========================================
+    const criarBotaoCopiar = (textoParaCopiar) => {
+        const btnCopy = docAlvo.createElement('span');
+        btnCopy.className = 'material-symbols-outlined btn-copiar-endereco-inject';
+        btnCopy.innerText = 'content_copy';
+        btnCopy.style.cssText = 'margin-right: 6px; cursor: pointer; color: #2980b9; font-size: 14px; vertical-align: middle; user-select: none; font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 16;';
+        btnCopy.title = `Copiar Endereço Completo`;
 
-    const urlPesquisa =
-        `${baseUrl}${prefixo}solicitacoes_transporte_realizadas.php?endereco=${encodeURIComponent(ruaLimpa)}`;
+        btnCopy.onclick = function(e) {
+            e.stopPropagation();
 
+            const handleSuccess = () => {
+                const corOriginal = btnCopy.style.color;
+                btnCopy.style.color = '#27ae60'; 
+                setTimeout(() => btnCopy.style.color = corOriginal, 1500);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textoParaCopiar).then(handleSuccess).catch(err => console.error(err));
+            } else {
+                try {
+                    const textArea = docAlvo.createElement("textarea");
+                    textArea.value = textoParaCopiar;
+                    textArea.style.position = "fixed";
+                    textArea.style.top = "0";
+                    textArea.style.left = "0";
+                    textArea.style.opacity = "0";
+                    docAlvo.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    if (docAlvo.execCommand('copy')) {
+                        handleSuccess();
+                    }
+                    docAlvo.body.removeChild(textArea);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        };
+        return btnCopy;
+    };
+
+    // Aplica as lógicas visuais e insere o botão de copiar e o link de pesquisa
     if (elEndereco.tagName === 'U') {
-
         elEndereco.style.cursor = 'pointer';
         elEndereco.style.color = '#2980b9';
-
-        elEndereco.title =
-            `Pesquisar outros alunos na rua: ${ruaLimpa}`;
+        elEndereco.title = `Pesquisar outros alunos na rua: ${ruaLimpa}`;
 
         if (!elEndereco.dataset.boundclick) {
             elEndereco.dataset.boundclick = 'true';
-            elEndereco.addEventListener('click', function() {
-                window.open(urlPesquisa, '_blank');
+            
+            elEndereco.addEventListener('click', function(e) {
+                if (e.target.tagName !== 'SPAN') {
+                    window.open(urlPesquisa, '_blank');
+                }
             });
+
+            if (!elEndereco.querySelector('.btn-copiar-endereco-inject')) {
+                const btnCopiar = criarBotaoCopiar(textoEnderecoParaCopia);
+                elEndereco.insertBefore(btnCopiar, elEndereco.firstChild);
+            }
         }
 
     } else {
-
         if (!docAlvo.getElementById('link-pesquisa-rua')) {
-
             const btnPesquisa = docAlvo.createElement('a');
-
             btnPesquisa.id = 'link-pesquisa-rua';
             btnPesquisa.href = urlPesquisa;
             btnPesquisa.target = '_blank';
+            btnPesquisa.innerHTML = ' 🔍 Pesquisar Rua';
+            btnPesquisa.style.cssText = 'font-size: 11px; margin-left: 10px; color: #2980b9; text-decoration: none; font-weight: bold; cursor: pointer;';
+            btnPesquisa.title = `Pesquisar outros alunos na rua: ${ruaLimpa}`;
 
-            btnPesquisa.innerHTML =
-                ' 🔍 Pesquisar Rua';
+            elEndereco.parentNode.insertBefore(btnPesquisa, elEndereco.nextSibling);
 
-            btnPesquisa.style.cssText =
-                'font-size: 11px; margin-left: 10px; color: #2980b9; text-decoration: none; font-weight: bold; cursor: pointer;';
-
-            btnPesquisa.title =
-                `Pesquisar outros alunos na rua: ${ruaLimpa}`;
-
-            elEndereco.parentNode.insertBefore(
-                btnPesquisa,
-                elEndereco.nextSibling
-            );
+            if (!elEndereco.parentNode.querySelector('.btn-copiar-endereco-inject')) {
+                const btnCopiar = criarBotaoCopiar(textoEnderecoParaCopia);
+                elEndereco.parentNode.insertBefore(btnCopiar, elEndereco);
+            }
         }
     }
 };
 
 // Adiciona botões de copiar ao lado do RA, Data de Nascimento, Nome da Mãe e do Pai
 window.adicionarBotoesCopiarDados = function() {
-    console.log("[COPIAR_DADOS] Iniciando a função adicionarBotoesCopiarDados...");
+    //console.log("[COPIAR_DADOS] Iniciando a função adicionarBotoesCopiarDados...");
 
     // Injeta a fonte do Material Symbols no cabeçalho
     if (!document.getElementById('google-material-symbols-font')) {
-        console.log("[COPIAR_DADOS] Injetando stylesheet do Material Symbols...");
+        //console.log("[COPIAR_DADOS] Injetando stylesheet do Material Symbols...");
         const linkElem = document.createElement('link');
         linkElem.id = 'google-material-symbols-font';
         linkElem.rel = 'stylesheet';
@@ -301,7 +346,7 @@ window.adicionarBotoesCopiarDados = function() {
                     const textoEtiqueta = tdEtiqueta.innerText.trim();
                     
                     if (labelsAlvo.includes(textoEtiqueta)) {
-                        console.log(`[COPIAR_DADOS] Coluna alvo identificada: '${textoEtiqueta}'`);
+                        //console.log(`[COPIAR_DADOS] Coluna alvo identificada: '${textoEtiqueta}'`);
 
                         // Como usamos .children, o index da linha de cima é exatamente o mesmo da linha de baixo
                         if (tdsValores[index]) {
@@ -309,13 +354,13 @@ window.adicionarBotoesCopiarDados = function() {
                             const textoOriginal = tdValor.innerText.trim();
 
                             if (textoOriginal === "") {
-                                console.log(`[COPIAR_DADOS] Valor de '${textoEtiqueta}' está vazio. Ícone não será inserido.`);
+                                //console.log(`[COPIAR_DADOS] Valor de '${textoEtiqueta}' está vazio. Ícone não será inserido.`);
                                 return;
                             }
 
                             // Verifica se o ícone já foi inserido
                             if (!tdValor.querySelector('.material-symbols-outlined')) {
-                                console.log(`[COPIAR_DADOS] Inserindo ícone para copiar o valor: '${textoOriginal}'`);
+                                //console.log(`[COPIAR_DADOS] Inserindo ícone para copiar o valor: '${textoOriginal}'`);
 
                                 const spanTexto = document.createElement('span');
                                 spanTexto.innerText = textoOriginal;
@@ -330,7 +375,7 @@ window.adicionarBotoesCopiarDados = function() {
                                     e.stopPropagation();
 
                                     const handleSuccess = () => {
-                                        console.log(`[COPIAR_DADOS] Sucesso ao copiar: '${textoOriginal}'`);
+                                        //console.log(`[COPIAR_DADOS] Sucesso ao copiar: '${textoOriginal}'`);
                                         const corOriginal = btnCopy.style.color;
                                         btnCopy.style.color = '#27ae60'; // Feedback visual (verde)
                                         setTimeout(() => btnCopy.style.color = corOriginal, 1500);
@@ -386,7 +431,7 @@ window.adicionarBotoesCopiarDados = function() {
         }
     });
 
-    console.log(`[COPIAR_DADOS] Execução finalizada. Tabelas estruturais analisadas com sucesso: ${tabelasValidasEncontradas}`);
+    //console.log(`[COPIAR_DADOS] Execução finalizada. Tabelas estruturais analisadas com sucesso: ${tabelasValidasEncontradas}`);
 };
 
 // Inicia o processo automático de captura de informações (como RA e status) e chama outras funções auxiliares quando a página da ficha é carregada.
@@ -626,7 +671,7 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
     if (!forcarRecalculo && CHAVE_REGISTRO) {
         const cacheSalvo = window.obterValorCachePersistente(NOME_CACHE_STORAGE, CHAVE_REGISTRO);
         if (cacheSalvo && cacheSalvo.dadosGeraisRota) {
-            console.log(`[ASSISTENTE] ⚡ Dados de rota recuperados do cache persistente para a ficha: ${idFicha}`);
+            //console.log(`[ASSISTENTE] ⚡ Dados de rota recuperados do cache persistente para a ficha: ${idFicha}`);
             
             // Restaura o SharedStore global da sessão com os dados cacheados
             window.setSharedStore({
@@ -727,7 +772,7 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
     }
 
     // Executa as chamadas inteligentes auto-calculáveis
-    distCoordObj = await window.calcularTrajetoOSRM(
+    distCoordObj = await window.calcularTrajeto(
         dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit,
         dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit
     );
@@ -735,7 +780,7 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
     if (typeof coordEndereco === 'string') {
         distEndObj = distCoordObj;
     } else if (distDiferentes) {
-        distEndObj = await window.calcularTrajetoOSRM(
+        distEndObj = await window.calcularTrajeto(
             coordEndereco.lat, coordEndereco.lon,
             dadosGeo.geoEscola_Latit, dadosGeo.geoEscola_Longit
         );
@@ -785,25 +830,40 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
             dadosGeraisRota: objRota
         };
         window.gerenciarEsalvarCachePersistente(NOME_CACHE_STORAGE, CHAVE_REGISTRO, dadosParaGravar);
-        console.log(`[ASSISTENTE] ✅ Dados salvos no cache com sucesso automático para ficha: ${idFicha}`);
+        //console.log(`[ASSISTENTE] ✅ Dados salvos no cache com sucesso automático para ficha: ${idFicha}`);
     }
 };
 
 
-window.atualizarInputDistancia = function(distanciaEmMetros) {
-    const docContexto = typeof docAlvo !== 'undefined' ? docAlvo : document;
-    const inputDist = docContexto.getElementById('input-assistente-dist');
+// Atualiza o input de distância do assistente (arredonda de 50 em 50 metros e ignora texto inválido).
+window.atualizarInputDistancia = function(distancia) {
+    if (distancia === 'endereco' || distancia === 'coordenada') return;
+    const numero = Number(distancia);
+    if (!Number.isFinite(numero) || numero <= 0) return;
     
-    if (inputDist) {
-        if (distanciaEmMetros === undefined || distanciaEmMetros === null || isNaN(distanciaEmMetros)) {
-            inputDist.value = "---";
+    // Define a base de arredondamento correta baseada na distância
+    let baseArred = 50; // Valor padrão para 300m a 999m
+    if (numero >= 10000) {
+        baseArred = 500;
+    } else if (numero >= 1000) {
+        baseArred = 100;
+    } else if (numero < 300) {
+        baseArred = 10;
+    }
+    
+    // Realiza o arredondamento matemático
+    const metrosArredondados = Math.round(numero / baseArred) * baseArred;
+       
+    const tentarAtualizar = (tentativa = 0) => {
+        const input = document.getElementById('input-assistente-dist');
+        if (!input) {
+            if (tentativa < 10) setTimeout(() => tentarAtualizar(tentativa + 1), 200);
             return;
         }
-        // Converte metros em formato km legível (ex: 1.25 km)
-        const valorKm = (distanciaEmMetros / 1000).toFixed(2);
-        inputDist.value = `${valorKm} km`;
-        console.log(`[ASSISTENTE] Campo input-assistente-dist atualizado para: ${valorKm} km`);
-    }
+        // Exibe no input o formato padrão "X.XX km" limpo e arredondado
+        input.value = metrosArredondados;
+    };
+    tentarAtualizar();
 };
 
 window.verificaArqDiastur = async function(documentoContexto = document) {

@@ -119,9 +119,6 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
 };
 
 // Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
-// Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
-// Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
-// Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
 window.sincronizarMapaECoordenadas = async function(docAlvo) {
     let urlOrigem = docAlvo.location ? docAlvo.location.href : window.location.href;
     let idSolInput = docAlvo.querySelector('input[name="id_solicitacao"]') || docAlvo.querySelector('input[name="id"]');
@@ -244,7 +241,7 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
                 }
 
                 // Invoca a verificação dinâmica. Caso o SDK siga nulo por falha das chaves, urlIframeFallback garantirá a rota e os pins no iframe de forma nativa e estável!
-                window.gerarMapaComTrajetoEEscolas(iframeAtual, coordenadaOrigemCalculada, coordenadaDestinoCalculada, urlIframeFallback);
+                window.gerarMapa(iframeAtual, coordenadaOrigemCalculada, coordenadaDestinoCalculada, urlIframeFallback);
                 setLinkHref(urlLinkBotao);
 
                 if (atualizarLista && typeof window.atualizarListaEscolasDinamicamente === 'function') {
@@ -405,9 +402,11 @@ function carregarSDKGoogleMaps(apiKey) {
 
 // --- SECTION: GOOGLE MAPS / OSRM ROUTING CALCULATION ---
 // Calcula o trajeto (distância da rota) de um ponto ao outro via Google Maps SDK ou servidor OSRM (como fallback).
-window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDest, profileIgnored = 'foot', signal = null) {
+window._pendingTrajetos = window._pendingTrajetos || {};
+
+window.calcularTrajeto = async function(latOrigin, lonOrigin, latDest, lonDest, profileIgnored = 'foot', signal = null) {
     if (!latOrigin || !lonOrigin || !latDest || !lonDest) return null;
-    
+
     const STORAGE_KEY_GLOBAL = 'plattransp_global_routes_cache';
     const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
     
@@ -417,183 +416,166 @@ window.calcularTrajetoOSRM = async function(latOrigin, lonOrigin, latDest, lonDe
 
     const pesosFontes = { 'GOOGLE': 3, 'OSRM': 2, 'HAVERSINE': 1 };
 
-    // Sub-função interna para executar o cálculo real para um perfil específico
-    const executarCalculoParaPerfil = async (perfilAlvo) => {
-        const googleMode = perfilAlvo === 'foot' ? 'WALKING' : 'DRIVING';
-        const chaveCache = `${modoMapa}_${googleMode}_${latOrigin},${lonOrigin}_UE_${idUnidadeDestino}`;
-        const dadosEmCacheValido = window.obterValorCachePersistente(STORAGE_KEY_GLOBAL, chaveCache);
-        
-        // CORREÇÃO 1: Se houver GOOGLE ou OSRM válidos no cache, usa-os imediatamente. 
-        // Isso evita que o sistema re-execute e caia em fallback se a rede oscilar.
-        if (dadosEmCacheValido && (dadosEmCacheValido.fonte === 'GOOGLE' || dadosEmCacheValido.fonte === 'OSRM')) {
-            return dadosEmCacheValido;
-        }
+    // MÁGICA DE OTIMIZAÇÃO: Promise Coalescing (Evita Race Condition e múltiplas chamadas simultâneas)
+    const cacheExecucaoKey = `${latOrigin},${lonOrigin}_${latDest},${lonDest}_${profileIgnored}`;
+    
+    if (window._pendingTrajetos[cacheExecucaoKey]) {
+        return window._pendingTrajetos[cacheExecucaoKey];
+    }
 
-        const salvarSeguroCache = (novoResultado) => {
-            if (dadosEmCacheValido && dadosEmCacheValido.fonte) {
-                const pesoAtual = pesosFontes[dadosEmCacheValido.fonte] || 0;
-                const pesoNovo = pesosFontes[novoResultado.fonte] || 0;
-                if (pesoAtual > pesoNovo) {
-                    return dadosEmCacheValido;
+    // Envolve a lógica inteira num cache temporário para outras funções "pegarem carona"
+    const promessaCalculo = (async () => {
+        const executarCalculoParaPerfil = async (perfilAlvo) => {
+            const googleMode = perfilAlvo === 'foot' ? 'WALKING' : 'DRIVING';
+            const chaveCache = `${modoMapa}_${googleMode}_${latOrigin},${lonOrigin}_UE_${idUnidadeDestino}`;
+            const dadosEmCacheValido = window.obterValorCachePersistente(STORAGE_KEY_GLOBAL, chaveCache);
+            
+            if (dadosEmCacheValido && (dadosEmCacheValido.fonte === 'GOOGLE' || dadosEmCacheValido.fonte === 'OSRM')) {
+                return dadosEmCacheValido;
+            }
+
+            const salvarSeguroCache = (novoResultado) => {
+                if (dadosEmCacheValido && dadosEmCacheValido.fonte) {
+                    const pesoAtual = pesosFontes[dadosEmCacheValido.fonte] || 0;
+                    const pesoNovo = pesosFontes[novoResultado.fonte] || 0;
+                    if (pesoAtual > pesoNovo) return dadosEmCacheValido;
+                }
+                window.gerenciarEsalvarCachePersistente(STORAGE_KEY_GLOBAL, chaveCache, novoResultado);
+                return novoResultado;
+            };
+
+            const chavesDisponiveis = [
+                { key: window.apiKeyGoogle,  label: "Chave Google 1" },
+                { key: window.apiKeyGoogle2, label: "Chave Google 2" },
+                { key: window.apiKeyGoogle3, label: "Chave Google 3" }
+            ];
+            
+            let dadosRoteamento = null;
+            let googleSucesso = false;
+
+            if (signal && signal.aborted) return null;
+
+            for (const item of chavesDisponiveis) {
+                if (!verificarEIncrementarCotaGoogle(item.key, item.label)) continue; 
+                const carregouSDK = await carregarSDKGoogleMaps(item.key);
+                if (!carregouSDK) continue;
+
+                try {
+                    const resultadoDirecao = await new Promise((resolve, reject) => {
+                        const timeoutProtecao = setTimeout(() => reject('TIMEOUT_API_NOT_ACTIVATED'), 5000);
+                        
+                        if (!window.google || !window.google.maps || !window.google.maps.DirectionsService) {
+                            clearTimeout(timeoutProtecao);
+                            return reject('SDK_INCOMPLETA');
+                        }
+
+                        if (signal && signal.aborted) {
+                            clearTimeout(timeoutProtecao);
+                            return reject('AbortError');
+                        }
+
+                        try {
+                            const directionsService = new google.maps.DirectionsService();
+                            directionsService.route({
+                                origin: new google.maps.LatLng(latOrigin, lonOrigin),
+                                destination: new google.maps.LatLng(latDest, lonDest),
+                                travelMode: google.maps.TravelMode[googleMode]
+                            }, (response, status) => {
+                                clearTimeout(timeoutProtecao);
+                                if (status === 'OK') {
+                                    resolve(response.routes[0].legs[0].distance.value);
+                                } else {
+                                    reject(status);
+                                }
+                            });
+                        } catch (e) {
+                            clearTimeout(timeoutProtecao);
+                            reject(e);
+                        }
+                    });
+
+                    dadosRoteamento = Math.round(resultadoDirecao);
+                    googleSucesso = true;
+                    break; 
+                } catch (erroCapturado) {
+                    const erroStr = (erroCapturado && erroCapturado.name) ? erroCapturado.name : String(erroCapturado);
+                    if (erroStr === 'AbortError') return null; 
+                    if (erroStr === 'OVER_QUERY_LIMIT' || erroStr === 'REQUEST_DENIED' || erroStr === 'TIMEOUT_API_NOT_ACTIVATED' || erroStr === 'SDK_INCOMPLETA') {
+                        marcarChaveComoBloqueada(item.key);
+                    }
                 }
             }
-            window.gerenciarEsalvarCachePersistente(STORAGE_KEY_GLOBAL, chaveCache, novoResultado);
-            return novoResultado;
+
+            if (googleSucesso && dadosRoteamento !== null) {
+                return salvarSeguroCache({ distancia: dadosRoteamento, fonte: 'GOOGLE' });
+            }
+
+            // --- FALLBACK 1: OSRM ---
+            try {
+                const url = `https://router.project-osrm.org/route/v1/${perfilAlvo}/${lonOrigin},${latOrigin};${lonDest},${latDest}?overview=false`;
+                const fetchOptions = signal ? { signal } : {};
+                const response = await fetch(url, fetchOptions);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                        return salvarSeguroCache({ distancia: Math.round(data.routes[0].distance), fonte: 'OSRM' });
+                    }
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') return null;
+            }
+
+            // --- FALLBACK 2: HAVERSINE ---
+            return salvarSeguroCache({ 
+                distancia: window.calcularDistanciaHaversine(latOrigin, lonOrigin, latDest, lonDest), 
+                fonte: 'HAVERSINE' 
+            });
         };
 
-        const chavesDisponiveis = [
-            { key: window.apiKeyGoogle,  label: "Chave Google 1" },
-            { key: window.apiKeyGoogle2, label: "Chave Google 2" },
-            { key: window.apiKeyGoogle3, label: "Chave Google 3" }
-        ];
-        
-        let dadosRoteamento = null;
-        let googleSucesso = false;
+        const resultadoFoot = await executarCalculoParaPerfil('foot');
+        if (!resultadoFoot) return null;
 
-        if (signal && signal.aborted) {
-            console.warn("[Roteamento] Ignorando cálculo pois a requisição já foi abortada pelo assistente.");
-            return null;
-        }
+        let usarExcecaoCarro = false;
+        let resultadoCarro = null;
 
-        for (const item of chavesDisponiveis) {
-            if (!verificarEIncrementarCotaGoogle(item.key, item.label)) continue; 
-            const carregouSDK = await carregarSDKGoogleMaps(item.key);
-            if (!carregouSDK) continue;
-
-            try {
-                const resultadoDirecao = await new Promise((resolve, reject) => {
-                    // CORREÇÃO 2: Aumentado de 3500ms para 5000ms devido à lentidão da API depreciada do Google
-                    const timeoutProtecao = setTimeout(() => reject('TIMEOUT_API_NOT_ACTIVATED'), 5000);
-                    
-                    if (!window.google || !window.google.maps || !window.google.maps.DirectionsService) {
-                        clearTimeout(timeoutProtecao);
-                        return reject('SDK_INCOMPLETA');
-                    }
-
-                    if (signal && signal.aborted) {
-                        clearTimeout(timeoutProtecao);
-                        return reject('AbortError');
-                    }
-
-                    try {
-                        const directionsService = new google.maps.DirectionsService();
-                        directionsService.route({
-                            origin: new google.maps.LatLng(latOrigin, lonOrigin),
-                            destination: new google.maps.LatLng(latDest, lonDest),
-                            travelMode: google.maps.TravelMode[googleMode]
-                        }, (response, status) => {
-                            clearTimeout(timeoutProtecao);
-                            if (status === 'OK') {
-                                resolve(response.routes[0].legs[0].distance.value);
-                            } else {
-                                reject(status);
-                            }
-                        });
-                    } catch (e) {
-                        clearTimeout(timeoutProtecao);
-                        reject(e);
-                    }
-                });
-
-                dadosRoteamento = Math.round(resultadoDirecao);
-                googleSucesso = true;
-                break; 
-            } catch (erroCapturado) {
-                const erroStr = (erroCapturado && erroCapturado.name) ? erroCapturado.name : String(erroCapturado);
-
-                if (erroStr === 'AbortError') {
-                    console.warn("[Google Maps] Requisição de trajeto abortada intencionalmente.");
-                    return null; 
-                }
-
-                if (erroStr === 'OVER_QUERY_LIMIT' || erroStr === 'REQUEST_DENIED' || erroStr === 'TIMEOUT_API_NOT_ACTIVATED' || erroStr === 'SDK_INCOMPLETA') {
-                    marcarChaveComoBloqueada(item.key);
-                    console.log(`Chave ${item.label} desativada neste ciclo devido a: ${erroStr}`);
-                } else {
-                    console.error(`Erro na tentativa com ${item.label}:`, erroCapturado);
+        if (resultadoFoot.distancia > 10000) {
+            resultadoCarro = await executarCalculoParaPerfil('driving');
+            if (resultadoCarro) {
+                if (resultadoCarro.distancia < 5000 || resultadoCarro.distancia < (resultadoFoot.distancia / 2)) {
+                    usarExcecaoCarro = true;
                 }
             }
         }
 
-        if (googleSucesso && dadosRoteamento !== null) {
-            return salvarSeguroCache({ distancia: dadosRoteamento, fonte: 'GOOGLE' });
+        let distanciaBruta = usarExcecaoCarro && resultadoCarro ? resultadoCarro.distancia : resultadoFoot.distancia;
+        let fonteFinal = usarExcecaoCarro && resultadoCarro ? resultadoCarro.fonte : resultadoFoot.fonte;
+        let modoFinal = usarExcecaoCarro && resultadoCarro ? 'driving' : 'foot';
+
+        let distanciaArredondada;
+        if (distanciaBruta < 300) {
+            distanciaArredondada = Math.round(distanciaBruta / 10) * 10;
+        } else if (distanciaBruta >= 1000) {
+            distanciaArredondada = Math.round(distanciaBruta / 100) * 100;
+        } else {
+            distanciaArredondada = Math.round(distanciaBruta / 50) * 50;
         }
 
-        // --- FALLBACK 1: OSRM ---
-        try {
-            const url = `https://router.project-osrm.org/route/v1/${perfilAlvo}/${lonOrigin},${latOrigin};${lonDest},${latDest}?overview=false`;
-            const fetchOptions = signal ? { signal } : {};
-            const response = await fetch(url, fetchOptions);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                    return salvarSeguroCache({ distancia: Math.round(data.routes[0].distance), fonte: 'OSRM' });
-                }
-            }
-        } catch (e) {
-            if (e.name === 'AbortError') {
-                console.warn("[OSRM] Requisição cancelada via AbortController.");
-                return null;
-            }
-            console.log("Erro ao calcular rota via OSRM: " + e.name + " - " + e.message);
-        }
-
-        // --- FALLBACK 2: HAVERSINE ---
-        console.log("Ambos os métodos de roteamento falharam ou foram bloqueados. Utilizando distância Haversine de segurança.");
-        return salvarSeguroCache({ 
-            distancia: window.calcularDistanciaHaversine(latOrigin, lonOrigin, latDest, lonDest), 
-            fonte: 'HAVERSINE' 
-        });
-    };
-
-    // --- LÓGICA DE AUTOMATIZAÇÃO DA EXCEÇÃO DE CARRO ---
-    const resultadoFoot = await executarCalculoParaPerfil('foot');
-    if (!resultadoFoot) return null;
-
-    let usarExcecaoCarro = false;
-    let resultadoCarro = null;
-
-    if (resultadoFoot.distancia > 10000) {
-        resultadoCarro = await executarCalculoParaPerfil('driving');
-        if (resultadoCarro) {
-            if (resultadoCarro.distancia < 5000 || resultadoCarro.distancia < (resultadoFoot.distancia / 2)) {
-                usarExcecaoCarro = true;
-            }
-        }
-    }
-
-    // Define os valores brutos finais baseados na exceção
-    let distanciaBruta = usarExcecaoCarro && resultadoCarro ? resultadoCarro.distancia : resultadoFoot.distancia;
-    let fonteFinal = usarExcecaoCarro && resultadoCarro ? resultadoCarro.fonte : resultadoFoot.fonte;
-    let modoFinal = usarExcecaoCarro && resultadoCarro ? 'driving' : 'foot';
-
-    // Nova Lógica de Arredondamento Personalizado
-    let distanciaArredondada;
-    if (distanciaBruta < 300) {
-        // Abaixo de 300: arredondar de 10 em 10
-        distanciaArredondada = Math.round(distanciaBruta / 10) * 10;
-    } else if (distanciaBruta >= 1000) {
-        // A partir de 1000: arredondar de 100 em 100
-        distanciaArredondada = Math.round(distanciaBruta / 100) * 100;
-    } else {
-        // Restante (300 a 999): arredondar de 50 em 50
-        distanciaArredondada = Math.round(distanciaBruta / 50) * 50;
-    }
-
-    if (usarExcecaoCarro && resultadoCarro) {
-        console.log(`Exceção aplicada: Distância de carro (${resultadoCarro.distancia}m) utilizada devido à extensão do trajeto a pé.`);
         return {
             distancia: distanciaArredondada,
             fonte: fonteFinal,
             modoUtilizado: modoFinal
         };
-    }
+    })();
 
-    return {
-        distancia: distanciaArredondada,
-        fonte: fonteFinal,
-        modoUtilizado: modoFinal
-    };
+    // Armazena a promessa no Objeto Global até ela finalizar
+    window._pendingTrajetos[cacheExecucaoKey] = promessaCalculo;
+    
+    try {
+        return await promessaCalculo;
+    } finally {
+        // Ao finalizar ou falhar, limpa do array temporário
+        delete window._pendingTrajetos[cacheExecucaoKey];
+    }
 };
 
 // --- SECTION: GOOGLE MAPS / NOMINATIM GEOCODING ---
@@ -765,7 +747,7 @@ window.obterEnderecoPorCoordenadas = async function(latitude, longitude) {
     }
     return googleSucesso ? enderecoEncontrado : null;
 };
-window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino, urlFallbackIframe) {
+window.gerarMapa = async function(iframeAtual, origem, destino, urlFallbackIframe) {
     // Caso o SDK do Google não esteja carregado ou falte dados geográficos fundamentais, aciona o Fallback de URLs estáticas
     if (!window.google || !window.google.maps || !origem.lat || !destino.lat) {
         console.warn("[gerarMapa] SDK do Google Maps ausente ou dados incompletos. Usando fallback de URL estática.");
@@ -802,16 +784,19 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
         const idContainerDinamico = "google-maps-container-dinamico";
         let elementoMapa = iframeAtual.parentNode.querySelector(`#${idContainerDinamico}`);
 
-        // Se o contêiner dinâmico ainda não existe, cria-se um espelho perfeito com as dimensões do iframe original
-        if (!elementoMapa) {
-            elementoMapa = document.createElement("div");
-            elementoMapa.id = idContainerDinamico;
-            elementoMapa.style.width = iframeAtual.style.width || iframeAtual.width || "100%";
-            elementoMapa.style.height = iframeAtual.style.height || iframeAtual.height || "400px";
-            elementoMapa.style.borderRadius = iframeAtual.style.borderRadius || "4px";
-            elementoMapa.style.border = "1px solid #ccc";
-            iframeAtual.parentNode.insertBefore(elementoMapa, iframeAtual);
+        // Se o mapa antigo já existe no DOM, remova-o para evitar conflitos de renderização e sobreposição de Canvas
+        if (elementoMapa) {
+            elementoMapa.remove();
         }
+
+        // Agora, SEMPRE criamos um contêiner limpo
+        elementoMapa = document.createElement("div");
+        elementoMapa.id = idContainerDinamico;
+        elementoMapa.style.width = iframeAtual.style.width || iframeAtual.width || "100%";
+        elementoMapa.style.height = iframeAtual.style.height || iframeAtual.height || "400px";
+        elementoMapa.style.borderRadius = iframeAtual.style.borderRadius || "4px";
+        elementoMapa.style.border = "1px solid #ccc";
+        iframeAtual.parentNode.insertBefore(elementoMapa, iframeAtual);
 
         // Oculta o iframe nativo para dar lugar à renderização rica por objetos JavaScript
         iframeAtual.style.display = "none";
@@ -1126,7 +1111,7 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
 
                 // Função auxiliar em tempo de execução para recuperar e formatar dinamicamente a distância estruturada
                 const obterTextoDistancia = async () => {
-                    if (escola.distanciaGoogleText) return verificarPrependDistancia(school.distanciaGoogleText, "google"); // Mantido school conforme original
+                    if (escola.distanciaGoogleText) return verificarPrependDistancia(escola.distanciaGoogleText, "google"); 
                     if (escola.distanciaReal) return verificarPrependDistancia(escola.distanciaReal, escola.fonteDistancia);
                     
                     if (window.obterValorCachePersistente) {
@@ -1135,11 +1120,11 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
                     }
 
                     // Se não estiver em cache rápido, aciona seu interceptor/calculador central OSRM/Google/Haversine
-                    if (window.calcularTrajetoOSRM) {
+                    if (window.calcularTrajeto) {
                         try {
                             const profileOSRM = modoTransporte === 'pe' ? 'foot' : 'car';
                             // Ajustado para receber a desestruturação do novo formato de retorno do OSRM
-                            const resultado = await window.calcularTrajetoOSRM(origem.lat, origem.lon || origem.lng, escolaLat, escolaLon, profileOSRM);
+                            const resultado = await window.calcularTrajeto(origem.lat, origem.lon || origem.lng, escolaLat, escolaLon, profileOSRM);
                             if (resultado && resultado.distancia !== undefined) {
                                 // Atualiza o perfil efetivo com base no parâmetro retornado da nova função OSRM se disponível
                                 if (resultado.parametro) {
@@ -1170,7 +1155,7 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
                                 ${escola.rua || ''}, ${escola.numero || ''}<br/>
                                 <span>Bairro: ${escola.bairro || ''}</span><br/>
                                 <strong>Período:</strong> ${periodosEncontradosStr}${labelDistanciaCalculada}<br/>
-                                <a href="https://www.google.com/maps/dir/?api=1&origin=${pOrigem}&destination=${pDestino}&travelmode=${perfilTransporteEfetivo}" target="_blank" style="color:#1a73e8;text-decoration:none;font-weight:bold;display:inline-block;margin-top:5px;">🗺️ Abrir rota no Google Maps</a>
+                                <a href="http://maps.google.com/maps?saddr=${pOrigem}&daddr=${pDestino}&dirflg=${perfilTransporteEfetivo === 'walking' ? 'w' : 'd'}" target="_blank" style="color:#1a73e8;text-decoration:none;font-weight:bold;display:inline-block;margin-top:5px;">🗺️ Abrir rota no Google Maps</a>
                               </div>`
                 });
 
@@ -1222,7 +1207,7 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
                                                     ${escola.rua || ''}, ${escola.numero || ''}<br/>
                                                     <span>Bairro: ${escola.bairro || ''}</span><br/>
                                                     <strong>Período:</strong> ${periodosEncontradosStr}${labelDistanciaCalculada}<br/>
-                                                    <a href="https://www.google.com/maps/dir/?api=1&origin=${pOrigem}&destination=${pDestino}&travelmode=${perfilTransporteEfetivo}" target="_blank" style="color:#1a73e8;text-decoration:none;font-weight:bold;display:inline-block;margin-top:5px;">🗺️ Abrir rota no Google Maps</a>
+                                                    <a href="http://maps.google.com/maps?saddr=${pOrigem}&daddr=${pDestino}&dirflg=${perfilTransporteEfetivo === 'walking' ? 'w' : 'd'}" target="_blank" style="color:#1a73e8;text-decoration:none;font-weight:bold;display:inline-block;margin-top:5px;">🗺️ Abrir rota no Google Maps</a>
                                                   </div>`);
                     }
                 });
@@ -1264,3 +1249,96 @@ window.gerarMapaComTrajetoEEscolas = async function(iframeAtual, origem, destino
         }
     }
 };
+
+/**
+ * Verifica se dois endereços estão aproximadamente na mesma direção
+ * em relação a uma escola de referência.
+ *
+ * Retorna:
+ * {
+ *   mesmaDirecao: boolean,
+ *   diferencaAngular: number,
+ *   bearingFicha: number,
+ *   bearingEnc: number
+ * }
+ */
+function analisarDirecaoRelativa(
+    escolaLat,
+    escolaLon,
+    latFicha,
+    lonFicha,
+    latEnc,
+    lonEnc,
+    toleranciaGraus = 45
+) {
+    const valores = [
+        escolaLat,
+        escolaLon,
+        latFicha,
+        lonFicha,
+        latEnc,
+        lonEnc
+    ];
+
+    if (valores.some(v => !Number.isFinite(v))) {
+        return {
+            mesmaDirecao: false,
+            diferencaAngular: 999,
+            bearingFicha: null,
+            bearingEnc: null
+        };
+    }
+
+    const calcularBearing = (lat1, lon1, lat2, lon2) => {
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+
+        const λ1 = lon1 * Math.PI / 180;
+        const λ2 = lon2 * Math.PI / 180;
+
+        const y =
+            Math.sin(λ2 - λ1) * Math.cos(φ2);
+
+        const x =
+            Math.cos(φ1) * Math.sin(φ2) -
+            Math.sin(φ1) * Math.cos(φ2) *
+            Math.cos(λ2 - λ1);
+
+        let brng =
+            Math.atan2(y, x) * 180 / Math.PI;
+
+        return (brng + 360) % 360;
+    };
+
+    const bearingFicha =
+        calcularBearing(
+            escolaLat,
+            escolaLon,
+            latFicha,
+            lonFicha
+        );
+
+    const bearingEnc =
+        calcularBearing(
+            escolaLat,
+            escolaLon,
+            latEnc,
+            lonEnc
+        );
+
+    let diferencaAngular =
+        Math.abs(bearingFicha - bearingEnc);
+
+    if (diferencaAngular > 180) {
+        diferencaAngular =
+            360 - diferencaAngular;
+    }
+
+    return {
+        mesmaDirecao:
+            diferencaAngular <= toleranciaGraus,
+        diferencaAngular,
+        bearingFicha,
+        bearingEnc
+    };
+}

@@ -4453,7 +4453,7 @@ window.escolasDB = [
             "4358-2298",
             "4358-3006"
         ],
-        "nome_un_sigla": "JNI"
+        "nome_un_sigla": "JN1"
     },
     {
         "id": "195",
@@ -4492,7 +4492,7 @@ window.escolasDB = [
         "telefones": [
             "4357-9481"
         ],
-        "nome_un_sigla": "JNI"
+        "nome_un_sigla": "JN2"
     },
     {
         "id": "79",
