@@ -930,7 +930,13 @@ window.gerarMapa = async function(iframeAtual, origem, destino, urlFallbackIfram
         let nomeEscolaDestino = "Escola de Destino Selecionada";
 
         const docEscopo = iframeAtual.ownerDocument || document;
+        let nivel = extrairNivelAluno(docEscopo);
         
+        if(nivel){
+            nivelNorm = nivel.nivelNorm;
+            isBercarioGeral = nivel.isBercarioGeral;    
+        }
+
         // Coleta o endereço completo para o hover da origem
         const elEndereco = docEscopo.getElementById('endereco');
         const elNumero = docEscopo.getElementById('endereco_numero_residencia');
@@ -946,6 +952,7 @@ window.gerarMapa = async function(iframeAtual, origem, destino, urlFallbackIfram
             if (escolaAlvoObj) nomeEscolaDestino = escolaAlvoObj.nome;
         }
 
+        if(!nivel){
         const selectNivel = docEscopo.getElementById('nivel');
         if (selectNivel?.options[selectNivel.selectedIndex]) {
             const textoSelecionado = selectNivel.options[selectNivel.selectedIndex].text || selectNivel.value;
@@ -955,8 +962,9 @@ window.gerarMapa = async function(iframeAtual, origem, destino, urlFallbackIfram
             if (nivelNorm.includes('ESPECIAL')) nivelNorm = 'ESPECIAL';
             isBercarioGeral = nivelNorm.includes('BERCARIO');
         }
+    }
 
-        console.log(`[FILTRO-MAPA] 🔎 Nível do Aluno Identificado para Filtragem: "${nivelNorm}" | É Berçário Geral: ${isBercarioGeral}`);
+        console.log(`[FILTRO-MAPA] 🔎 Nível do Aluno Identificado para Filtragem: "${nivelNorm}" | É Berçário Geral: ${isBercarioGeral} | nivel extraido: ${nivel.nivelNorm}`);
 
         // --- RENDERIZAÇÃO DOS MARCADORES CUSTOMIZADOS HTML/CSS ---
 
