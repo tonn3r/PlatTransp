@@ -2154,7 +2154,7 @@ window.abrirModalAssistente = async function() {
                 // Condição 1: Assistente vai indeferir, mas existem irmãos sendo ATENDIDOS
                 // Condição 2: Assistente vai deferir, mas existem irmãos INDEFERIDOS
                 const deveIntervir = (resultadoCalculado.includes("INDEFERIR") && irmaosAtendidos > 0) || 
-                                     (resultadoCalculado.includes("DEFERIR") && irmaosIndeferidos > 0);
+                                     (resultadoCalculado.includes("DEFERIR") && !resultadoCalculado.includes("INDEFERIR") && irmaosIndeferidos > 0);
 
                 if (deveIntervir) {
                     const qtdIrmaos = historicoRua.dadosIrmaos.length;
@@ -2224,10 +2224,10 @@ window.abrirModalAssistente = async function() {
                         const grupoMaioria = historicoRua.dadosIrmaos.filter(irmao => {
                             if (temAtendidos) {
                                 // Se a maioria for ATENDIDOS, filtra os válidos para deferimento
-                                return irmao.validoParaDeferir === true || (irmao.status && irmao.status.toUpperCase().includes("ATENDIDO"));
+                                return irmao.validoParaDeferir === true || (irmao.status && irmao.status.toUpperCase().includes("ATENDIDO") && irmao.status.toUpperCase() !== "INDEFERIDO" && irmao.status.toUpperCase() !== "NÃO ATENDIDO" && irmao.status.toUpperCase() !== "NAO ATENDIDO") || (irmao.status && (irmao.status.toUpperCase() === "ATENDIDO" || irmao.status.toUpperCase() === "DEFERIDO"));
                             } else {
                                 // Se a maioria for INDEFERIDOS, filtra os inválidos para deferimento
-                                return irmao.validoParaDeferir === false || (irmao.status && irmao.status.toUpperCase().includes("INDEFERIDO"));
+                                return irmao.validoParaDeferir === false || (irmao.status && irmao.status.toUpperCase().includes("INDEFERIDO")) || (irmao.status && irmao.status.toUpperCase() === "INDEFERIDO");
                             }
                         });
 
@@ -2792,24 +2792,39 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
     estado.ehMaisProximaParcial = ehMaisProximaParcial;
     estado.ehMaisProxima = ehMaisProxima;
     
-    const escolasEfetivamenteMaisProximas = listaOrdenada.filter(e => {
-        if (String(e.id) === String(idEscolaAtual)) return false; 
-        
-        if (distEscolaAtual !== null) {
-            const distArredondadaEscola = Arredondar(e.distancia, e.id);
-            return distArredondadaEscola < distEscolaAtual; 
-        }
-        return true;
-    });
+    // Função auxiliar rápida para garantir que o valor seja puramente numérico
+const ehDistanciaValida = (valor) => {
+    return valor !== null && valor !== undefined && valor !== '' && !isNaN(Number(valor)) && isFinite(Number(valor));
+};
 
-    estado.top3EscolasNomes = escolasEfetivamenteMaisProximas.slice(0, 3).map(e => ({
-        nome: limparNome(e.nome),
-        distancia: Arredondar(e.distancia, e.id) + 'm'
-    }));
+const escolasEfetivamenteMaisProximas = listaOrdenada.filter(e => {
+    if (String(e.id) === String(idEscolaAtual)) return false; 
     
-    if (typeof window.setSharedStore === 'function') {
-    window.setSharedStore({ top3EscolasNomes: estado.top3EscolasNomes }); //  Corrigido para "estado"
+    const distArredondadaEscola = Arredondar(e.distancia, e.id);
+
+    // [NOVA LÓGICA]: Se a distância arredondada for inválida (null, NaN, Infinity), descartamos a escola
+    if (!ehDistanciaValida(distArredondadaEscola)) {
+        return false;
     }
+    
+    if (ehDistanciaValida(distEscolaAtual)) {
+        return distArredondadaEscola < distEscolaAtual; 
+    }
+    return true;
+});
+
+estado.top3EscolasNomes = escolasEfetivamenteMaisProximas.slice(0, 3).map(e => {
+    // Como já validamos no filter, é seguro apenas arredondar e concatenar
+    const distFinal = Arredondar(e.distancia, e.id);
+    return {
+        nome: limparNome(e.nome),
+        distancia: distFinal + 'm'
+    };
+});
+
+if (typeof window.setSharedStore === 'function') {
+    window.setSharedStore({ top3EscolasNomes: estado.top3EscolasNomes });
+}
 
     estado.isEncaminhamentoDispensado = (estado.escolaProximaUser === true);
 

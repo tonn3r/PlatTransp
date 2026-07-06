@@ -348,56 +348,81 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
 
 // --- SECTION: HELPER PARA CONTROLE DE COTAS E LIMITES (ANTI-COBRANÇA) ---
 // Verifica se o limite diário da chave de API do Google Maps foi atingido para evitar cobranças indevidas.
+function marcarChaveComoBloqueada(apiKey, minutosCooldown = 10) {
+    const tempoDesbloqueio = Date.now() + (minutosCooldown * 60 * 1000);
+    // Salva o exato milissegundo em que a chave estará livre novamente
+    localStorage.setItem(`gmaps_cooldown_${apiKey}`, tempoDesbloqueio.toString());
+    console.warn(`⏳ Chave de API entrou em cooldown. Retorna em ${minutosCooldown} minutos.`);
+}
+
 function verificarEIncrementarCotaGoogle(apiKey, nomeChave) {
     const hoje = new Date().toISOString().slice(0, 10);
     const chaveStorageCount = `gmaps_count_${apiKey}_${hoje}`;
-    const chaveStorageBloqueio = `gmaps_blocked_${apiKey}_${hoje}`;
+    const chaveStorageCooldown = `gmaps_cooldown_${apiKey}`;
 
-    if (localStorage.getItem(chaveStorageBloqueio) === 'true') {
-        return false;
+    // 1. Verifica se a chave está em período de "resfriamento" (Cooldown)
+    const tempoDesbloqueio = parseInt(localStorage.getItem(chaveStorageCooldown) || '0', 10);
+    if (tempoDesbloqueio > Date.now()) {
+        const minutosRestantes = Math.ceil((tempoDesbloqueio - Date.now()) / 60000);
+        console.log(`🔒 ${nomeChave} está descansando. Liberada em aprox. ${minutosRestantes} min.`);
+        return false; // Pula imediatamente para a próxima chave do array
+    } else if (tempoDesbloqueio > 0) {
+        // Se o tempo já passou, remove a trava e avisa no console
+        localStorage.removeItem(chaveStorageCooldown);
+        console.info(`✅ ${nomeChave} saiu do cooldown e voltou a operar.`);
     }
 
+    // 2. Proteção do Limite Diário Seguro (Anti-Cobrança)
     let requisicoesHoje = parseInt(localStorage.getItem(chaveStorageCount) || '0', 10);
     const LIMITE_DIARIO_SEGURO = 400; 
 
     if (requisicoesHoje >= LIMITE_DIARIO_SEGURO) {
-        localStorage.setItem(chaveStorageBloqueio, 'true');
-        console.warn(`🛑 Limite diário de segurança atingido para a ${nomeChave}. Uso bloqueado para evitar cobrança.`);
+        // Bateu a cota diária de segurança? Coloca em cooldown por 12 horas (720 minutos)
+        marcarChaveComoBloqueada(apiKey, 720);
+        console.warn(`🛑 Limite diário seguro (400) atingido para a ${nomeChave}. Pulando para a próxima...`);
         return false;
     }
 
+    // 3. Incrementa o uso diário e permite a requisição
     localStorage.setItem(chaveStorageCount, (requisicoesHoje + 1).toString());
     return true;
 }
 
-function marcarChaveComoBloqueada(apiKey) {
-    const hoje = new Date().toISOString().slice(0, 10);
-    localStorage.setItem(`gmaps_blocked_${apiKey}_${hoje}`, 'true');
-}
+window._promiseGoogleMaps = window._promiseGoogleMaps || null;
 
 function carregarSDKGoogleMaps(apiKey) {
-    return new Promise((resolve) => {
-        // CORREÇÃO: Se o SDK já está carregado e corresponde à janela ativa, reaproveita sem destruir a instância concorrente
-        if (window.google && window.google.maps && window.google.maps.DirectionsService) {
-            resolve(true);
-            return;
-        }
-        
-        // Remove scripts duplicados antigos apenas se houver troca de chaves e o objeto global estiver quebrado
+    // 1. Se já carregou e a API de Directions está pronta, retorna true imediatamente
+    if (window.google && window.google.maps && window.google.maps.DirectionsService) {
+        return Promise.resolve(true);
+    }
+    
+    // 2. Se já existe um carregamento em andamento, todas as requisições "pegam carona" na mesma Promise
+    if (window._promiseGoogleMaps) {
+        return window._promiseGoogleMaps;
+    }
+
+    // 3. Bloqueia múltiplos carregamentos criando uma única Promise global
+    window._promiseGoogleMaps = new Promise((resolve) => {
+        // Limpa possíveis sujeiras de tentativas passadas
         const scripts = document.querySelectorAll('script[src*="maps.googleapis.com/maps/api/js"]');
-        if (scripts.length > 0 && (!window.google || !window.google.maps)) {
-            scripts.forEach(s => s.remove());
-            window.google = undefined;
-        }
+        scripts.forEach(s => s.remove());
+        window.google = undefined;
 
         const script = document.createElement('script');
         script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
         script.async = true;
         script.defer = true;
+        
         script.onload = () => resolve(true);
-        script.onerror = () => resolve(false);
+        script.onerror = () => {
+            window._promiseGoogleMaps = null; // Permite tentar de novo se der falha real
+            resolve(false);
+        };
+        
         document.head.appendChild(script);
     });
+
+    return window._promiseGoogleMaps;
 }
 
 // --- SECTION: GOOGLE MAPS / OSRM ROUTING CALCULATION ---
@@ -500,7 +525,8 @@ window.calcularTrajeto = async function(latOrigin, lonOrigin, latDest, lonDest, 
                 } catch (erroCapturado) {
                     const erroStr = (erroCapturado && erroCapturado.name) ? erroCapturado.name : String(erroCapturado);
                     if (erroStr === 'AbortError') return null; 
-                    if (erroStr === 'OVER_QUERY_LIMIT' || erroStr === 'REQUEST_DENIED' || erroStr === 'TIMEOUT_API_NOT_ACTIVATED' || erroStr === 'SDK_INCOMPLETA') {
+                    // NOVO CÓDIGO: Bloqueia a chave APENAS se a cota do Google estourar ou a chave for rejeitada.
+                    if (erroStr === 'OVER_QUERY_LIMIT' || erroStr === 'REQUEST_DENIED') {
                         marcarChaveComoBloqueada(item.key);
                     }
                 }
@@ -658,7 +684,8 @@ window.obterCoordenadasPorEndereco = async function(enderecoCompleto) {
             break;
         } catch (statusErro) {
             console.warn(`⚠️ Falha no Geocoding da ${item.label}: Status/Motivo -> ${statusErro}`);
-            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED' || statusErro === 'TIMEOUT_API_NOT_ACTIVATED') {
+            // NOVO CÓDIGO
+            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED') {
                 marcarChaveComoBloqueada(item.key);
             }
         }
@@ -740,7 +767,7 @@ window.obterEnderecoPorCoordenadas = async function(latitude, longitude) {
             break;
         } catch (statusErro) {
             console.warn(`⚠️ Falha no Reverse Geocoding da ${item.label}: Status/Motivo -> ${statusErro}`);
-            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED' || statusErro === 'TIMEOUT_API_NOT_ACTIVATED') {
+            if (statusErro === 'OVER_QUERY_LIMIT' || statusErro === 'REQUEST_DENIED') {
                 marcarChaveComoBloqueada(item.key);
             }
         }
