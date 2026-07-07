@@ -1040,8 +1040,8 @@ window.verificaArqDiastur = async function(documentoContexto = document) {
         // Recupera dados salvos previamente na função realizarCalculosIniciaisDistancia
         // CORREÇÃO APLICADA: Obtém as coordenadas da rota calculada ou do histórico persistido
                 const dadosRota = typeof window.getSharedStoreValue === 'function' ? window.getSharedStoreValue('dadosGeraisRota') : null;
-                const latAlunoFicha = dadosRota?.coordAlunoGPS?.lat || dadosSalvos?.lat;
-                const lonAlunoFicha = dadosRota?.coordAlunoGPS?.lon || dadosSalvos?.lon;
+                const latAlunoFicha = dadosRota?.coordAlunoGPS?.lat || dadosRota?.lat;
+                const lonAlunoFicha = dadosRota?.coordAlunoGPS?.lon || dadosRota?.lon;
         // console.log("[AUDITORIA-LOTE] Coordenadas do aluno (GPS):", latAlunoFicha, lonAlunoFicha);
 
         // Link oficial para traçar rota no Maps

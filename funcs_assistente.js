@@ -133,9 +133,15 @@ function extrairNivelAluno(doc) {
     const valorSelect = (selectNivel?.options[selectNivel.selectedIndex]) ? (selectNivel.options[selectNivel.selectedIndex].text || selectNivel.value) : '';
     if (!nivelOriginal) nivelOriginal = valorSelect;
 
+    // 1. Verifica se o nível obtido existe em alguma escola da base
+    const nivelExisteNaBase = escolasDB.some(esc => 
+        esc.turmas && esc.turmas.some(t => window.normalizarTexto(t.nivel) === nivelOriginal)
+    );
+
+
     // --- LOGICA DE FALLBACK UNIFICADA ---
     // Se o nível extraído for ambíguo (ex: Berçário Inicial) ou vazio, calcula pela idade
-    const ehAmbiguo = !nivelOriginal || (nivelOriginal.includes('BERCARIO') && valorSelect === 'BERCARIO INICIAL');
+    const ehAmbiguo = !nivelOriginal || !nivelExisteNaBase || (nivelOriginal.includes('BERCARIO') && valorSelect === 'BERCARIO INICIAL');
     
     if (ehAmbiguo) {
         const nivelPorIdade = window.calcularNivelPorIdade(doc);
@@ -1115,22 +1121,7 @@ async function extrairContextoFicha(doc) {
     const idSolicitacao = doc.querySelector('input[name="id_solicitacao"]')?.value || doc.querySelector('input[name="id"]')?.value || '';
     const escolaAtual = identificarEscolaAtual(doc, escolasDB);
     let nivel = extrairNivelAluno(doc);
-    
-    // 1. Verifica se o nível obtido existe em alguma escola da base
-    const nivelExisteNaBase = escolasDB.some(esc => 
-        esc.turmas && esc.turmas.some(t => window.normalizarTexto(t.nivel) === nivel.nivelNorm)
-    );
-
-    // 2. Se não existir, aplica o fallback por idade
-    if (!nivelExisteNaBase) {
-        console.warn(`[ASSISTENTE] Nível "${nivel.nivelNorm}" não encontrado na base. Aplicando fallback por idade.`);
-        const nivelPorIdade = window.calcularNivelPorIdade(doc);
-        if (nivelPorIdade) {
-            nivel.nivelNorm = nivelPorIdade;
-            nivel.nivelOriginal = nivelPorIdade; // Atualiza também o original para manter consistência
-        }
-    }
-
+        
     // 3. Filtra as escolas com o nível validado ou corrigido
     const escolasAptas = filtrarEscolasAptas(escolasDB, nivel.nivelNorm, nivel.isBercarioGeral);
 
@@ -2409,7 +2400,7 @@ window.abrirModalAssistente = async function() {
                 textoDetalhes = textoDetalhes ? `${textoDetalhes} / encaminhado` : "encaminhado";
             }
 
-            if (tipoAcao === 'DEFERIR' && estado.ehMaisProximaParcial === true) {
+            if (tipoAcao === 'DEFERIR' && estado.ehMaisProximaParcial === true && estado.ehCreche !== true) {
                 if (textoDetalhes) {
                     textoDetalhes += " / Está na parcial mais próxima";
                 } else {
@@ -2857,6 +2848,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
         }
     }
     
+    if(estado.ehCreche){ehMaisProximaParcial = false;}
     estado.escolaProximaCalc = ehMaisProxima || ehMaisProximaParcial;
     estado.ehMaisProximaParcial = ehMaisProximaParcial;
     estado.ehMaisProxima = ehMaisProxima;
@@ -3232,7 +3224,7 @@ if (typeof window.setSharedStore === 'function') {
             let pergunta = null;
             
             if (estado.escolaProximaUser === false) {
-                if (estado.ehMaisProximaParcial) {
+                if (estado.ehMaisProximaParcial  && estado.ehCreche !== true) {
                     pergunta = "Confirme se o aluno realmente não está na parcial mais próxima. Na lista ele aparentava estar na escola parcial mais próxima ao endereço.";
                 } else if (estado.escolaProximaCalc) {
                     pergunta = "Confirme se o aluno realmente não está na unidade mais próxima. Na lista ele aparentava estar na UE mais próxima ao endereço cadastrado.";
