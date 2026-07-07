@@ -7,7 +7,8 @@ window.apiKeyGoogle3 = "AIzaSyDeFC9pEKnvyaqmVKbAVFJ2D2WRfh4esEs";
 
 // Calcula uma aproximação de distância euclidiana rápida entre dois pontos (evita math.sqrt pesada).
 window.calcularProximidadeRapida = function(lat1, lon1, lat2, lon2) {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+    lat1 = Number(lat1); lon1 = Number(lon1); lat2 = Number(lat2); lon2 = Number(lon2);
+    if (!Number.isFinite(lat1) || !Number.isFinite(lon1) || !Number.isFinite(lat2) || !Number.isFinite(lon2)) return Infinity;
     const FATOR_LON = 0.916;
     const dLat = lat1 - lat2;
     const dLon = (lon1 - lon2) * FATOR_LON;
@@ -16,14 +17,16 @@ window.calcularProximidadeRapida = function(lat1, lon1, lat2, lon2) {
 
 // Calcula a distância exata entre duas coordenadas em metros (Fórmula de Haversine).
 window.calcularDistanciaHaversine = function(lat1, lon1, lat2, lon2) {
-    if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+    lat1 = Number(lat1); lon1 = Number(lon1); lat2 = Number(lat2); lon2 = Number(lon2);
+    if (!Number.isFinite(lat1) || !Number.isFinite(lon1) || !Number.isFinite(lat2) || !Number.isFinite(lon2)) return Infinity;
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
               Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
               Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    // Math.max evita que inconsistências minúsculas gerem NaN na raiz quadrada
+    const c = 2 * Math.atan2(Math.sqrt(Math.max(0, a)), Math.sqrt(Math.max(0, 1 - a)));
     return Math.round((R * c) * 1000);
 };
 
@@ -78,8 +81,20 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
 
         const parser = new DOMParser();
         const docVirtual = parser.parseFromString(htmlText, "text/html");
-        const iframeMap = docVirtual.getElementById('map_endereco');
 
+        // 1. TENTATIVA: Extração via Texto (Mais robusta)
+        let latE = null, lonE = null, latS = null, lonS = null;
+        const textoCompleto = docVirtual.body.innerText;
+        
+        // Busca Latitude e Longitude do Endereço (usando Regex que aceita vírgulas ou pontos)
+        const matchGeo = textoCompleto.match(/GEOLOCALIZAÇÃO: Latitude:\s*([-\d,.]+)\s*Longitude:\s*([-\d,.]+)/i);
+        if (matchGeo) {
+            latE = parseFloat(matchGeo[1].replace(',', '.'));
+            lonE = parseFloat(matchGeo[2].replace(',', '.'));
+        }
+
+        // 2. TENTATIVA: Extração via Iframe (Fallback)
+        const iframeMap = docVirtual.getElementById('map_endereco');
         if (iframeMap && iframeMap.src) {
             const urlCompleta = iframeMap.src;
             const regexOrigin = /origin=([^&]+)/i;
@@ -87,28 +102,29 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
             const matchOrigin = urlCompleta.match(regexOrigin);
             const matchDest = urlCompleta.match(regexDest);
 
-            const separarCoordenadas = (matchString) => {
-                if (!matchString) return { lat: null, lon: null };
-                const decodificado = decodeURIComponent(matchString[1]).trim();
-                const partes = decodificado.split(/[\s,]+/);
-                if (partes.length >= 2) {
-                    return {
-                        lat: parseFloat(partes[0].trim()),
-                        lon: parseFloat(partes[1].trim())
-                    };
-                }
+            const parseCoord = (str) => {
+                if(!str) return {lat: null, lon: null};
+                // Limpa a string do mapa (ex: "-23,7111 -46,5921")
+                const partes = decodeURIComponent(str).replace(/\+/g, ' ').split(/[\s,]+/);
+                if(partes.length >= 2) return { lat: parseFloat(partes[0].replace(',', '.')), lon: parseFloat(partes[1].replace(',', '.')) };
                 return { lat: null, lon: null };
             };
 
-            const coordOrigin = separarCoordenadas(matchOrigin);
-            const coordDest = separarCoordenadas(matchDest);
+            const origin = parseCoord(matchOrigin ? matchOrigin[1] : null);
+            const dest = parseCoord(matchDest ? matchDest[1] : null);
+            
+            // Prioriza o texto, usa o iframe se o texto falhou
+            if (!latE) { latE = origin.lat; lonE = origin.lon; }
+            if (!latS) { latS = dest.lat; lonS = dest.lon; }
+        }
 
+        if (latE !== null && lonE !== null) {
             return {
-                urlMaps: urlCompleta,
-                geoEndereco_Latit: coordOrigin.lat,
-                geoEndereco_Longit: coordOrigin.lon,
-                geoEscola_Latit: coordDest.lat,
-                geoEscola_Longit: coordDest.lon
+                urlMaps: iframeMap ? iframeMap.src : "",
+                geoEndereco_Latit: latE,
+                geoEndereco_Longit: lonE,
+                geoEscola_Latit: latS,
+                geoEscola_Longit: lonS
             };
         }
         return null;
@@ -132,6 +148,15 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
     const dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
 
     if (dadosGeo) {
+
+        const localValido = window.estaDentroDaCidade(dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit);
+    
+            // Se não estiver dentro, força o modo 'endereco' para ignorar as coordenadas corrompidas/distantes
+            if (!localValido) {
+                console.warn("[ASSISTENTE] Coordenadas fora de SBC. Forçando modo Endereço.");
+                window.setSharedStore?.({ modoMapaAtual: 'endereco' });
+            }
+
         const iframeAtual = docAlvo.getElementById('map_endereco');
         const linkMapaNovaGuia = docAlvo.getElementById('botao_mapa');
         const btnAbrirFicha = docAlvo.getElementById('botaoAbrirFicha');
@@ -403,10 +428,12 @@ function carregarSDKGoogleMaps(apiKey) {
 
     // 3. Bloqueia múltiplos carregamentos criando uma única Promise global
     window._promiseGoogleMaps = new Promise((resolve) => {
-        // Limpa possíveis sujeiras de tentativas passadas
-        const scripts = document.querySelectorAll('script[src*="maps.googleapis.com/maps/api/js"]');
-        scripts.forEach(s => s.remove());
-        window.google = undefined;
+        // Não destrua o objeto window.google globalmente, pois isso corrompe a instância na memória do navegador
+        if (document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]')) {
+             if (window.google && window.google.maps) {
+                 return resolve(true);
+             }
+        }
 
         const script = document.createElement('script');
         script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
@@ -430,14 +457,47 @@ function carregarSDKGoogleMaps(apiKey) {
 window._pendingTrajetos = window._pendingTrajetos || {};
 
 window.calcularTrajeto = async function(latOrigin, lonOrigin, latDest, lonDest, profileIgnored = 'foot', signal = null) {
-    if (!latOrigin || !lonOrigin || !latDest || !lonDest) return null;
+    latOrigin = Number(latOrigin);
+lonOrigin = Number(lonOrigin);
+latDest = Number(latDest);
+lonDest = Number(lonDest);
+
+if (
+    !Number.isFinite(latOrigin) ||
+    !Number.isFinite(lonOrigin) ||
+    !Number.isFinite(latDest) ||
+    !Number.isFinite(lonDest)
+) {
+    return null;
+}
+
+    if (isNaN(latOrigin) || isNaN(lonOrigin) || isNaN(latDest) || isNaN(lonDest) ||
+        Math.abs(latOrigin) > 90 || Math.abs(lonOrigin) > 180 ||
+        Math.abs(latDest) > 90 || Math.abs(lonDest) > 180) {
+        console.warn("[PLUGIN-MAPA] 🚫 Coordenadas inválidas interceptadas. Rota não calculada para não gerar Bad Request.");
+        return null;
+    }
+
+    const localValido = window.estaDentroDaCidade(latOrigin, lonOrigin);
+    
+            // Se não estiver dentro, força o modo 'endereco' para ignorar as coordenadas corrompidas/distantes
+            if (!localValido) {
+                console.warn("[ASSISTENTE] Coordenadas fora de SBC");
+                return null;
+            }
 
     const STORAGE_KEY_GLOBAL = 'plattransp_global_routes_cache';
     const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
     
     const idUnidadeDestino = (typeof listaExibirBase !== 'undefined' && listaExibirBase)
-        ? listaExibirBase.find(e => Number(e.lat) === Number(latDest) && Number(e.lon) === Number(lonDest))?.id || `${latDest},${lonDest}`
-        : `${latDest},${lonDest}`;
+    ? (
+        listaExibirBase.find(e =>
+            Math.abs(Number(e.lat) - latDest) < 0.000001 &&
+            Math.abs(Number(e.lon) - lonDest) < 0.000001
+        )?.id
+        || `${latDest},${lonDest}`
+      )
+    : `${latDest},${lonDest}`;
 
     const pesosFontes = { 'GOOGLE': 3, 'OSRM': 2, 'HAVERSINE': 1 };
 
@@ -455,9 +515,34 @@ window.calcularTrajeto = async function(latOrigin, lonOrigin, latDest, lonDest, 
             const chaveCache = `${modoMapa}_${googleMode}_${latOrigin},${lonOrigin}_UE_${idUnidadeDestino}`;
             const dadosEmCacheValido = window.obterValorCachePersistente(STORAGE_KEY_GLOBAL, chaveCache);
             
-            if (dadosEmCacheValido && (dadosEmCacheValido.fonte === 'GOOGLE' || dadosEmCacheValido.fonte === 'OSRM')) {
-                return dadosEmCacheValido;
-            }
+            if (
+    dadosEmCacheValido &&
+    (dadosEmCacheValido.fonte === 'GOOGLE' || dadosEmCacheValido.fonte === 'OSRM')
+) {
+
+    const distanciaCache = Number(dadosEmCacheValido.distancia);
+
+    if (
+        Number.isFinite(distanciaCache) &&
+        distanciaCache > 0 &&
+        distanciaCache < 500000
+    ) {
+
+        return dadosEmCacheValido;
+
+    }
+
+    console.warn(
+        "[CACHE] Distância inválida encontrada no cache:",
+        dadosEmCacheValido
+    );
+
+    window.removerValorCachePersistente?.(
+        STORAGE_KEY_GLOBAL,
+        chaveCache
+    );
+
+}
 
             const salvarSeguroCache = (novoResultado) => {
                 if (dadosEmCacheValido && dadosEmCacheValido.fonte) {
@@ -519,13 +604,24 @@ window.calcularTrajeto = async function(latOrigin, lonOrigin, latDest, lonDest, 
                         }
                     });
 
-                    dadosRoteamento = Math.round(resultadoDirecao);
-                    googleSucesso = true;
-                    break; 
+                    dadosRoteamento = Number(resultadoDirecao);
+
+                    if (!Number.isFinite(dadosRoteamento) || dadosRoteamento <= 0) {
+                        throw new Error("GOOGLE_INVALID_DISTANCE");
+                    }
+
+                    dadosRoteamento = Math.round(dadosRoteamento);
+
+                        googleSucesso = true;
+                        break;
                 } catch (erroCapturado) {
                     const erroStr = (erroCapturado && erroCapturado.name) ? erroCapturado.name : String(erroCapturado);
                     if (erroStr === 'AbortError') return null; 
-                    // NOVO CÓDIGO: Bloqueia a chave APENAS se a cota do Google estourar ou a chave for rejeitada.
+                    
+                    // Previne o loop de chaves caso a rota simplesmente não exista (ZERO_RESULTS)
+                    if (erroStr === 'ZERO_RESULTS') break;
+                    
+                    // Bloqueia a chave APENAS se a cota do Google estourar ou a chave for rejeitada.
                     if (erroStr === 'OVER_QUERY_LIMIT' || erroStr === 'REQUEST_DENIED') {
                         marcarChaveComoBloqueada(item.key);
                     }
@@ -552,10 +648,36 @@ window.calcularTrajeto = async function(latOrigin, lonOrigin, latDest, lonDest, 
             }
 
             // --- FALLBACK 2: HAVERSINE ---
-            return salvarSeguroCache({ 
-                distancia: window.calcularDistanciaHaversine(latOrigin, lonOrigin, latDest, lonDest), 
-                fonte: 'HAVERSINE' 
-            });
+            const distanciaHaversine = Number(
+    window.calcularDistanciaHaversine(
+        latOrigin,
+        lonOrigin,
+        latDest,
+        lonDest
+    )
+);
+
+if (
+    !Number.isFinite(distanciaHaversine) ||
+    distanciaHaversine < 0 ||
+    distanciaHaversine > 500000
+) {
+    console.warn(
+        "[PLUGIN-MAPA] Distância Haversine inválida:",
+        distanciaHaversine,
+        latOrigin,
+        lonOrigin,
+        latDest,
+        lonDest
+    );
+
+    return null;
+}
+
+return salvarSeguroCache({
+    distancia: Math.round(distanciaHaversine),
+    fonte: 'HAVERSINE'
+});
         };
 
         const resultadoFoot = await executarCalculoParaPerfil('foot');
@@ -573,7 +695,18 @@ window.calcularTrajeto = async function(latOrigin, lonOrigin, latDest, lonDest, 
             }
         }
 
-        let distanciaBruta = usarExcecaoCarro && resultadoCarro ? resultadoCarro.distancia : resultadoFoot.distancia;
+        let distanciaBruta = usarExcecaoCarro && resultadoCarro
+    ? resultadoCarro.distancia
+    : resultadoFoot.distancia;
+
+if (
+    !Number.isFinite(distanciaBruta) ||
+    distanciaBruta <= 0 ||
+    distanciaBruta > 500000
+) {
+    console.warn("[PLUGIN-MAPA] Distância final inválida:", distanciaBruta);
+    return null;
+}
         let fonteFinal = usarExcecaoCarro && resultadoCarro ? resultadoCarro.fonte : resultadoFoot.fonte;
         let modoFinal = usarExcecaoCarro && resultadoCarro ? 'driving' : 'foot';
 
@@ -1269,7 +1402,7 @@ window.gerarMapa = async function(iframeAtual, origem, destino, urlFallbackIfram
                     content: divWaypoint
                 });
 
-                marker.addListener('click', () => {
+                marker.addListener('gmp-click', () => {
                     infoWindow.open(mapa, marker);
                 });
             });
@@ -1377,3 +1510,18 @@ function analisarDirecaoRelativa(
         bearingEnc
     };
 }
+
+window.estaDentroDaCidade = function(lat, lon) {
+    // Coordenadas calculadas a partir dos limites que você passou
+    const LAT_MIN = -23.9774;
+    const LAT_MAX = -23.6436;
+    const LON_MIN = -46.6423;
+    const LON_MAX = -46.4298;
+    
+    const l = Number(lat);
+    const n = Number(lon);
+    
+    if (!Number.isFinite(l) || !Number.isFinite(n)) return false;
+    
+    return (l >= LAT_MIN && l <= LAT_MAX && n >= LON_MIN && n <= LON_MAX);
+};

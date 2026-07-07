@@ -99,43 +99,61 @@ const FAIXAS_ETARIAS_NIVEL = [
     { nivel: 'BERÇÁRIO INICIAL', idade: 0, idadeMaxima: 1 }
 ];
 
+window.calcularNivelPorIdade = function(doc) {
+    const dataNascStr = extrairDataNascimento(doc);
+    if (!dataNascStr) return null;
+    
+    const parts = dataNascStr.split('/');
+    if (parts.length !== 3) return null;
+    
+    const nasc = new Date(parts[2], parts[1] - 1, parts[0]);
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - nasc.getFullYear();
+    const m = hoje.getMonth() - nasc.getMonth();
+    if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+    
+    const faixa = FAIXAS_ETARIAS_NIVEL.find(f => idade >= f.idade && idade <= f.idadeMaxima);
+    return faixa ? window.normalizarTexto(faixa.nivel) : null;
+};
+
 // Extrai o nível de ensino do aluno (ex: Infantil I, 1º Ano, etc.) e o normaliza.
 function extrairNivelAluno(doc) {
     let nivelOriginal = extrairTextoEtiqueta(doc, ['Nível']);
+    
+    // Fallback: Tenta buscar por elemento bold se não achar na etiqueta
     if (!nivelOriginal) {
         doc.querySelectorAll('span[style*="font-size: 16px"][style*="font-weight: bold"]').forEach(span => {
             const texto = span.innerText.trim().toUpperCase();
             if (texto && texto !== 'INTEGRAL' && texto !== 'PARCIAL' && texto !== 'NOITE') nivelOriginal = texto;
         });
     }
-    let valorSelect = '';
+
+    // Fallback: Tenta buscar pelo select
     const selectNivel = doc.getElementById('nivel');
-    if (selectNivel?.options[selectNivel.selectedIndex]) {
-        valorSelect = selectNivel.options[selectNivel.selectedIndex].text || selectNivel.value;
-        if (!nivelOriginal) nivelOriginal = valorSelect;
-    }
-    if (!nivelOriginal || (nivelOriginal.includes('BERCARIO') && valorSelect === 'BERCARIO INICIAL')) {
-        const dataNascStr = extrairDataNascimento(doc);
-        if (dataNascStr) {
-            const parts = dataNascStr.split('/');
-            if (parts.length === 3) {
-                const nasc = new Date(parts[2], parts[1] - 1, parts[0]);
-                const hoje = new Date();
-                let idade = hoje.getFullYear() - nasc.getFullYear();
-                const m = hoje.getMonth() - nasc.getMonth();
-                if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-                const faixa = FAIXAS_ETARIAS_NIVEL.find(f => idade >= f.idade && idade <= f.idadeMaxima);
-                if (faixa && (!nivelOriginal || (nivelOriginal.includes('BERCARIO') && idade > 1))) {
-                    nivelOriginal = faixa.nivel;
-                }
-            }
+    const valorSelect = (selectNivel?.options[selectNivel.selectedIndex]) ? (selectNivel.options[selectNivel.selectedIndex].text || selectNivel.value) : '';
+    if (!nivelOriginal) nivelOriginal = valorSelect;
+
+    // --- LOGICA DE FALLBACK UNIFICADA ---
+    // Se o nível extraído for ambíguo (ex: Berçário Inicial) ou vazio, calcula pela idade
+    const ehAmbiguo = !nivelOriginal || (nivelOriginal.includes('BERCARIO') && valorSelect === 'BERCARIO INICIAL');
+    
+    if (ehAmbiguo) {
+        const nivelPorIdade = window.calcularNivelPorIdade(doc);
+        if (nivelPorIdade) {
+            nivelOriginal = nivelPorIdade;
         }
     }
+
     let nivelNorm = window.normalizarTexto(nivelOriginal);
     nivelNorm = nivelNorm.replace(/([0-9]+)\s*[Oº\.]\s*ANO/g, '$1O ANO');
     if (nivelNorm.includes('EJA')) nivelNorm = 'EJA';
     if (nivelNorm.includes('ESPECIAL')) nivelNorm = 'ESPECIAL';
-    return { nivelOriginal, nivelNorm, isBercarioGeral: nivelNorm.includes('BERCARIO') && nivelNorm !== 'BERCARIO INICIAL' && nivelNorm !== 'BERCARIO FINAL' };
+    
+    return { 
+        nivelOriginal, 
+        nivelNorm, 
+        isBercarioGeral: nivelNorm.includes('BERCARIO') && nivelNorm !== 'BERCARIO INICIAL' && nivelNorm !== 'BERCARIO FINAL' 
+    };
 }
 
 // Identifica qual é a escola atual do aluno com base no ID da unidade ou pelas coordenadas do mapa.
@@ -918,7 +936,15 @@ async function verificarCompatibilidadeEncaminhamento(ctx, maisRecente) {
     const isRuaValida  = (enderecoEncText.length > 0 && ruaFichaText.length > 0 && 
                           (enderecoEncText.includes(ruaFichaText) || ruaFichaText.includes(enderecoEncText) || 
                           (termoLimpoRua.length > 3 && enderecoEncText.includes(termoLimpoRua))));
-    const isCoordenadaIdentica = (latFichaAluno && lonFichaAluno && latEnc && lonEnc && latFichaAluno === latEnc && lonFichaAluno === lonEnc);
+    const isCoordenadaIdentica =
+(
+    Number.isFinite(latFichaAluno) &&
+    Number.isFinite(lonFichaAluno) &&
+    Number.isFinite(latEnc) &&
+    Number.isFinite(lonEnc) &&
+    Math.abs(latFichaAluno - latEnc) < 0.000001 &&
+    Math.abs(lonFichaAluno - lonEnc) < 0.000001
+);
     const isTextoExatamenteIgual = (enderecoEncText && ruaFichaText && enderecoEncText === ruaFichaText);
 
     if (isCoordenadaIdentica || isCepValido || isRuaValida || isTextoExatamenteIgual) {
@@ -937,7 +963,12 @@ async function verificarCompatibilidadeEncaminhamento(ctx, maisRecente) {
     }
 
     let metros = Infinity;
-    if (latEnc && lonEnc && latFichaAluno && lonFichaAluno && !isNaN(latFichaAluno) && !isNaN(lonFichaAluno)) {
+    if (
+    Number.isFinite(latEnc) &&
+    Number.isFinite(lonEnc) &&
+    Number.isFinite(latFichaAluno) &&
+    Number.isFinite(lonFichaAluno)
+) {
         if (!isNaN(latEnc) && !isNaN(lonEnc)) {
             if (typeof window.calcularDistanciaHaversine === 'function') {
                 metros = window.calcularDistanciaHaversine(latEnc, lonEnc, latFichaAluno, lonFichaAluno);
@@ -974,18 +1005,29 @@ async function verificarCompatibilidadeEncaminhamento(ctx, maisRecente) {
         }
 
         if (distAlunoEscola === Infinity && latFichaAluno && lonFichaAluno) {
-            if (typeof window.calcularDistanciaHaversine === 'function' && escolaLat && escolaLon) {
+            if (typeof window.calcularDistanciaHaversine === 'function' && Number.isFinite(escolaLat) && Number.isFinite(escolaLon)) {
                 distAlunoEscola = window.calcularDistanciaHaversine(latFichaAluno, lonFichaAluno, escolaLat, escolaLon);
             }
         }
 
         let distEncEscola = null;
         const fnCalcularTrajeto = window.calcularTrajeto || window.calcularTrajetoOSRM;
-        if (typeof fnCalcularTrajeto === 'function' && escolaLat && escolaLon && latEnc && lonEnc) {
-            distEncEscola = await fnCalcularTrajeto(latEnc, lonEnc, escolaLat, escolaLon);
+        if (typeof fnCalcularTrajeto === 'function' && Number.isFinite(escolaLat) && Number.isFinite(escolaLon) && latEnc && lonEnc) {
+            const resultadoTrajeto = await fnCalcularTrajeto(
+    latEnc,
+    lonEnc,
+    escolaLat,
+    escolaLon
+);
+
+distEncEscola =
+    resultadoTrajeto &&
+    Number.isFinite(Number(resultadoTrajeto.distancia))
+        ? Number(resultadoTrajeto.distancia)
+        : null;
         }
 
-        if ((distEncEscola === null || isNaN(distEncEscola)) && escolaLat && escolaLon && latEnc && lonEnc) {
+        if ((distEncEscola === null || isNaN(distEncEscola)) && Number.isFinite(escolaLat) && Number.isFinite(escolaLon) && latEnc && lonEnc) {
             if (typeof window.calcularDistanciaHaversine === 'function') {
                 distEncEscola = window.calcularDistanciaHaversine(latEnc, lonEnc, escolaLat, escolaLon);
             }
@@ -1072,7 +1114,26 @@ async function extrairContextoFicha(doc) {
 
     const idSolicitacao = doc.querySelector('input[name="id_solicitacao"]')?.value || doc.querySelector('input[name="id"]')?.value || '';
     const escolaAtual = identificarEscolaAtual(doc, escolasDB);
-    const nivel = extrairNivelAluno(doc);
+    let nivel = extrairNivelAluno(doc);
+    
+    // 1. Verifica se o nível obtido existe em alguma escola da base
+    const nivelExisteNaBase = escolasDB.some(esc => 
+        esc.turmas && esc.turmas.some(t => window.normalizarTexto(t.nivel) === nivel.nivelNorm)
+    );
+
+    // 2. Se não existir, aplica o fallback por idade
+    if (!nivelExisteNaBase) {
+        console.warn(`[ASSISTENTE] Nível "${nivel.nivelNorm}" não encontrado na base. Aplicando fallback por idade.`);
+        const nivelPorIdade = window.calcularNivelPorIdade(doc);
+        if (nivelPorIdade) {
+            nivel.nivelNorm = nivelPorIdade;
+            nivel.nivelOriginal = nivelPorIdade; // Atualiza também o original para manter consistência
+        }
+    }
+
+    // 3. Filtra as escolas com o nível validado ou corrigido
+    const escolasAptas = filtrarEscolasAptas(escolasDB, nivel.nivelNorm, nivel.isBercarioGeral);
+
     const endRuaNorm = window.normalizarTexto(endRua.split(',')[0]);
     const endBairroNorm = window.normalizarTexto(endBairro);
     const ruaMatch = buscarMatchRua(ruasDB, idUnidade, cepVal, endRuaNorm, endBairroNorm);
@@ -1092,8 +1153,7 @@ async function extrairContextoFicha(doc) {
         raAlunoRaw = window.getSharedStoreValue?.('raAluno') || window.getSharedStoreValue?.('ra_prodesp_search') || '';
     }
     const raAluno = raAlunoRaw.replace(/\D/g, '');
-    
-    const escolasAptas = filtrarEscolasAptas(escolasDB, nivel.nivelNorm, nivel.isBercarioGeral);
+        
     const urlPesquisaRua = montarUrlPesquisaRua(endRua);
 
     // SOLUÇÃO DA REFERÊNCIA: Monta um pacote de contexto prévio com dados já extraídos nas linhas anteriores
@@ -1154,21 +1214,26 @@ async function extrairContextoFicha(doc) {
 
 // Filtra a base de escolas retornando apenas aquelas compatíveis com o nível de ensino atual do aluno.
 function filtrarEscolasAptas(baseEscolas, nivelAlunoNorm, isBercarioGeral) {
-    return baseEscolas.filter(esc => {
+    const filtradas = baseEscolas.filter(esc => {
         if (!esc.turmas || !Array.isArray(esc.turmas)) return false;
+        
         const turmasNivel = esc.turmas.filter(turma => {
             const nivelTurmaNorm = window.normalizarTexto(turma.nivel);
             if (isBercarioGeral) return nivelTurmaNorm.includes('BERCARIO');
-            if (nivelAlunoNorm === 'ESPECIAL' && nivelTurmaNorm.includes('ESPECIAL')) return true;
-            if (nivelAlunoNorm === 'EJA' && nivelTurmaNorm.includes('EJA')) return true;
             return nivelTurmaNorm === nivelAlunoNorm;
         });
+
         if (turmasNivel.length > 0) {
             esc.periodosEncontrados = [...new Set(turmasNivel.map(t => t.periodo))].join(' / ');
             return true;
         }
         return false;
     });
+    
+    if (filtradas.length === 0) {
+        console.warn(`[ASSISTENTE] Nenhuma escola encontrada para o nível: ${nivelAlunoNorm}`);
+    }
+    return filtradas;
 }
 
 // Monta a lista de escolas mais próximas e as ordena para exibição, limitando a quantidade exibida.
@@ -2101,6 +2166,10 @@ window.abrirModalAssistente = async function() {
         return mensagens.join('');
     }
 
+    if (!ctx.idEscolaAtual) {
+    console.error("[ASSISTENTE] ID da escola não detectado na ficha. A lista de escolas próximas não será exibida corretamente.");
+    }
+
     // ==============
     // SECTION: MÁQUINA DE ESTADOS (renderizarPasso)
     // ==============
@@ -2858,7 +2927,7 @@ if (typeof window.setSharedStore === 'function') {
     listaHtml += `<div class="school-list-container" style="margin-top:0;"><ul class="school-list">`;
     
     if (listaOrdenada.length === 0) {
-        textHtml += `<li class="school-item text-danger">Nenhuma escola encontrada na base.</li>`;
+        listaHtml += `<li class="school-item text-danger">Nenhuma escola encontrada na base.</li>`;
     } else {
         const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
         const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
@@ -2866,8 +2935,10 @@ if (typeof window.setSharedStore === 'function') {
         listaOrdenada.forEach((esc, i) => {
             const cor = String(esc.id) === String(idEscolaAtual) ? 'selected' : '';
             const tagAtual = String(esc.id) === String(idEscolaAtual) ? `<span class="mdi mdi-star text-warning" style="font-size: 14px; margin-left: 4px;" title="Escola Solicitada"></span> ` : '';
-            
-            let sufixoMaps = estado.perfilOSRM === 'foot' ? "&travelmode=walking&dirflg=w" : "";
+            let perfilReal = (estado.perfisReaisOSRM && estado.perfisReaisOSRM[esc.id]) || estado.perfilOSRM;
+            let iconPath = perfilReal === 'foot' ? 'mdi-walk' : 'mdi-car';
+
+            let sufixoMaps = perfilReal === 'foot' ? "&travelmode=walking&dirflg=w" : "&travelmode=driving&dirflg=d";
             let urlConfere = "";
             
             if (mapModeAtual === 'endereco' && dadosGeraisRotaSessao && typeof dadosGeraisRotaSessao.coordAlunoEnd === 'string') {
@@ -2877,8 +2948,7 @@ if (typeof window.setSharedStore === 'function') {
                 urlConfere = `https://maps.google.com/maps?saddr=${latOrigemLista}+${lonOrigemLista}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;
             }
             
-            let perfilReal = (estado.perfisReaisOSRM && estado.perfisReaisOSRM[esc.id]) || estado.perfilOSRM;
-            let iconPath = perfilReal === 'foot' ? 'mdi-walk' : 'mdi-car';
+            
             let txtDist = `<span class="text-warning"><span class="mdi mdi-refresh" style="font-size: 14px; margin-right: 2px;"></span> <i>Calculando trajeto...</i></span>`;
             if (estado.distanciasOSRM[esc.id] !== undefined) {
                 if (estado.distanciasOSRM[esc.id] === 'Erro' || estado.distanciasOSRM[esc.id] === null) {
@@ -3282,7 +3352,7 @@ if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuld
         estado.telaFinal = { 
             titulo: "INDEFERIR", 
             mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções.",
-            textoDetalhes: "Nenhum registro encontrado: Esta via não está mapeada no Banco Local de Ruas e não possui nenhum outro aluno sendo atendido por Dificuldade de Acesso ou Área Rural."
+            textoDetalhes: ""
         };
         return renderizarPasso(); 
     }

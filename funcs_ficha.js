@@ -1039,7 +1039,7 @@ window.verificaArqDiastur = async function(documentoContexto = document) {
         // Link oficial para traçar rota no Maps
         let urlGoogleMaps = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(enderecoXlsxURL)}`;
         if (destinoEscola) {
-            urlGoogleMaps += `&destination=${encodeURIComponent(destinoEscola)}`;
+            urlGoogleMaps += `&destination=${encodeURIComponent(destinoEscola)}&travelmode=walking&dirflg=w`;
         }
 
         const elementoLinha = tdArquivo.parentElement;
