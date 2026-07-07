@@ -1036,11 +1036,23 @@ window.verificaArqDiastur = async function(documentoContexto = document) {
     
     // --- 5. RENDERIZAÇÃO DA INTERFACE COM A ROTA ---
     if (enderecoXlsx) {
+
+        // Recupera dados salvos previamente na função realizarCalculosIniciaisDistancia
+        // CORREÇÃO APLICADA: Obtém as coordenadas da rota calculada ou do histórico persistido
+                const dadosRota = typeof window.getSharedStoreValue === 'function' ? window.getSharedStoreValue('dadosGeraisRota') : null;
+                const latAlunoFicha = dadosRota?.coordAlunoGPS?.lat || dadosSalvos?.lat;
+                const lonAlunoFicha = dadosRota?.coordAlunoGPS?.lon || dadosSalvos?.lon;
+        // console.log("[AUDITORIA-LOTE] Coordenadas do aluno (GPS):", latAlunoFicha, lonAlunoFicha);
+
         // Link oficial para traçar rota no Maps
         let urlGoogleMaps = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(enderecoXlsxURL)}`;
         if (destinoEscola) {
             urlGoogleMaps += `&destination=${encodeURIComponent(destinoEscola)}&travelmode=walking&dirflg=w`;
         }
+
+        let urlGoogleMaps2 = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(enderecoXlsxURL)}`;
+        if (latAlunoFicha && lonAlunoFicha) urlGoogleMaps2 += `&destination=${latAlunoFicha},${lonAlunoFicha}&travelmode=walking&dirflg=w`;
+
 
         const elementoLinha = tdArquivo.parentElement;
 
@@ -1053,7 +1065,8 @@ window.verificaArqDiastur = async function(documentoContexto = document) {
             novaLinha.innerHTML = `
                 <td colspan="5">
                     <strong>Endereço original do cadastro:</strong> ${enderecoXlsx}
-                    <a href="${urlGoogleMaps}" target="_blank" rel="noopener" style="margin-left: 15px; color: #2980b9; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">Trajeto</a>
+                    <a href="${urlGoogleMaps}" target="_blank" rel="noopener" style="margin-left: 15px; color: #2980b9; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">Rota até escola</a> 
+                    <a href="${urlGoogleMaps2}" target="_blank" rel="noopener" style="margin-left: 15px; color: #2980b9; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">Rota até endereço atual</a>
                 </td>
             `;
             elementoLinha.parentNode.insertBefore(novaLinha, elementoLinha.nextSibling);
