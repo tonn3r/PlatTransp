@@ -633,10 +633,25 @@ if (
             }
 
             // --- FALLBACK 1: OSRM ---
+            // --- FALLBACK 1: OSRM ---
             try {
                 const url = `https://router.project-osrm.org/route/v1/${perfilAlvo}/${lonOrigin},${latOrigin};${lonDest},${latDest}?overview=false`;
-                const fetchOptions = signal ? { signal } : {};
+                
+                // Cria um AbortController combinado para forçar timeout de 3000ms na requisição HTTP do OSRM
+                const osrmTimeoutController = new AbortController();
+                const timeoutId = setTimeout(() => osrmTimeoutController.abort(), 3000);
+                
+                let fetchSignal = osrmTimeoutController.signal;
+                if (signal) {
+                    // Se houver um signal externo vindo do assistente, vincula ao cancelamento também
+                    signal.addEventListener('abort', () => osrmTimeoutController.abort());
+                    if (signal.aborted) osrmTimeoutController.abort();
+                }
+                
+                const fetchOptions = { signal: fetchSignal };
                 const response = await fetch(url, fetchOptions);
+                clearTimeout(timeoutId);
+                
                 if (response.ok) {
                     const data = await response.json();
                     if (data.code === 'Ok' && data.routes && data.routes.length > 0) {

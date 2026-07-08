@@ -3065,16 +3065,29 @@ if (typeof window.setSharedStore === 'function') {
                             }
                         } else {
                             // Escolas secundárias comuns da lista seguem o fluxo padrão regulamentado
-                            const resultadoCalc = await window.calcularTrajeto(latOrigemLista, lonOrigemLista, esc.lat, esc.lon, estado.perfilOSRM, meuSignal);
-                            if (meuSignal.aborted) break; 
+                            console.log(`[ASSISTENTE] 🧭 Calculando trajeto para escola ID: ${esc.id} - ${esc.nome}`);
                             
-                            if (resultadoCalc !== null && resultadoCalc.distancia !== undefined && resultadoCalc.distancia !== null) {
-                                estado.distanciasOSRM[esc.id] = resultadoCalc.distancia;
-                                if (!estado.fontesOSRM) estado.fontesOSRM = {};
-                                estado.fontesOSRM[esc.id] = resultadoCalc.fonte;
-                                if (!estado.perfisReaisOSRM) estado.perfisReaisOSRM = {};
-                                estado.perfisReaisOSRM[esc.id] = resultadoCalc.modoUtilizado;
-                            } else {
+                            // Cria um mecanismo de proteção contra travamentos eternos (Timeout de 4 segundos)
+                            const promessaTrajeto = window.calcularTrajeto(latOrigemLista, lonOrigemLista, esc.lat, esc.lon, estado.perfilOSRM, meuSignal);
+                            const promessaTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT_PROTETIVO")), 4000));
+                            
+                            try {
+                                const resultadoCalc = await Promise.race([promessaTrajeto, promessaTimeout]);
+                                if (meuSignal.aborted) break; 
+                                
+                                if (resultadoCalc !== null && resultadoCalc.distancia !== undefined && resultadoCalc.distancia !== null) {
+                                    console.log(`[ASSISTENTE] ✅ Sucesso no cálculo ID ${esc.id}: ${resultadoCalc.distancia}m via ${resultadoCalc.fonte}`);
+                                    estado.distanciasOSRM[esc.id] = resultadoCalc.distancia;
+                                    if (!estado.fontesOSRM) estado.fontesOSRM = {};
+                                    estado.fontesOSRM[esc.id] = resultadoCalc.fonte;
+                                    if (!estado.perfisReaisOSRM) estado.perfisReaisOSRM = {};
+                                    estado.perfisReaisOSRM[esc.id] = resultadoCalc.modoUtilizado;
+                                } else {
+                                    console.warn(`[ASSISTENTE] ⚠️ Retorno nulo ou inválido para escola ID ${esc.id}. Definindo como Erro.`);
+                                    estado.distanciasOSRM[esc.id] = 'Erro';
+                                }
+                            } catch (errTimeout) {
+                                console.error(`[ASSISTENTE] ❌ Travamento evitado na escola ID ${esc.id}: Rota demorou demais ou falhou. pulando para próxima.`);
                                 estado.distanciasOSRM[esc.id] = 'Erro';
                             }
                         }
