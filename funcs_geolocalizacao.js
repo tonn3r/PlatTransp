@@ -147,13 +147,13 @@ window.sincronizarMapaECoordenadas = async function(docAlvo) {
 
     const dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
 
-    if (dadosGeo) {
+    if (dadosGeo && dadosGeo.geoEndereco_Latit.length > 4 && dadosGeo.geoEndereco_Longit.length > 4) {
 
         const localValido = window.estaDentroDaCidade(dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit);
     
             // Se não estiver dentro, força o modo 'endereco' para ignorar as coordenadas corrompidas/distantes
             if (!localValido) {
-                console.warn("[ASSISTENTE] Coordenadas fora de SBC. Forçando modo Endereço.");
+                console.warn("[ASSISTENTE] Coordenadas fora de SBC. Forçando modo Endereço. urlFichaNova: " + urlFichaNova + " | Lat: " + dadosGeo.geoEndereco_Latit + " | Lon: " + dadosGeo.geoEndereco_Longit);
                 window.setSharedStore?.({ modoMapaAtual: 'endereco' });
             }
 

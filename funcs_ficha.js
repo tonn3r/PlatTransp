@@ -60,28 +60,45 @@ function blindarElementosAnalise(doc) {
             console.log("[PLUGIN] ✅ Estrutura corrigida! As divs agora são irmãs independentes.");
         }
 
-        // --- MANIPULAÇÃO DE EVENTOS ---
-        // Remove completamente o atributo nativo onchange para evitar que chame a função da página
+        // --- MANIPULAÇÃO DE EVENTOS E VISIBILIDADE ---
+        // Remove completamente o atributo nativo onchange para evitar que chame a função original da página
         selectMotivo.removeAttribute("onchange");
 
-        // Criamos a função de exibição robusta que força a visibilidade
+        // Nova lógica de exibição robusta unificada usando querySelectorAll
         const aplicarRegrasVisibilidade = () => {
             const valorSelecionado = selectMotivo.value || "";
 
-            // Elementos estruturais que SEMPRE devem ficar visíveis (independente de herança agora que estão separados)
-            const IDsSempreVisiveis = ["distancia_aferida_div", "status_detalhes_div", "botao_salvar_modal"];
-            IDsSempreVisiveis.forEach(id => {
-                const el = doc.getElementById(id);
-                if (el) {
+            // 1. Seletores que SEMPRE devem ficar visíveis (tratados em lote via querySelectorAll)
+            const seletoresSempreVisiveis = [
+                "#distancia_aferida_div",
+                "#status_detalhes_div",
+                "#botao_salvar_modal"
+            ];
+
+            seletoresSempreVisiveis.forEach(seletor => {
+                const elementos = doc.querySelectorAll(seletor);
+                
+                elementos.forEach(el => {
+                    // Força a visibilidade aplicando estilos importantes
                     el.style.setProperty("display", "block", "important");
                     el.style.setProperty("visibility", "visible", "important");
                     el.style.setProperty("opacity", "1", "important");
-                }
+                    
+                    // Se for o botão de salvar, garante também a exibição da div pai (.divsubmit)
+                    if (seletor === "#botao_salvar_modal") {
+                        const divPai = el.closest('.divsubmit');
+                        if (divPai) {
+                            divPai.style.setProperty("display", "block", "important");
+                        }
+                    }
+
+                    console.log("[DOM] Elemento "+ seletor + " forçado a ser visível.");
+                });
             });
 
-            // Elemento dinâmico (escola_mais_proxima_div) - agora pode sumir sem levar o status_detalhes_div junto
-            const elEscolaProximaAtualizado = doc.getElementById("escola_mais_proxima_div");
-            if (elEscolaProximaAtualizado) {
+            // 2. Elemento dinâmico (escola_mais_proxima_div) - agora independente
+            const elementosEscolaProxima = doc.querySelectorAll("#escola_mais_proxima_div");
+            elementosEscolaProxima.forEach(elEscolaProximaAtualizado => {
                 if (valorSelecionado.toUpperCase().includes("OPCAO")) {
                     elEscolaProximaAtualizado.style.setProperty("display", "block", "important");
                     elEscolaProximaAtualizado.style.setProperty("visibility", "visible", "important");
@@ -89,18 +106,14 @@ function blindarElementosAnalise(doc) {
                 } else {
                     elEscolaProximaAtualizado.style.setProperty("display", "none", "important");
                 }
-            }
+            });
         };
 
-        // Atribuímos o novo evento de mudança diretamente no elemento
-        selectMotivo.onchange = aplicarRegrasVisibilidade;
+        // Adiciona o ouvinte de evento moderno ao select
+        selectMotivo.addEventListener("change", aplicarRegrasVisibilidade);
 
-        // Executa uma vez no carregamento para aplicar o estado inicial baseado na opção atual
+        // Dispara a execução imediata para ajustar a tela logo no carregamento inicial
         aplicarRegrasVisibilidade();
-
-    } else {
-        // Caso o select ainda não esteja renderizado na tela, tenta novamente
-        setTimeout(() => blindarElementosAnalise(doc), 200);
     }
 }
 

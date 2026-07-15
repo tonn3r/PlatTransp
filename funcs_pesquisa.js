@@ -1,6 +1,20 @@
 // Configura os scripts, eventos e modificações visuais aplicados à página de pesquisa de alunos/solicitações.
 window.iniciarPaginaPesquisa = function() {
     let paginaAtual = 1;
+    let requisicaoAtiva = null; // Armazena a requisição AJAX atual para poder abortá-la
+
+    // Dispara um evento real e nativo de resize simulando a ação física do usuário
+    function forcarResizeNativo() {
+        try {
+            window.dispatchEvent(new UIEvent('resize', { bubbles: true, cancelable: true }));
+        } catch (e) {
+            if (document.createEvent) {
+                var evt = document.createEvent('UIEvent');
+                evt.initUIEvent('resize', true, true, window, 0);
+                window.dispatchEvent(evt);
+            }
+        }
+    }
 
     // Limpa acentos e caracteres especiais para ajudar nos filtros de texto.
     function removerAcentosEspeciais(str) {
@@ -11,7 +25,7 @@ window.iniciarPaginaPesquisa = function() {
     // Força o gatilho de alteração num elemento, avisando o sistema que o valor mudou.
     function dispararEventoChange(elemento) {
         if (!elemento) return;
-        el.dispatchEvent(new Event('change', { bubbles: true }));
+        elemento.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     // Verifica se há alguma restrição (filtro) ativa nas buscas do painel.
@@ -23,115 +37,211 @@ window.iniciarPaginaPesquisa = function() {
         const nome = removerAcentosEspeciais($('#nome_aluno_pesquisado').val() || "");
         const endereco = removerAcentosEspeciais($('#endereco').val() || "");
 
-        return (unidade !== "" && unidade !== "0") || 
-               (status !== "" && status !== "0") || 
-               (motivo !== "" && motivo !== "0") || 
+        return (unidade !== "" && unidade !== "0" && unidade !== null) || 
+               (status !== "" && status !== "0" && status !== null) || 
+               (motivo !== "" && motivo !== "0" && motivo !== null) || 
                (nome.trim().length > 0) || 
                (endereco.trim().length > 0);
     }
 
-    // Mostra ou esconde o botão de "limpar filtros" a depender de existirem filtros ativos.
+    // Mostra ou esconde o botão de "limpar filtros" e os botões de "X" individuais.
     function atualizarVisibilidadeBotaoReset() {
         const btn = document.getElementById('btn-limpar-filtros');
         if (btn) {
             btn.style.display = temFiltroAtivo() ? 'inline-block' : 'none';
         }
+
+        // Controla a exibição dos "X" individuais com base nos preenchimentos atuais
+        const campos = [
+            { id: 'unidade-autocomplete', valorPadrao: '' },
+            { id: 'status_selecionado', valorPadrao: '0' },
+            { id: 'motivo_selecionado', valorPadrao: '0' },
+            { id: 'nome_aluno_pesquisado', valorPadrao: '' },
+            { id: 'endereco', valorPadrao: '' }
+        ];
+
+        campos.forEach(campo => {
+            const el = document.getElementById(campo.id);
+            if (el) {
+                const wrapper = el.closest('.container-filtro-wrapper');
+                if (wrapper) {
+                    const btnX = wrapper.querySelector('.btn-clear-individual');
+                    if (btnX) {
+                        const temValor = el.value !== "" && el.value !== campo.valorPadrao && el.value !== null;
+                        btnX.style.display = temValor ? 'flex' : 'none';
+                    }
+                }
+            }
+        });
+    }
+
+    // Injeta os estilos CSS necessários para os botões "X" flutuantes individuais
+    function injetarEstilosReset() {
+        if (document.getElementById('estilo-botoes-reset')) return;
+        const style = document.createElement('style');
+        style.id = 'estilo-botoes-reset';
+        style.innerHTML = `
+            .container-filtro-wrapper {
+                position: relative;
+                display: inline-block;
+                width: 100%;
+            }
+            .btn-clear-individual {
+                position: absolute;
+                right: 16px;
+                top: 50%;
+                transform: translateY(-50%);
+                opacity: 0.5;
+                color: grey !important;
+                background: #fff;
+                border: none;
+                border-radius: 50%;
+                width: 14px;
+                height: 14px;
+                font-size: 8px;
+                font-weight: bold;
+                cursor: pointer;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                line-height: 1;
+                z-index: 10;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                transition: background 0.2s, transform 0.1s, color 0.2s;
+            }
+            .btn-clear-individual:hover {
+                background: #c0392b;
+                color: white !important;
+                opacity: 1;
+                transform: translateY(-50%) scale(1.1);
+            }
+            /* Garante padding à direita nos campos para o texto não sobrepor o botão X */
+            .container-filtro-wrapper input, 
+            .container-filtro-wrapper select {
+                padding-right: 24px !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Envolve um elemento em um container com o botão "X" de reset individual
+    function aplicarResetIndividual(elId, callbackLimpar) {
+        const el = document.getElementById(elId);
+        if (!el || el.parentNode.classList.contains('container-filtro-wrapper')) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'container-filtro-wrapper';
+        el.parentNode.insertBefore(wrapper, el);
+        wrapper.appendChild(el);
+
+        const btnX = document.createElement('button');
+        btnX.className = 'btn-clear-individual';
+        btnX.type = 'button';
+        btnX.innerHTML = '✕';
+        btnX.title = 'Limpar este filtro';
+
+        btnX.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            callbackLimpar();
+            paginaAtual = 1;
+            atualizarVisibilidadeBotaoReset();
+
+            // Após remover o filtro atual, decide se exibe histórico ou submete nova busca com o que sobrou
+            executarPesquisaPainel();
+        });
+
+        wrapper.appendChild(btnX);
+    }
+
+    // Função central que gerencia o fluxo de pesquisa baseado no estado do Painel
+    function executarPesquisaPainel() {
+        if (typeof $ === 'undefined') return;
+
+        if (requisicaoAtiva && typeof requisicaoAtiva.abort === 'function') {
+            requisicaoAtiva.abort();
+        }
+
+        if (!temFiltroAtivo()) {
+            $('#mostra_alunos').html('');
+            carregarTabelaHistorico();
+            return;
+        }
+
+        $("#mostra_alunos").html("<img src='images/carregando.gif' width='60' height='28'>");
+
+        let ord = $('#ordenar_por').val();
+        if (ord === "0") ord = "1";
+
+        const nome = removerAcentosEspeciais($('#nome_aluno_pesquisado').val() || "").trim();
+        const endereco = removerAcentosEspeciais($('#endereco').val() || "").trim();
+        const unidade = $('#id_unidade_selecionada').val();
+        const status = $('#status_selecionado').val();
+
+        // Determina a função adequada dinamicamente com base nas regras do site original
+        let funcaoUtilizada = 1; 
+        if (nome.length > 2) {
+            funcaoUtilizada = 5;
+        } else if (endereco.length > 0) {
+            funcaoUtilizada = 6;
+            if (ord === "1") ord = "2"; 
+        } else if (unidade !== "" && unidade !== "0") {
+            funcaoUtilizada = 2;
+        } else if (status !== "" && status !== "0") {
+            funcaoUtilizada = 4;
+        }
+
+        requisicaoAtiva = $.post("lista_alunos_transporte.php", {
+            ano: $('#ano_selecionado').val(),
+            id_unidade: unidade,
+            motivo_selecionado: $('#motivo_selecionado').val(),
+            status_selecionado: status,
+            nome_aluno_pesquisado: funcaoUtilizada === 5 ? nome.replace(/\s+/g, '%') : nome,
+            endereco: funcaoUtilizada === 6 ? endereco.replace(/\s+/g, '%') : endereco,
+            funcao_utilizada: funcaoUtilizada,
+            registro_inicial: (paginaAtual - 1) * 100,
+            pagina: paginaAtual,
+            ordenar_por: ord
+        }).done(data => { 
+            $("#mostra_alunos").html(data); 
+        });
     }
 
     // Aplica alterações nas funções originais do sistema para que as buscas preservem outros filtros (nome, status, etc).
     function aplicarPatches() {
         const win = window;
 
+        // Redefine as chamadas globais do site para apontar para a nossa função controlada
         win.lista_unidade_selecionada = function(reg, pag) {
-            if (typeof $ === 'undefined') return;
-            let ord = $('#ordenar_por').val();
-            if (ord === "0") ord = "1"; 
-
-            $("#mostra_alunos").html("<img src='images/carregando.gif' width='60' height='28'>");
-            $.post("lista_alunos_transporte.php", {
-                ano: $('#ano_selecionado').val(),
-                id_unidade: $('#id_unidade_selecionada').val(),
-                motivo_selecionado: $('#motivo_selecionado').val(),
-                status_selecionado: $('#status_selecionado').val(),
-                funcao_utilizada: 2,
-                registro_inicial: reg,
-                pagina: pag,
-                ordenar_por: ord
-            }).done(data => { $("#mostra_alunos").html(data); });
+            paginaAtual = pag;
+            executarPesquisaPainel();
         };
 
         win.lista_ano_selecionado = function(reg, pag) {
             const select_ano = document.getElementById('ano_selecionado');
-            if (!select_ano || typeof $ === 'undefined') return;
-            
+            if (!select_ano) return;
             $(select_ano).off('change').on('change', function() {
                 atualizarVisibilidadeBotaoReset();
-
-                const unidade = $('#id_unidade_selecionada').val();
-                const status = $('#status_selecionado').val();
-                const motivo = $('#motivo_selecionado').val();
-                const nome = removerAcentosEspeciais($('#nome_aluno_pesquisado').val() || "");
-                const endereco = removerAcentosEspeciais($('#endereco').val() || "");
-
-                if ((unidade === "" || unidade === "0") && 
-                    (status === "" || status === "0") && 
-                    (motivo === "" || motivo === "0") && 
-                    (nome.trim().length === 0) && 
-                    (endereco.trim().length === 0)) {
-                    return; 
-                }
-
-                $("#mostra_alunos").html("<img src='images/carregando.gif' width='60' height='28'>");
-                let ord = $('#ordenar_por').val();
-                if (ord === "0") ord = "1";
-
-                $.post("lista_alunos_transporte.php", {
-                    ano: $(this).val(),
-                    id_unidade: unidade,
-                    motivo_selecionado: motivo,
-                    status_selecionado: status,
-                    nome_aluno_pesquisado: nome,
-                    endereco: endereco,
-                    funcao_utilizada: 1,
-                    registro_inicial: reg,
-                    pagina: pag,
-                    ordenar_por: ord
-                }).done(data => { $("#mostra_alunos").html(data); });
+                paginaAtual = 1;
+                executarPesquisaPainel();
             });
         };
 
         win.lista_ordenado_por = function(reg, pag) {
-            if (typeof $ === 'undefined') return;
             $('#ordenar_por').off('change').on('change', function(){
                 atualizarVisibilidadeBotaoReset();
+                paginaAtual = 1;
+                executarPesquisaPainel();
+            });
+        };
 
-                const unidade = $('#id_unidade_selecionada').val();
-                const status = $('#status_selecionado').val();
-                const motivo = $('#motivo_selecionado').val();
-                const nome = removerAcentosEspeciais($('#nome_aluno_pesquisado').val() || "");
-                const endereco = removerAcentosEspeciais($('#endereco').val() || "");
-
-                if ((unidade === "" || unidade === "0") && 
-                    (status === "" || status === "0") && 
-                    (motivo === "" || motivo === "0") && 
-                    (nome.trim().length === 0) && 
-                    (endereco.trim().length === 0)) {
-                    return; 
-                }
-
-                $("#mostra_alunos").html("<img src='images/carregando.gif' width='60' height='28'>");
-                $.post("lista_alunos_transporte.php", {
-                    ano: $('#ano_selecionado').val(),
-                    id_unidade: unidade,
-                    motivo_selecionado: motivo,
-                    status_selecionado: status,
-                    nome_aluno_pesquisado: nome,
-                    endereco: endereco,
-                    funcao_utilizada: 1,
-                    registro_inicial: reg,
-                    pagina: pag,
-                    ordenar_por: $(this).val()
-                }).done(data => { $("#mostra_alunos").html(data); });
+        win.lista_status_selecionado = function(reg, pag) {
+            $('#status_selecionado').off('change').on('change', function(){
+                atualizarVisibilidadeBotaoReset();
+                paginaAtual = 1;
+                executarPesquisaPainel();
             });
         };
 
@@ -144,32 +254,14 @@ window.iniciarPaginaPesquisa = function() {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     paginaAtual = 1;
-                    win.lista_alunos_por_nome(0, 1);
+                    executarPesquisaPainel();
                 }
             });
         }
 
         win.lista_alunos_por_nome = function(reg, pag) {
-            if (typeof $ === 'undefined') return;
-            let nome = removerAcentosEspeciais($('#nome_aluno_pesquisado').val() || "");
-            let ord = $('#ordenar_por').val();
-            if (ord === "0") ord = "1";
-            nome = nome.replace(/\s+/g, '%');
-            if(nome.length > 2) {
-                if(nome.length > 3) { nome = '%' + nome;}
-                $("#mostra_alunos").html("<img src='images/carregando.gif' width='60' height='28'>");
-                $.post("lista_alunos_transporte.php", {
-                    ano: $('#ano_selecionado').val(),
-                    id_unidade: $('#id_unidade_selecionada').val(),
-                    motivo_selecionado: $('#motivo_selecionado').val(),
-                    status_selecionado: $('#status_selecionado').val(),
-                    funcao_utilizada: 5,
-                    registro_inicial: reg,
-                    pagina: pag,
-                    nome_aluno_pesquisado: nome,
-                    ordenar_por: ord
-                }).done(data => { $("#mostra_alunos").html(data); });
-            }
+            paginaAtual = pag;
+            executarPesquisaPainel();
         };
 
         const inputEndereco = document.getElementById('endereco');
@@ -181,37 +273,23 @@ window.iniciarPaginaPesquisa = function() {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     paginaAtual = 1;
-                    win.lista_alunos_por_endereco(0, 1);
+                    executarPesquisaPainel();
                 }
             });
         }
 
         win.lista_alunos_por_endereco = function(reg, pag) {
-            if (typeof $ === 'undefined') return;
-            let endereco = removerAcentosEspeciais($('#endereco').val() || "");
-            let ord = $('#ordenar_por').val();
-            if (ord === "0") ord = "2";
-            if(endereco.length > 0) {
-                endereco = endereco.replace(/\s+/g, '%');
-                $("#mostra_alunos").html("<img src='images/carregando.gif' width='60' height='28'>");
-                $.post("lista_alunos_transporte.php", {
-                    ano: $('#ano_selecionado').val(),
-                    id_unidade: $('#id_unidade_selecionada').val(),
-                    funcao_utilizada: 6,
-                    registro_inicial: reg,
-                    pagina: pag,
-                    endereco: endereco,
-                    ordenar_por: ord
-                }).done(data => { $("#mostra_alunos").html(data); });
-            }
+            paginaAtual = pag;
+            executarPesquisaPainel();
         };
     }
 
-    // Ajusta o design, adiciona busca em tempo real com datalist e vincula as funções customizadas ao DOM na listagem inicial.
+    // Design, busca autocomplete em tempo real e injeção dos Wrappers com botões "X" individuais.
     function aplicarMelhorias() {
         const selectUnidade = document.getElementById('id_unidade_selecionada');
         if (!selectUnidade || document.getElementById('unidade-autocomplete')) return;
 
+        injetarEstilosReset();
         aplicarPatches();
 
         if (typeof window.lista_ano_selecionado === "function") window.lista_ano_selecionado(0, 1);
@@ -255,26 +333,68 @@ window.iniciarPaginaPesquisa = function() {
             const tdBotao = document.createElement('td');
             tdBotao.style.verticalAlign = "bottom";
             tdBotao.style.paddingLeft = "10px";
+            
+            // Container alinhado à base para compensar o texto de label superior da linha
+            const containerBotoes = document.createElement('div');
+            containerBotoes.style.display = "flex";
+            containerBotoes.style.gap = "5px";
+            containerBotoes.style.marginTop = "14px"; 
+
+            // Novo botão de Pesquisa
+            const btnPesquisar = document.createElement('button');
+            btnPesquisar.id = 'btn-executar-pesquisa';
+            btnPesquisar.innerHTML = '🔍 Pesquisar';
+            btnPesquisar.type = 'button';
+            btnPesquisar.style = "background:#007BFF; color:#fff; border:1px solid #007BFF; border-radius:4px; height:30px; padding:0 12px; cursor:pointer; font-weight:bold; font-size:11px; vertical-align: middle;";
+            btnPesquisar.addEventListener('click', () => {
+                paginaAtual = 1;
+                executarPesquisaPainel();
+            });
+
             const btnReset = document.createElement('button');
             btnReset.id = 'btn-limpar-filtros';
             btnReset.innerHTML = '✕ Limpar Filtros';
             btnReset.type = 'button';
             btnReset.style = "background:#fff; color:#e74c3c; border:1px solid #e74c3c; border-radius:4px; height:30px; padding:0 12px; cursor:pointer; font-weight:bold; font-size:11px; vertical-align: middle; display:none;";
-            vincularEventoUnico(btnReset, 'click', () => {
+            btnReset.addEventListener('click', () => {
                 $('#id_unidade_selecionada').val('0');
                 $('#unidade-autocomplete').val('');
                 $('#status_selecionado').val('0');
                 $('#motivo_selecionado').val('0');
                 $('#nome_aluno_pesquisado').val('');
                 $('#endereco').val('');
+                if (requisicaoAtiva && typeof requisicaoAtiva.abort === 'function') {
+                    requisicaoAtiva.abort();
+                }
                 $('#mostra_alunos').html('');
                 paginaAtual = 1;
                 atualizarVisibilidadeBotaoReset();
                 carregarTabelaHistorico();
             });
-            tdBotao.appendChild(btnReset);
+
+            containerBotoes.appendChild(btnPesquisar);
+            containerBotoes.appendChild(btnReset);
+            tdBotao.appendChild(containerBotoes);
             trPai.appendChild(tdBotao);
         }
+
+        // Aplicação do wrapper com botão "X" de limpeza individual nos elementos solicitados
+        aplicarResetIndividual('unidade-autocomplete', () => {
+            selectUnidade.value = '0';
+            inputBusca.value = '';
+        });
+        aplicarResetIndividual('status_selecionado', () => {
+            $('#status_selecionado').val('0');
+        });
+        aplicarResetIndividual('motivo_selecionado', () => {
+            $('#motivo_selecionado').val('0');
+        });
+        aplicarResetIndividual('nome_aluno_pesquisado', () => {
+            $('#nome_aluno_pesquisado').val('');
+        });
+        aplicarResetIndividual('endereco', () => {
+            $('#endereco').val('');
+        });
 
         const processarSelecao = () => {
             let val = inputBusca.value.trim();
@@ -289,9 +409,9 @@ window.iniciarPaginaPesquisa = function() {
             }
             if(id || val === "") {
                 selectUnidade.value = id || "0";
-                paginaAtual = 1;
                 atualizarVisibilidadeBotaoReset();
-                window.lista_unidade_selecionada(0, 1);
+                paginaAtual = 1;
+                executarPesquisaPainel();
             }
         };
 
@@ -302,10 +422,13 @@ window.iniciarPaginaPesquisa = function() {
         inputBusca.addEventListener('keydown', (e) => { if (e.key === 'Enter') processarSelecao(); });
 
         const idsParaEstilizar = ['ano_selecionado', 'motivo_selecionado', 'status_selecionado', 'unidade-autocomplete', 'nome_aluno_pesquisado', 'endereco', 'ordenar_por'];
-        
         idsParaEstilizar.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
+                const wrapperPai = el.closest('.container-filtro-wrapper');
+                if (wrapperPai) {
+                    wrapperPai.style.width = '100%';
+                }
                 el.style.width = '100%';
                 el.style.boxSizing = 'border-box';
                 el.style.minWidth = '70px';
@@ -333,40 +456,9 @@ window.iniciarPaginaPesquisa = function() {
 
     // Dispara via Ajax a listagem de alunos paginada baseada em avançar/voltar no painel melhorado.
     function dispararPesquisaPaginada(direcao) {
-        if (typeof $ === 'undefined') return;
         if (direcao === 'next') paginaAtual++;
         else if (direcao === 'prev' && paginaAtual > 1) paginaAtual--;
-        const reg = (paginaAtual - 1) * 300;
-        let ord = $('#ordenar_por').val();
-        
-        const nomePesq = removerAcentosEspeciais($('#nome_aluno_pesquisado').val() || "");
-        const endPesq = removerAcentosEspeciais($('#endereco').val() || "");
-        
-        if (ord === "0") {
-            if (nomePesq.length > 2) ord = "1";
-            else if (endPesq.length > 0) ord = "2";
-            else if ($('#id_unidade_selecionada').val() !== "0") ord = "1";
-        }
-        const dados = {
-            ano: $('#ano_selecionado').val(),
-            id_unidade: $('#id_unidade_selecionada').val(),
-            motivo_selecionado: $('#motivo_selecionado').val(),
-            status_selecionado: $('#status_selecionado').val(),
-            ordenar_por: ord,
-            nome_aluno_pesquisado: nomePesq,
-            endereco: endPesq,
-            registro_inicial: reg,
-            pagina: paginaAtual
-        };
-        if (nomePesq.length > 2) dados.funcao_utilizada = 5;
-        else if (endPesq.length > 0) dados.funcao_utilizada = 6;
-        else if (dados.id_unidade !== "0") dados.funcao_utilizada = 2;
-        else dados.funcao_utilizada = 4;
-        $("#mostra_alunos").html("<img src='images/carregando.gif' width='60' height='28'> Carregando página " + paginaAtual + "...");
-        $.post("lista_alunos_transporte.php", dados).done(data => {
-            $("#mostra_alunos").html(data);
-            window.scrollTo(0, 0);
-        });
+        executarPesquisaPainel();
     }
 
     // Cria ou atualiza os botões inferiores de paginação com os botões "Anterior" e "Próxima".
@@ -375,7 +467,7 @@ window.iniciarPaginaPesquisa = function() {
         if (!container) return;
         const numLinhas = container.querySelectorAll('tr').length;
         let barra = document.getElementById('barra-paginacao-flutuante');
-        if (numLinhas >= 301 || paginaAtual > 1) {
+        if (numLinhas >= 101 || paginaAtual > 1) {
             if (!barra) {
                 barra = document.createElement('div');
                 barra.id = 'barra-paginacao-flutuante';
@@ -385,12 +477,12 @@ window.iniciarPaginaPesquisa = function() {
             barra.innerHTML = `
                 ${paginaAtual > 1 ? '<button id="btn-pag-prev" style="cursor:pointer; background:none; border:1px solid white; color:white; border-radius:20px; padding:5px 15px;">« Anterior</button>' : ''}
                 <span>Página <strong>${paginaAtual}</strong></span>
-                ${numLinhas >= 301 ? '<button id="btn-pag-next" style="cursor:pointer; background:#ecf0f1; border:none; color:#2c3e50; border-radius:20px; padding:5px 15px; font-weight:bold;">Próxima »</button>' : ''}
+                ${numLinhas >= 101 ? '<button id="btn-pag-next" style="cursor:pointer; background:#ecf0f1; border:none; color:#2c3e50; border-radius:20px; padding:5px 15px; font-weight:bold;">Próxima »</button>' : ''}
             `;
             const bPrev = document.getElementById('btn-pag-prev');
             const bNext = document.getElementById('btn-pag-next');
-            if (bPrev) vincularEventoUnico(bPrev, 'click', () => dispararPesquisaPaginada('prev'));
-            if (bNext) vincularEventoUnico(bNext, 'click', () => dispararPesquisaPaginada('next'));
+            if (bPrev) bPrev.addEventListener('click', () => dispararPesquisaPaginada('prev'));
+            if (bNext) bNext.addEventListener('click', () => dispararPesquisaPaginada('next'));
         } else if (barra) { barra.remove(); }
     }
 
@@ -412,11 +504,13 @@ window.iniciarPaginaPesquisa = function() {
         html += '</tbody></table>';
         divPrincipal.innerHTML = html;
         vincularEventosHistorico();
+        
+        // Garante redimensionamento de janela (resize) imediato após injetar o Histórico no DOM
+        forcarResizeNativo();
     }
 
     // Adiciona os event listeners de forma ampla e irrestrita para registrar no histórico
     function vincularEventosHistorico() {
-        // Seletor universal: intercepta cliques em botões explicitamente ou elementos com links contendo o texto-alvo.
         document.querySelectorAll('.botao, button, a, [onclick]').forEach(b => {
             if (b.dataset.eventoHistoricoVinculado) return; 
             
@@ -432,16 +526,27 @@ window.iniciarPaginaPesquisa = function() {
                     
                     if (id) {
                         let hist = JSON.parse(localStorage.getItem('historico_alunos_transporte') || "[]");
-                        hist = hist.filter(i => i.id !== id);
                         
-                        const cloneTr = tr.cloneNode(true);
-                        const colunas = cloneTr.querySelectorAll('td');
-                        if (colunas.length >= 13) {
-                            colunas[0].innerHTML = '';  
-                            colunas[12].innerHTML = ''; 
+                        // Limpa strings para correspondência exata de ID e expurga o antigo da lista antes de reinserir no topo (reordenando)
+                        const limpaId = id.toString().replace(/\D/g, '');
+                        
+                        let conteudoHtmlParaSalvar = tr.innerHTML;
+                        
+                        // Localiza se já existia no histórico e remove o registro antigo
+                        hist = hist.filter(i => i.id.toString().replace(/\D/g, '') !== limpaId);
+                        
+                        // Se o clique não veio do histórico (veio de um TR novo de busca real), faz o clone limpando as ações laterais
+                        if (!tr.parentNode || tr.parentNode.id !== 'corpo-historico') {
+                            const cloneTr = tr.cloneNode(true);
+                            const colunas = cloneTr.querySelectorAll('td');
+                            if (colunas.length >= 13) {
+                                colunas[0].innerHTML = '';  
+                                colunas[12].innerHTML = ''; 
+                            }
+                            conteudoHtmlParaSalvar = cloneTr.innerHTML;
                         }
 
-                        hist.unshift({ id: id, conteudoHtml: cloneTr.innerHTML });
+                        hist.unshift({ id: id, conteudoHtml: conteudoHtmlParaSalvar });
                         localStorage.setItem('historico_alunos_transporte', JSON.stringify(hist.slice(0, 100)));
                     }
                 });
@@ -479,14 +584,7 @@ window.iniciarPaginaPesquisa = function() {
 
         if (realizarBuscaAutomatica) {
             atualizarVisibilidadeBotaoReset();
-            
-            if (params.has('endereco') && params.get('endereco').trim() !== "") {
-                if (typeof window.lista_alunos_por_endereco === "function") window.lista_alunos_por_endereco(0, 1);
-            } else if (params.has('nome_aluno_pesquisado') && params.get('nome_aluno_pesquisado').trim() !== "") {
-                if (typeof window.lista_alunos_por_nome === "function") window.lista_alunos_por_nome(0, 1);
-            } else {
-                if (typeof window.lista_unidade_selecionada === "function") window.lista_unidade_selecionada(0, 1);
-            }
+            executarPesquisaPainel();
         }
     }
 
@@ -516,7 +614,7 @@ window.iniciarPaginaPesquisa = function() {
                         const celulas = linha.cells; 
                         
                         if (celulas.length === 0) continue; 
-                        if (linha.closest('thead') || (linha.querySelectorAll('th').length > 0 && linha.querySelectorAll('td').length === 0)) {
+                        if (linha.closest('thead') || (linha.querySelectorAll('th').length > 0 && inline.querySelectorAll('td').length === 0)) {
                             pulouCabecalhoColunas = true; continue;
                         }
                         if (celulas.length === 1 && celulas[0].colSpan > 2) continue;
@@ -554,7 +652,7 @@ window.iniciarPaginaPesquisa = function() {
             }
         }
         atualizarBarraPaginacao();
-        vincularEventosHistorico(); // Continua monitorando os novos registros de forma contínua
+        vincularEventosHistorico(); 
     });
 
     const target = document.getElementById('mostra_alunos');
@@ -564,10 +662,17 @@ window.iniciarPaginaPesquisa = function() {
         if (typeof $ !== 'undefined' && document.getElementById('id_unidade_selecionada')) {
             clearInterval(verificarPronto);
             aplicarMelhorias();
+            forcarResizeNativo();
             setTimeout(() => {
                 carregarTabelaHistorico();
                 atualizarVisibilidadeBotaoReset();
                 processarParametrosURL(); 
+                // Força o gatilho assíncrono final garantindo que o DOM e os scripts externos ouviram o resize
+                window.dispatchEvent(new Event('resize'));
+                forcarResizeNativo();
+                setTimeout(forcarResizeNativo, 100);
+                setTimeout(forcarResizeNativo, 300);
+                
             }, 500);
         }
     }, 500);

@@ -600,7 +600,7 @@ function gerarTextoInstrucoesSOMARH(ctx, estado, exibirDetalhesFicha = true) {
     estado = estado || {};
 
     const nomeStr = ctx.nomeAluno || estado.nomeAluno || 'Não identificado';
-    const enderecoCompleto = ctx.enderecoCompleto || estado.enderecoCompleto || 'Não informado';
+    const enderecoCompleto = ctx.enderecoCompleto || estado.enderecoCompleto || '';
 
     // Captura segura da URL da ficha atual (funciona mesmo dentro de frames)
     const windowAlvo = document.defaultView || window;
@@ -2707,6 +2707,10 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
         return;
     }
 
+    // Garante a montagem e higienização do endereço em formato texto (Fallback absoluto)
+        const enderecoComumFallback = (ctx.enderecoCompleto || (ctx.endRua ? `${ctx.endRua}, ${ctx.endNum || ''} - ${ctx.endBairro || ''} ${ctx.cepVal || ''}` : '')).trim();
+        const possuiCoordenadasValidas = latAluno && lonAluno && !isNaN(latAluno) && !isNaN(lonAluno) && latAluno !== 0;
+
     mapModeAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
     transpModeAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
     let chaveCacheAtual = `${mapModeAtual}_${transpModeAtual}`;
@@ -2921,6 +2925,7 @@ if (typeof window.setSharedStore === 'function') {
     if (listaOrdenada.length === 0) {
         listaHtml += `<li class="school-item text-danger">Nenhuma escola encontrada na base.</li>`;
     } else {
+        
         const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
         const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
 
@@ -2932,12 +2937,15 @@ if (typeof window.setSharedStore === 'function') {
 
             let sufixoMaps = perfilReal === 'foot' ? "&travelmode=walking&dirflg=w" : "&travelmode=driving&dirflg=d";
             let urlConfere = "";
+            let endStrTxt = (dadosGeraisRotaSessao && typeof dadosGeraisRotaSessao.coordAlunoEnd === 'string') ? dadosGeraisRotaSessao.coordAlunoEnd : enderecoComumFallback;
+             endStrTxt = endStrTxt + "Sao Bernardo do Campo";
             
-            if (mapModeAtual === 'endereco' && dadosGeraisRotaSessao && typeof dadosGeraisRotaSessao.coordAlunoEnd === 'string') {
-                let endStrEncode = encodeURIComponent(dadosGeraisRotaSessao.coordAlunoEnd);
-                urlConfere = `https://maps.google.com/maps?saddr=${endStrEncode}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;
+            console.log("DEBUG: Modo mapa atual:", mapModeAtual, " | Coord aluno End:", dadosGeraisRotaSessao?.coordAlunoEnd, " | Endereço fallback:", enderecoComumFallback);
+            // SE o modo for endereço de texto OU se a coordenada for inválida/nula, força uso do endereço textual nas URLs do Maps
+            if ((mapModeAtual === 'endereco' && dadosGeraisRotaSessao && typeof dadosGeraisRotaSessao.coordAlunoEnd === 'string') || !possuiCoordenadasValidas || !endStrTxt || endStrTxt.trim().length <  1) {
+                urlConfere = `http://maps.google.com/maps?saddr=${encodeURIComponent(endStrTxt)}&daddr=${esc.lat},${esc.lon}${sufixoMaps}`;
             } else {
-                urlConfere = `https://maps.google.com/maps?saddr=${latOrigemLista}+${lonOrigemLista}&daddr=${esc.lat}+${esc.lon}${sufixoMaps}`;
+                urlConfere = `http://maps.google.com/maps?saddr=${latOrigemLista},${lonOrigemLista}&daddr=${esc.lat},${esc.lon}${sufixoMaps}`;
             }
             
             
@@ -2973,10 +2981,15 @@ if (typeof window.setSharedStore === 'function') {
     const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
 
     let linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=-23.706568332542187%2C-46.562466610927814&z=13`;
-    if(latAluno && lonAluno) {linkMapaRede =  `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latAluno}%2C${lonAluno}&z=18`;
-}else if(latOrigemLista && lonOrigemLista) {linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latOrigemLista}%2C${lonOrigemLista}&z=18`;
-}else if(dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') {linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${dadosGeraisRotaSessao.coordAlunoEnd.lat}%2C${dadosGeraisRotaSessao.coordAlunoEnd.lon}&z=18`;
-}   
+    if (possuiCoordenadasValidas) {
+        if (latAluno && lonAluno) {
+            linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latAluno}%2C${lonAluno}&z=18`;
+        } else if (latOrigemLista && lonOrigemLista) {
+            linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${latOrigemLista}%2C${lonOrigemLista}&z=18`
+        } else if (dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') {
+            linkMapaRede = `https://www.google.com/maps/d/u/0/viewer?mid=1ukc8GP3M-X3Da5l4k406MUMz5oyBB0E&femb=1&ll=${dadosGeraisRotaSessao.coordAlunoEnd.lat}%2C${dadosGeraisRotaSessao.coordAlunoEnd.lon}&z=18`;
+        }
+    }
 
     listaHtml += `<a href="${linkMapaRede}" target="_blank" class="btn btn-outline" style="text-decoration:none; margin-bottom:15px;">
         <span class="mdi mdi-map" style="font-size: 16px; margin-right: 4px;"></span> Conferir mapa da rede
@@ -3011,7 +3024,9 @@ if (typeof window.setSharedStore === 'function') {
         btnRefreshEnd.onclick = window.acionarRefreshLista;
     }
     
-    let faltaCalcularAgora = latAluno && listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
+    // Removida a obrigatoriedade de latAluno para permitir o cálculo usando o endereço texto de fallback
+    let faltaCalcularAgora = listaExibirBase.some(esc => estado.distanciasOSRM[esc.id] === undefined);
+    
     if (estado.ehAnalise && faltaCalcularAgora && typeof window.calcularTrajeto === 'function' && !estado.buscandoOSRM) {
         estado.buscandoOSRM = true;
         if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
@@ -3020,13 +3035,30 @@ if (typeof window.setSharedStore === 'function') {
         (async () => {
             const meuSignal = window.osrmAbortController.signal;
             try {
-                const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
-                const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
+                // Definição inteligente do ponto de origem (Coordenadas Reais VS Endereço String)
+                let origemCalculoParam1 = latAluno;
+                let origemCalculoParam2 = lonAluno;
+
+                if (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd) {
+                    if (typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') {
+                        origemCalculoParam1 = dadosGeraisRotaSessao.coordAlunoEnd.lat;
+                        origemCalculoParam2 = dadosGeraisRotaSessao.coordAlunoEnd.lon;
+                    } else {
+                        // Se for uma string de endereço pura no SharedStore
+                        origemCalculoParam1 = dadosGeraisRotaSessao.coordAlunoEnd;
+                        origemCalculoParam2 = null;
+                    }
+                }
+                
+                // Se as coordenadas globais falharam por completo, injeta o endereço comum coletado do ctx
+                if (!origemCalculoParam1 || isNaN(Number(origemCalculoParam1)) && typeof origemCalculoParam1 !== 'string') {
+                    origemCalculoParam1 = enderecoComumFallback;
+                    origemCalculoParam2 = null;
+                }
 
                 for (let esc of listaExibirBase) {
                     if (estado.distanciasOSRM[esc.id] === undefined) {
                         
-                        // --- INTERCEPTAÇÃO E OTIMIZAÇÃO DA UNIDADE ATUAL SOLICITADA ---
                         let distanciaCalculadaFinal = null;
                         if (String(esc.id) === String(idEscolaAtual)) {
                             const liAtualDOM = containerLista.querySelector(`li[data-id="${idEscolaAtual}"]`);
@@ -3039,8 +3071,9 @@ if (typeof window.setSharedStore === 'function') {
                                                       textoDistanciaAtual.includes("Calculando");
 
                             if (precisaRecalcular) {
-                                console.log("[OTIMIZAÇÃO] Distância da escola atual ausente ou imprecisa. Calculando via Google...");
-                                const resultadoCalc = await window.calcularTrajeto(latOrigemLista, lonOrigemLista, esc.lat, esc.lon, estado.perfilOSRM, meuSignal);
+                                console.log("[OTIMIZAÇÃO] Distância da escola atual baseada em string/coordenada de fallback...");
+                                // Se origemCalculoParam2 for null, a função window.calcularTrajeto receberá a string de endereço no primeiro parâmetro
+                                const resultadoCalc = await window.calcularTrajeto(origemCalculoParam1, origemCalculoParam2, esc.lat, esc.lon, estado.perfilOSRM, meuSignal);
                                 if (resultadoCalc !== null && resultadoCalc.distancia !== undefined) {
                                     distanciaCalculadaFinal = resultadoCalc.distancia;
                                     estado.distanciasOSRM[esc.id] = resultadoCalc.distancia;
