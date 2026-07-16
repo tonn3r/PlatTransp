@@ -136,6 +136,11 @@ window.extrairDadosGeograficos = async function(urlFichaNova) {
 
 // Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
 window.sincronizarMapaECoordenadas = async function(docAlvo) {
+    if (!docAlvo) {
+        console.error("[ASSISTENTE] Erro: Sincronização chamada sem documento alvo.");
+        return;
+    }
+
     let urlOrigem = docAlvo.location ? docAlvo.location.href : window.location.href;
     let idSolInput = docAlvo.querySelector('input[name="id_solicitacao"]') || docAlvo.querySelector('input[name="id"]');
     let idFicha = idSolInput ? idSolInput.value : '';
@@ -458,6 +463,14 @@ function carregarSDKGoogleMaps(apiKey) {
 window._pendingTrajetos = window._pendingTrajetos || {};
 
 window.calcularTrajeto = async function(latOrigin, lonOrigin, latDest, lonDest, profileIgnored = 'foot', signal = null) {
+
+    // 1. Validação de presença de dados
+    if (latOrigin == null || lonOrigin == null || latDest == null || lonDest == null) {
+        console.warn("[PLUGIN-MAPA] 🚫 Coordenadas ausentes. Rota não calculada para não gerar Bad Request.");
+        return null;
+    }
+
+
     latOrigin = Number(latOrigin);
 lonOrigin = Number(lonOrigin);
 latDest = Number(latDest);
