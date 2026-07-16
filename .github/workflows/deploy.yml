@@ -62,10 +62,10 @@ jobs:
           # Garante que a constante VERSAO_ATUAL no content.js seja sincronizada dinamicamente
           sed -i "s/const VERSAO_ATUAL = \".*\";/const VERSAO_ATUAL = \"$VERSION\";/g" content.js
           
-          # Injeção das chaves secretas no arquivo de geolocalização
-          sed -i "s/CHAVE_SECRETA_1/${{ secrets.GOOGLE_KEY_1 }}/g" funcs_geolocalizacao.js
-          sed -i "s/CHAVE_SECRETA_2/${{ secrets.GOOGLE_KEY_2 }}/g" funcs_geolocalizacao.js
-          sed -i "s/CHAVE_SECRETA_3/${{ secrets.GOOGLE_KEY_3 }}/g" funcs_geolocalizacao.js
+          # Injeção das chaves de API no arquivo de geolocalização
+          sed -i "s/CHAVE_GMAPS_1/${{ secrets.GOOGLE_KEY_1 }}/g" funcs_geolocalizacao.js
+          sed -i "s/CHAVE_GMAPS_2/${{ secrets.GOOGLE_KEY_2 }}/g" funcs_geolocalizacao.js
+          sed -i "s/CHAVE_GMAPS_3/${{ secrets.GOOGLE_KEY_3 }}/g" funcs_geolocalizacao.js
 
       - name: Compilar e Assinar Arquivo Comercial .CRX
         run: |
