@@ -1,0 +1,54 @@
+name: Gerador Automatico de Versao e Ambiente
+
+on:
+  push:
+    branches:
+      - main
+      - teste
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Obter Nome da Branch Atual
+        id: branch-name
+        run: echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+
+      - name: Ler Versao do manifest.json e Construir version.json
+        id: parse-manifest
+        run: |
+          VERSION=$(node -e "console.log(require('./manifest.json').version);")
+          BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
+          echo "A versao detectada no manifest foi: $VERSION na branch: $BRANCH_NAME"
+          
+          # Monta o arquivo version.json dinamicamente apontando para o zip correto da branch
+          echo "{\"version\": \"$VERSION\", \"url\": \"https://github.com/tonn3r/PlatTransp/archive/refs/heads/$BRANCH_NAME.zip\"}" > version.json
+
+      - name: Customizar manifest.json com o Ambiente correto da Branch
+        run: |
+          BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
+          # Substitui a palavra-chave AUTO_BRANCH pelo nome real da branch atual
+          sed -i "\"config_ambiente\": \"AUTO_BRANCH\"/\"config_ambiente\": \"$BRANCH_NAME\"/g" manifest.json
+
+      - name: Validar alteracoes nos arquivos
+        run: |
+          cat version.json
+          cat manifest.json | grep config_ambiente
+
+      - name: Commitar de volta no GitHub de forma automatica
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add version.json manifest.json
+          
+          # Só realiza o commit se houver modificações reais pendentes
+          git diff-index --quiet HEAD || git commit -m "chore: atualizacao automatica de versao e ambiente [skip ci]"
+          git push origin ${{ steps.branch-name.outputs.branch }}

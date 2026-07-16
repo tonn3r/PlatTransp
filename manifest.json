@@ -4,7 +4,7 @@
   "version": "3.0",
   "description": "Melhorias de qualidade de vida e um guia para ajudar nas análises",
   "permissions": ["storage"],
-  "config_ambiente": "main",
+  "config_ambiente": "AUTO_BRANCH",
   "content_scripts": [
     {
       "matches": ["http://plataforma-se2/*"],
