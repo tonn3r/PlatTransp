@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Plataforma SE2 - Otimizador",
-  "version": "3.0",
+  "version": "4.0",
   "description": "Melhorias de qualidade de vida e um guia para ajudar nas análises",
   "permissions": ["storage"],
-  "config_ambiente": "teste",
-  "update_url": "https://raw.githubusercontent.com/tonn3r/PlatTransp/teste/version.xml",
+  "config_ambiente": "AUTO_BRANCH",
+  "update_url": "https://raw.githubusercontent.com/tonn3r/PlatTransp/AUTO_BRANCH/version.xml",
   "content_scripts": [
     {
       "matches": ["http://plataforma-se2/*"],
@@ -13,8 +13,8 @@
         "escolas_db.js",
         "ruas.js",
         "encaminhamentos.js",
-	"funcs_ficha.js",
-	"funcs_pesquisa.js",
+        "funcs_ficha.js",
+        "funcs_pesquisa.js",
         "funcs_geolocalizacao.js",
         "funcs_assistente.js",
         "content.js"

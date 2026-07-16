@@ -25,7 +25,7 @@ jobs:
       - name: Configurar Node.js (Ambiente de Compilacao)
         uses: actions/setup-node@v4
         with:
-          node-size: 20
+          node-version: 20
 
       - name: Instalar Empacotador do Chrome
         run: npm install -g crx
@@ -34,19 +34,13 @@ jobs:
         run: |
           echo "${{ secrets.EXT_PRIVATE_KEY }}" > key.pem
 
-      - name: Customizar manifest.json com o Ambiente correto da Branch
-        run: |
-          BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
-          sed -i "s/AUTO_BRANCH/$BRANCH_NAME/g" manifest.json
-
-      - name: Ler Versao do Manifesto e Gerar ID Fixo
+      - name: Extrair Versao e Calcular ID Fixo do Manifest
         id: ext-metadata
         run: |
           VERSION=$(node -e "console.log(require('./manifest.json').version);")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           
-          # Calcula o ID fixo que a extensão terá no navegador baseado na chave privada
-          # Isso é exigido pelo dicionário XML de atualizações do Chrome
+          # Calcula o ID fixo baseado na chave privada (exigido pelo XML do Chrome)
           EXT_ID=$(node -e "
             const crypto = require('crypto');
             const fs = require('fs');
@@ -57,19 +51,38 @@ jobs:
           ")
           echo "ext_id=$EXT_ID" >> $GITHUB_OUTPUT
 
+      - name: Customizar manifest.json e Arquivos JS de Producao
+        run: |
+          BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
+          VERSION="${{ steps.ext-metadata.outputs.version }}"
+          
+          # Ajusta ambiente no manifest
+          sed -i "s/AUTO_BRANCH/$BRANCH_NAME/g" manifest.json
+          
+          # Garante que a constante VERSAO_ATUAL no content.js seja sincronizada dinamicamente
+          sed -i "s/const VERSAO_ATUAL = \".*\";/const VERSAO_ATUAL = \"$VERSION\";/g" content.js
+          
+          # Injeção das chaves secretas no arquivo de geolocalização
+          sed -i "s/CHAVE_SECRETA_1/${{ secrets.GOOGLE_KEY_1 }}/g" funcs_geolocalizacao.js
+          sed -i "s/CHAVE_SECRETA_2/${{ secrets.GOOGLE_KEY_2 }}/g" funcs_geolocalizacao.js
+          sed -i "s/CHAVE_SECRETA_3/${{ secrets.GOOGLE_KEY_3 }}/g" funcs_geolocalizacao.js
+
       - name: Compilar e Assinar Arquivo Comercial .CRX
         run: |
           BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
-          # Compacta a pasta atual excluindo arquivos desnecessários do Git e a chave sensível
           crx pack . -p key.pem -o app-$BRANCH_NAME.crx
           rm key.pem
 
-      - name: Construir Dicionario XML de Atualizacao (version.xml)
+      - name: Sincronizar e Construir Arquivos de Controle (JSON e XML)
         run: |
           BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
           VERSION="${{ steps.ext-metadata.outputs.version }}"
           EXT_ID="${{ steps.ext-metadata.outputs.ext_id }}"
           
+          # 1. Gera o version.json dinamicamente apontando para a branch correta
+          echo "{\"version\": \"$VERSION\", \"url\": \"https://github.com/tonn3r/PlatTransp/archive/refs/heads/$BRANCH_NAME.zip\"}" > version.json
+          
+          # 2. Gera o version.xml com a URL absoluta do .crx assinado
           echo '<?xml version="1.0" encoding="UTF-8"?>' > version.xml
           echo '<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">' >> version.xml
           echo "  <app appid=\"$EXT_ID\">" >> version.xml
@@ -77,13 +90,14 @@ jobs:
           echo '  </app>' >> version.xml
           echo '</gupdate>' >> version.xml
 
-      - name: Commitar e Publicar Artefatos (.crx e version.xml) de Forma Autonoma
+      - name: Commitar e Publicar Artefatos (.crx, version.json e version.xml)
         run: |
           git config --global user.name "Plataforma Bot Deployment"
           git config --global user.email "actions@github.com"
           
           BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
-          git add manifest.json version.xml app-$BRANCH_NAME.crx
+          
+          git add manifest.json version.json version.xml content.js app-$BRANCH_NAME.crx
           
           git diff-index --quiet HEAD || git commit -m "release: implantacao automatica silenciosa v${{ steps.ext-metadata.outputs.version }} [skip ci]"
           git push origin ${{ steps.branch-name.outputs.branch }}
