@@ -479,18 +479,13 @@ if (
         return null;
     }
 
-    // Garantir que temos uma API Key válida antes de proceder
-    const chaveAtiva = window.apiKeyGoogle || window.apiKeyGoogle2 || window.apiKeyGoogle3;
+    const localValido = window.estaDentroDaCidade(latOrigin, lonOrigin);
     
-    if (!window.estaDentroDaCidade(latOrigin, lonOrigin)) {
-        console.warn("[ASSISTENTE] Coordenadas fora de SBC. Ignorando cálculo.");
-        return null;
-    }
-    
-    if (!chaveAtiva) {
-        console.error("[ASSISTENTE] Nenhuma chave de API Google disponível.");
-        return null;
-    }
+            // Se não estiver dentro, força o modo 'endereco' para ignorar as coordenadas corrompidas/distantes
+            if (!localValido) {
+                console.warn("[ASSISTENTE] Coordenadas fora de SBC. API Key: " + window.GOOGLE_MAPS_API_KEY);
+                return null;
+            }
 
     const STORAGE_KEY_GLOBAL = 'plattransp_global_routes_cache';
     const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';

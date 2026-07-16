@@ -1,7 +1,6 @@
 // ==============
 // SECTION: UTILITÁRIOS E HELPERS
 // ==============
-window.estaProcessandoLista = false;
 
 // Normaliza um texto removendo acentos, convertendo para maiúsculas e ajustando espaços.
 if (typeof window.normalizarTexto !== 'function') {
@@ -2700,9 +2699,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
 
             // DEFINIÇÃO DO MOTOR DA LISTA DINÂMICA
             const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
-    if (window.estaProcessandoLista) return; // Bloqueia chamadas sobrepostas
-    window.estaProcessandoLista = true;
-
+                
     //funcao arredondar distancia:
     const Arredondar = (distanciaBase = 0, idEscola = 0) => {
     let valorOriginal = 0;
@@ -3168,7 +3165,6 @@ if (typeof window.setSharedStore === 'function') {
             } catch (erro) {
                 console.error('[ASSISTENTE] erro OSRM:', erro);
             } finally {
-                window.estaProcessandoLista = false;
                 estado.buscandoOSRM = false;
                 window.osrmAbortController = null;
                 if (typeof window.atualizarListaEscolasDinamicamente === 'function') {
