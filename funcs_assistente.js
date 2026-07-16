@@ -595,7 +595,7 @@ function resolverEncaminhamentoAluno(doc, dbEncaminhamentos, ctx, estado) {
 /**
  * Cria o texto básico de instruções para o SOMARH de forma condicional e programática.
  */
-function gerarTextoInstrucoesSOMARH(ctx, estado, exibirDetalhesFicha = true) {
+function gerarTextoInstrucoesSOMARH(ctx, estado, exibirDetalhesFicha = true, resumir = false) {
     ctx = ctx || {};
     estado = estado || {};
 
@@ -627,24 +627,41 @@ function gerarTextoInstrucoesSOMARH(ctx, estado, exibirDetalhesFicha = true) {
     let infoExtraHtml = "";
     // A lista detalhada de checagem só entra se for a ficha antiga E a condicional de negócio permitir
     if (isFichaAntiga && exibirDetalhesFicha) {
-        const textoEscolasFormatado = (Array.isArray(estado.top3EscolasNomes) && estado.top3EscolasNomes.length > 0)
-            ? estado.top3EscolasNomes.map((esc, idx) => `${idx + 1}º ${esc.nome}`).join('<br>')
-            : '<span class="text-warning" style="font-size:12px;font-weight:normal;"><i>Não foi possivel obter UEs. Verifique manualmente a lista de mais próximas</i></span>';
-
         const nomeEscolaFormatado = estado.nomeEscolaAtual ? estado.nomeEscolaAtual.split(',')[0] : 'Escola Atual';
 
-        infoExtraHtml = `
-            <div class="school-list-container" style="font-size:12px; margin-top:10px;">
-                <b>Nome:</b> ${nomeStr}<br>
-                <b>Nasc:</b> ${dataNasc}<br><br>
-                <ul style="padding-left: 15px; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-                    <li><b>Em <u>Verificação de Semelhança</u></b> não pode haver menção a <span style="color: #922b1f;">Transf. - Outros</span> em nenhum campo, especialmente em <i>Tipo Inscrição</i> e <i>Observações</i>.</li>
-                    <li><b>Em <u>dados do candidato</u>, o endereço deve ser:</b><br><span style="font-size:13px;">${enderecoCompleto}</span></li>
-                    <li><b>Em <u>Unidades Escolares</u>, deve ter escolhido as escolas mais próximas (nessa ordem):</b><br>${textoEscolasFormatado}</li>
-                    <li><b>Em <u>Status Inscrição</u>, deve constar:</b><br>"encaminhado(a) para ${nomeEscolaFormatado}..."</li>
-                </ul>
-            </div>
-        `;
+        if (resumir) {
+            const primeiraEscola = (Array.isArray(estado.top3EscolasNomes) && estado.top3EscolasNomes.length > 0)
+                ? `<li><b>Unidades Escolares:</b> ${estado.top3EscolasNomes[0].nome}</li>`
+                : '';
+
+            infoExtraHtml = `
+                <div class="school-list-container" style="font-size:12px; margin-top:10px;">
+                    <b>Nome:</b> ${nomeStr} | <b>Nasc:</b> ${dataNasc}<br><br>
+                    <ul style="padding-left: 15px; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                        <li><b>Endereço:</b> ${enderecoCompleto}</li>
+                        ${primeiraEscola}
+                        <li><b>Status Inscrição:</b> "encaminhado(a) para ${nomeEscolaFormatado}..."</li>
+                    </ul>
+                </div>
+            `;
+        } else {
+            const textoEscolasFormatado = (Array.isArray(estado.top3EscolasNomes) && estado.top3EscolasNomes.length > 0)
+                ? "<li><b>Em <u>Unidades Escolares</u>, deve ter escolhido as escolas mais próximas (nessa ordem):</b><br>" + estado.top3EscolasNomes.map((esc, idx) => `${idx + 1}º ${esc.nome}`).join('<br>') + "</li>"
+                : '<li><b>Em <u>Unidades Escolares</u>, deve haver o nome das UEs que realmente sejam as mais próximas</b></li>';
+
+            infoExtraHtml = `
+                <div class="school-list-container" style="font-size:12px; margin-top:10px;">
+                    <b>Nome:</b> ${nomeStr}<br>
+                    <b>Nasc:</b> ${dataNasc}<br><br>
+                    <ul style="padding-left: 15px; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                        <li><b>Em <u>Verificação de Semelhança</u></b> não pode haver menção a <span style="color: #922b1f;">Transf. - Outros</span> em nenhum campo, especialmente em <i>Tipo Inscrição</i> e <i>Observações</i>.</li>
+                        <li><b>Em <u>dados do candidato</u>, o endereço deve ser:</b><br><span style="font-size:13px;">${enderecoCompleto}</span></li>
+                        ${textoEscolasFormatado}
+                        <li><b>Em <u>Status Inscrição</u>, deve constar:</b><br>"encaminhado(a) para ${nomeEscolaFormatado}..."</li>
+                    </ul>
+                </div>
+            `;
+        }
     }
 
     // Se a regra de negócio ocultar os detalhes, retorna apenas o texto básico enxuto
@@ -656,9 +673,6 @@ function gerarTextoInstrucoesSOMARH(ctx, estado, exibirDetalhesFicha = true) {
     }
 
     return `
-        <h3 class="section-title text-primary">
-            <span class="mdi mdi-swap-horizontal-variant" style="font-size: 22px; margin-right: 6px;"></span> Encaminhamento por falta de vaga
-        </h3>
         <p>Verifique no SOMARH e nas planilhas da Central de Matrículas se há <b>encaminhamento válido</b> por falta de vaga na UE mais próxima de casa.</p>
         <p class="text-muted" style="font-size:12px;"><i>(As informações do encaminhamento devem estar como abaixo:).</i></p>
         ${infoExtraHtml}
@@ -677,7 +691,9 @@ function montarHtmlEncaminhamento(maisRecente, compatibilidade, ctx, estado) {
     if (!maisRecente || Object.keys(maisRecente).length === 0 || !maisRecente.unidade) {
         console.warn("[ASSISTENTE] 'maisRecente' ausente ou inválido. Renderizando apenas instruções básicas.");
         let textoInstrucoesSOMARH = gerarTextoInstrucoesSOMARH(ctx, estado, true);
-        return `
+        return `<h3 class="section-title text-primary">
+            <span class="mdi mdi-swap-horizontal-variant" style="font-size: 22px; margin-right: 6px;"></span> Encaminhamento por falta de vaga
+        </h3>
             ${textoInstrucoesSOMARH}
             <div class="action-group" style="margin-top:20px;">
                 <button id="btn-enc-sim" class="btn btn-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Sim, possui encaminhamento</button>
@@ -731,10 +747,10 @@ function montarHtmlEncaminhamento(maisRecente, compatibilidade, ctx, estado) {
     let corPainel = isDeferido ? 'success' : 'danger';
     let corTexto = isDeferido ? '#27ae60' : '#c0392b';
     let iconeStatus = isDeferido ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline';
-    let diretrizTexto = isDeferido ? '✓ Verificar encaminhamento' : '⚠️ NÃO ATENDER / INDEFERIR';
+    let diretrizTexto = isDeferido ? '✓ Há um possível encaminhamento' : '⚠️ NÃO ATENDER!';
     
     if(!enderecoMatch || !escolaMatch){
-        diretrizTexto = 'Verificar encaminhamento';
+        diretrizTexto = 'Verificar';
         corPainel = 'info';
         corTexto = '#2980b9';
         iconeStatus = 'mdi-information-outline';
@@ -742,40 +758,49 @@ function montarHtmlEncaminhamento(maisRecente, compatibilidade, ctx, estado) {
 
     const estiloEscolaVermelho = !escolaMatch ? ' style="color: red;"' : '';
     let complEnc = "";
-    let ClasseSim = maisRecente.situacao === 'ATENDER' ? " destaque" : "";
-    let ClasseNao = maisRecente.situacao === 'NÃO ATENDER' ? " destaque" : "";
+    let ClasseSim = isDeferido ? " destaque" : "";
+    let ClasseNao = !isDeferido ? " destaque" : "";
     
     // REVISÃO DAS CONDICIONAIS ORIGINAIS: Define se exibe ou oculta a lista detalhada do candidato
     let exibirDetalhesFicha = true;
+    let resumir = false;
 
     if(comp && !enderecoMatch && escolaMatch){
         complEnc = " mas o endereço era outro.";
         exibirDetalhesFicha = false; 
         ClasseNao = " destaque";
         ClasseSim = " dimmed";
+        resumir = true;
     }else if(comp && enderecoMatch && !escolaMatch){
         complEnc = " mas a escola aparentemente era outra.";
         exibirDetalhesFicha = false; 
         ClasseNao = " destaque";
         ClasseSim = " dimmed";
+        resumir = true;
     }else if(comp && !enderecoMatch && !escolaMatch){
         complEnc = " mas as informações não batem com a ficha atual:";
         exibirDetalhesFicha = true; 
         ClasseNao = " destaque";
         ClasseSim = " dimmed";
+        resumir = true;
     }else if(!comp){
         complEnc = " mas <b>não foi possível verificar se os dados batem com os da ficha</b>. Verifique abaixo:";
         exibirDetalhesFicha = true;
+        resumir = true;
     }else if(comp && enderecoMatch && escolaMatch){
         exibirDetalhesFicha = false; 
         ClasseSim = " destaque";
         ClasseNao = " dimmed";
+        resumir = true;
     }
 
     // Chama a geração passando o booleano calculado com precisão cirúrgica
-    let textoInstrucoesSOMARH = gerarTextoInstrucoesSOMARH(ctx, estado, exibirDetalhesFicha);
+    let textoInstrucoesSOMARH = gerarTextoInstrucoesSOMARH(ctx, estado, exibirDetalhesFicha, resumir);
 
     return `
+        <h3 class="section-title text-primary">
+            <span class="mdi mdi-swap-horizontal-variant" style="font-size: 22px; margin-right: 6px;"></span> Encaminhamento por falta de vaga
+        </h3>
         <div class="message-box ${corPainel}" style="margin-bottom: 15px;">
             <h4 style="margin: 0 0 10px 0; color: ${corTexto}; display: flex; align-items: center; gap: 6px; font-size: 15px;">
                 <span class="mdi ${iconeStatus}" style="font-size: 18px;"></span>
@@ -786,8 +811,9 @@ function montarHtmlEncaminhamento(maisRecente, compatibilidade, ctx, estado) {
                 ${maisRecente.unidadeOrigem ? `<tr style="border-bottom: 1px dashed #e1e4e8;"><td style="padding: 4px 0; font-weight:bold; width: 120px;">Escola de Origem:</td><td>${maisRecente.unidadeOrigem}</td></tr>` : ''}
                 ${maisRecente.motivo ? `<tr style="border-bottom: 1px dashed #e1e4e8;"><td style="padding: 4px 0; font-weight:bold;">Motivo/Prioridade:</td><td>${maisRecente.motivo}</td></tr>` : ''}
             </table>
-            <div style="margin-top: 8px; font-size: 11px; color: #8597a3;">Origem dos dados: ${maisRecente.descricao || 'Desconhecida'}</div>
+            <div style="margin-top: 8px; font-size: 11px; color: #8597a3;">Origem dos dados: planilha "${maisRecente.descricao || 'Desconhecida'}"</div>
         </div>
+        <hr class="divider">
         ${textoInstrucoesSOMARH}
         <div class="action-group" style="margin-top:20px;">
             <button id="btn-enc-sim" class="btn btn-success${ClasseSim}"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Sim, é encaminhado</button>
@@ -2169,6 +2195,8 @@ window.abrirModalAssistente = async function() {
         if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] renderizarPasso');
         const conteudo = document.getElementById('conteudo-assistente');
         if (!conteudo) return; 
+
+        conteudo.scrollTop = 0;
         
         const btnVoltar = document.getElementById('btn-voltar-assistente');
         if (btnVoltar) {
@@ -3155,18 +3183,9 @@ if (typeof window.setSharedStore === 'function') {
 
             // RENDERIZAÇÃO DA INTERFACE UNIFICADA (A LISTA COMPATÍVEL SEMPRE É EXIBIDA)
             conteudo.innerHTML = `
-                <h3 class="section-title text-info">
-                    <span class="mdi mdi-graph" style="font-size: 22px; margin-right: 6px;"></span> Verificação de Escola
-                </h3>
-                                
-                <div id="container-lista-escolas">
-                    <div style="text-align:center; padding:10px;" class="text-muted">Carregando listagem de UEs...</div>
-                </div>
-                
-                <hr class="divider">
 
-                <h3 class="section-title text-warning">
-                    <span class="mdi mdi-map-marker-radius-outline" style="font-size: 22px; margin-right: 6px;"></span> Aferição de Distância
+            <h3 class="section-title text-info">
+                    <span class="mdi mdi-map-marker-radius-outline" style="font-size: 22px; margin-right: 6px;"></span> Distância do Trajeto
                 </h3>
 
                 <div class="input-group">
@@ -3174,6 +3193,18 @@ if (typeof window.setSharedStore === 'function') {
                     <label for="input-assistente-dist" class="input-label">Qual é a distância aferida (em metros)?</label>
                 </div>
 
+                <hr class="divider">
+
+                <h3 class="section-title text-info">
+                    <span class="mdi mdi-graph" style="font-size: 22px; margin-right: 6px;"></span> Verificação de Escola
+                </h3>
+                                
+                <div id="container-lista-escolas">
+                    <div style="text-align:center; padding:10px;" class="text-muted">Carregando listagem de UEs...</div>
+                </div>
+
+                <p style="margin-bottom:1px;">O critério de escola mais próxima está sendo atendido?</p>
+                <p class="text-muted" style="font-size:12px; margin-top:1px;"><i>(O aluno deve estar na escola mais próxima, ou na mais próxima de ensino parcial).</i></p>
                 <div class="action-group">
                     <button id="btn-esc-sim" class="btn btn-success"><span class="mdi mdi-check" style="font-size: 16px; margin-right: 4px;"></span> Está na mais próxima</button>
                     <button id="btn-esc-nao" class="btn btn-danger"><span class="mdi mdi-close" style="font-size: 16px; margin-right: 4px;"></span> Não é a mais próxima</button>
@@ -3197,7 +3228,7 @@ if (typeof window.setSharedStore === 'function') {
 
             const inputDist = document.getElementById('input-assistente-dist');
             if (inputDist) {
-                setTimeout(() => { inputDist.focus(); }, 100);
+                setTimeout(() => { inputDist.focus(); document.getElementById('conteudo-assistente').scrollTop = 0;}, 100);
                 vincularEventoUnico(inputDist, 'focus', function () { this.select(); });
                 vincularEventoUnico(inputDist, 'input', function () { this.dataset.editado = 'true'; });
                 vincularEventoUnico(inputDist, 'keydown', function(e) { 

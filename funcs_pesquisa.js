@@ -1,5 +1,26 @@
 // Configura os scripts, eventos e modificações visuais aplicados à página de pesquisa de alunos/solicitações.
 window.iniciarPaginaPesquisa = function() {
+    
+    // Interceptador preventivo contra o erro nativo do #framemodal nulo
+    // a tela de pesquisa apresenta erros no console ao abrir as Fichas dos alunos.  Essa correção deve eliminar a mensagem de erro no console.
+    if (typeof window.AbrirLinkModal === 'function' && !window.AbrirLinkModalBlindado) {
+        const originalAbrirLinkModal = window.AbrirLinkModal;
+        window.AbrirLinkModalBlindado = true;
+        
+        window.AbrirLinkModal = function(url) {
+            var modal = document.getElementById("myModal");
+            var frame = document.getElementById("img01");
+            var frame2 = document.getElementById("framemodal");
+            
+            // Lógica idêntica ao site original, mas com tratamento preventivo contra nulo (Vanilla JS)
+            if (frame) frame.src = url;
+            if (modal) modal.style.display = "block";
+            if (frame) frame.style.display = "block";
+            if (frame2) frame2.style.display = "none"; // Só executa se a div existir
+        };
+    }
+        
+    
     let paginaAtual = 1;
     let requisicaoAtiva = null; // Armazena a requisição AJAX atual para poder abortá-la
 
@@ -667,8 +688,27 @@ window.iniciarPaginaPesquisa = function() {
                 carregarTabelaHistorico();
                 atualizarVisibilidadeBotaoReset();
                 processarParametrosURL(); 
-                // Força o gatilho assíncrono final garantindo que o DOM e os scripts externos ouviram o resize
-                window.dispatchEvent(new Event('resize'));
+
+                //força o resize para a lista se adaptar à tela
+                try {
+                    if (window.top && window.top.document) {
+                        const topDoc = window.top.document;
+                        const mainFrame = topDoc.getElementById('MainFrame') || topDoc.getElementById('mainFrame');
+                        const leftFrame = topDoc.getElementById('leftFrame');
+                        
+                        // Dispara o evento de resize no frame pai para recalcular as larguras das tabelas
+                        window.top.dispatchEvent(new Event('resize'));
+                        
+                        // Executa as lógicas de redimensionamento nativo da plataforma
+                        if (typeof window.top.forcarResizeNativo === 'function') {
+                            window.top.forcarResizeNativo();
+                        }
+                    }
+                } catch (e) {
+                    // Fallback seguro caso haja restrição estrita de escopo
+                    window.dispatchEvent(new Event('resize'));
+                }
+
                 forcarResizeNativo();
                 setTimeout(forcarResizeNativo, 100);
                 setTimeout(forcarResizeNativo, 300);
