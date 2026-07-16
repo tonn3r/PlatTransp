@@ -416,7 +416,7 @@ function verificarEIncrementarCotaGoogle(apiKey, nomeChave) {
 window._promiseGoogleMaps = window._promiseGoogleMaps || null;
 
 function carregarSDKGoogleMaps(apiKey) {
-    console.log(`🔑 Tentando carregar Google Maps SDK com a chave: ${apiKey}`);
+    console.log(`Tentando carregar Google Maps SDK com a chave: ${apiKey}`);
     // 1. Se já carregou e a API de Directions está pronta, retorna true imediatamente
     if (window.google && window.google.maps && window.google.maps.DirectionsService) {
         return Promise.resolve(true);
