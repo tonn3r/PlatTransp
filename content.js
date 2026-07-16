@@ -42,7 +42,6 @@ const interceptarLinkSessaoExpirada = (contextoDoc) => {
     observerSessao.observe(document.body || document.documentElement, { childList: true, subtree: true });
     interceptarLinkSessaoExpirada(document);
 
-    const urlAtual = window.location.href;
 
     if (urlAtual.includes('solicitacoes_transporte_realizadas') || document.getElementById('id_unidade_selecionada')) {
         if (typeof window.iniciarPaginaPesquisa === 'function') window.iniciarPaginaPesquisa();
