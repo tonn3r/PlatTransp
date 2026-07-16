@@ -1,0 +1,3 @@
+# Impede que o Git corrompa os ficheiros binários da extensão
+*.crx binary
+*.zip binary
