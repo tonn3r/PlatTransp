@@ -1,9 +1,9 @@
 // =========================================================================
 // CONFIGURAÇÃO CENTRALIZADA DE CHAVES DE API DO GOOGLE (DEFINIDAS APENAS UMA VEZ)
 // =========================================================================
-window.apiKeyGoogle = "AIzaSyDFlvpNvHgc6N2gMYTPJq5HptaFXS-S2i8";
-window.apiKeyGoogle2 = "AIzaSyBUvko37UZpzfwS9rS3pfexlsptYqQZW78";
-window.apiKeyGoogle3 = "AIzaSyDeFC9pEKnvyaqmVKbAVFJ2D2WRfh4esEs";
+window.apiKeyGoogle = "CHAVE_GMAPS_1";
+window.apiKeyGoogle2 = "CHAVE_GMAPS_2";
+window.apiKeyGoogle3 = "CHAVE_GMAPS_3";
 
 // Calcula uma aproximação de distância euclidiana rápida entre dois pontos (evita math.sqrt pesada).
 window.calcularProximidadeRapida = function(lat1, lon1, lat2, lon2) {
