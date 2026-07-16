@@ -1,4 +1,4 @@
-name: Gerador Automatico de Versao e Ambiente
+name: Distribuidor Oficial de Atualizacoes Silenciosas (.crx)
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  build-and-deploy:
+  deploy-extension:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do Codigo
@@ -22,33 +22,68 @@ jobs:
         id: branch-name
         run: echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
 
-      - name: Ler Versao do manifest.json e Construir version.json
-        id: parse-manifest
+      - name: Configurar Node.js (Ambiente de Compilacao)
+        uses: actions/setup-node@v4
+        with:
+          node-size: 20
+
+      - name: Instalar Empacotador do Chrome
+        run: npm install -g crx
+
+      - name: Recuperar Chave Privada do Storage Secreto
         run: |
-          VERSION=$(node -e "console.log(require('./manifest.json').version);")
-          BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
-          echo "A versao detectada no manifest foi: $VERSION na branch: $BRANCH_NAME"
-          
-          # Monta o arquivo version.json dinamicamente apontando para o zip correto da branch
-          echo "{\"version\": \"$VERSION\", \"url\": \"https://github.com/tonn3r/PlatTransp/archive/refs/heads/$BRANCH_NAME.zip\"}" > version.json
+          echo "${{ secrets.EXT_PRIVATE_KEY }}" > key.pem
 
       - name: Customizar manifest.json com o Ambiente correto da Branch
         run: |
           BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
-          # Substitui a palavra-chave AUTO_BRANCH pelo nome real da branch atual
-          sed -i "\"config_ambiente\": \"AUTO_BRANCH\"/\"config_ambiente\": \"$BRANCH_NAME\"/g" manifest.json
+          sed -i "s/AUTO_BRANCH/$BRANCH_NAME/g" manifest.json
 
-      - name: Validar alteracoes nos arquivos
+      - name: Ler Versao do Manifesto e Gerar ID Fixo
+        id: ext-metadata
         run: |
-          cat version.json
-          cat manifest.json | grep config_ambiente
-
-      - name: Commitar de volta no GitHub de forma automatica
-        run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
-          git add version.json manifest.json
+          VERSION=$(node -e "console.log(require('./manifest.json').version);")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           
-          # Só realiza o commit se houver modificações reais pendentes
-          git diff-index --quiet HEAD || git commit -m "chore: atualizacao automatica de versao e ambiente [skip ci]"
+          # Calcula o ID fixo que a extensão terá no navegador baseado na chave privada
+          # Isso é exigido pelo dicionário XML de atualizações do Chrome
+          EXT_ID=$(node -e "
+            const crypto = require('crypto');
+            const fs = require('fs');
+            const pubKey = crypto.createPrivateKey(fs.readFileSync('key.pem')).export({type:'pkcs1', format:'pem'});
+            const hash = crypto.createHash('sha256').update(pubKey).digest('hex').substring(0,32);
+            const id = hash.split('').map(c => String.fromCharCode(parseInt(c, 16) + 97)).join('');
+            console.log(id);
+          ")
+          echo "ext_id=$EXT_ID" >> $GITHUB_OUTPUT
+
+      - name: Compilar e Assinar Arquivo Comercial .CRX
+        run: |
+          BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
+          # Compacta a pasta atual excluindo arquivos desnecessários do Git e a chave sensível
+          crx pack . -p key.pem -o app-$BRANCH_NAME.crx
+          rm key.pem
+
+      - name: Construir Dicionario XML de Atualizacao (version.xml)
+        run: |
+          BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
+          VERSION="${{ steps.ext-metadata.outputs.version }}"
+          EXT_ID="${{ steps.ext-metadata.outputs.ext_id }}"
+          
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > version.xml
+          echo '<gupdate xmlns="http://www.google.com/update2/response" protocol="2.0">' >> version.xml
+          echo "  <app appid=\"$EXT_ID\">" >> version.xml
+          echo "    <updatecheck codebase=\"https://raw.githubusercontent.com/tonn3r/PlatTransp/$BRANCH_NAME/app-$BRANCH_NAME.crx\" version=\"$VERSION\" />" >> version.xml
+          echo '  </app>' >> version.xml
+          echo '</gupdate>' >> version.xml
+
+      - name: Commitar e Publicar Artefatos (.crx e version.xml) de Forma Autonoma
+        run: |
+          git config --global user.name "Plataforma Bot Deployment"
+          git config --global user.email "actions@github.com"
+          
+          BRANCH_NAME="${{ steps.branch-name.outputs.branch }}"
+          git add manifest.json version.xml app-$BRANCH_NAME.crx
+          
+          git diff-index --quiet HEAD || git commit -m "release: implantacao automatica silenciosa v${{ steps.ext-metadata.outputs.version }} [skip ci]"
           git push origin ${{ steps.branch-name.outputs.branch }}

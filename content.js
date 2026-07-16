@@ -2,52 +2,8 @@
 (function() {
     'use strict';
 
-    // Obtém a versão e o ambiente diretamente do manifesto da extensão
-    const MANIFESTO = chrome.runtime.getManifest();
-    const VERSAO_ATUAL = MANIFESTO.version; 
-    const AMBIENTE = MANIFESTO.config_ambiente || "main"; // Fallback para main caso não definido
-
-    // Constrói a URL de checagem apontando para a branch correspondente do ambiente
-    const URL_VERSAO = `https://raw.githubusercontent.com/tonn3r/PlatTransp/${AMBIENTE}/version.json`;
-
-    async function verificarAtualizacao() {
-        try {
-            const response = await fetch(URL_VERSAO + "?t=" + new Date().getTime());
-            
-            if (!response.ok) {
-                console.warn(`Addon PlatTransp [${AMBIENTE.toUpperCase()}]: Não foi possível checar a versão (Erro ${response.status}).`);
-                return;
-            }
-
-            const dados = await response.json();
-            
-            if (dados.version !== VERSAO_ATUAL) {
-                if (!document.getElementById('alerta-atualizacao-addon')) {
-                    const alerta = document.createElement('div');
-                    alerta.id = 'alerta-atualizacao-addon';
-                    alerta.style = "position:fixed; top:0; left:0; width:100%; background:#e74c3c; color:white; text-align:center; padding:12px; z-index:999999; font-family:verdana; font-size:13px; font-weight:bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3);";
-                    
-                    // Define a cor de fundo com base no canal de atualização para alertar o usuário visualmente
-                    if (AMBIENTE === "teste") {
-                        alerta.style.backgroundColor = "#d35400"; // Laranja para ambiente de teste
-                    }
-
-                    alerta.innerHTML = `⚠️ NOVA ATUALIZAÇÃO DISPONÍVEL PARA O CANAL [${AMBIENTE.toUpperCase()}] (${dados.version})!<br>
-                    Sua versão instalada é a ${VERSAO_ATUAL}.<br>
-                    <a href="${dados.url}" style="color:#ffeb3b; text-decoration:underline; font-size:15px; display:inline-block; margin-top:5px;">📥 Clique aqui para baixar o ZIP de atualização</a> 
-                    <span style="font-size:11px; font-weight:normal; margin-left:10px;">(Após baixar, extraia, substitua os arquivos antigos da pasta e clique no ícone de 'Atualizar' na página chrome://extensions)</span>`;
-                    
-                    document.body.prepend(alerta);
-                }
-            }
-        } catch (e) {
-            console.log("Erro ao verificar atualização do Addon PlatTransp:", e);
-        }
-    }
+const urlAtual = window.location.href;
     
-    if (window === window.top) {
-        // verificarAtualizacao();
-    }
 
     // Blindagem contra erros de módulos legados da página principal.php
     if (typeof window.AbreModulo !== 'function') {

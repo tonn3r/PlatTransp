@@ -5,6 +5,7 @@
   "description": "Melhorias de qualidade de vida e um guia para ajudar nas análises",
   "permissions": ["storage"],
   "config_ambiente": "AUTO_BRANCH",
+  "update_url": "https://raw.githubusercontent.com/tonn3r/PlatTransp/AUTO_BRANCH/version.xml",
   "content_scripts": [
     {
       "matches": ["http://plataforma-se2/*"],
