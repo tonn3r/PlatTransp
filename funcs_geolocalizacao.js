@@ -416,7 +416,7 @@ function verificarEIncrementarCotaGoogle(apiKey, nomeChave) {
 window._promiseGoogleMaps = window._promiseGoogleMaps || null;
 
 function carregarSDKGoogleMaps(apiKey) {
-    console.log(`Tentando carregar Google Maps SDK com a chave: ${apiKey}`);
+    console.log(`🔑 Tentando carregar Google Maps SDK com a chave: ${apiKey}`);
     // 1. Se já carregou e a API de Directions está pronta, retorna true imediatamente
     if (window.google && window.google.maps && window.google.maps.DirectionsService) {
         return Promise.resolve(true);
@@ -437,7 +437,7 @@ function carregarSDKGoogleMaps(apiKey) {
         }
 
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry&loading=async`;
         script.async = true;
         script.defer = true;
         
@@ -479,13 +479,18 @@ if (
         return null;
     }
 
-    const localValido = window.estaDentroDaCidade(latOrigin, lonOrigin);
+    // Garantir que temos uma API Key válida antes de proceder
+    const chaveAtiva = window.apiKeyGoogle || window.apiKeyGoogle2 || window.apiKeyGoogle3;
     
-            // Se não estiver dentro, força o modo 'endereco' para ignorar as coordenadas corrompidas/distantes
-            if (!localValido) {
-                console.warn("[ASSISTENTE] Coordenadas fora de SBC. API Key: " + window.GOOGLE_MAPS_API_KEY);
-                return null;
-            }
+    if (!window.estaDentroDaCidade(latOrigin, lonOrigin)) {
+        console.warn("[ASSISTENTE] Coordenadas fora de SBC. Ignorando cálculo.");
+        return null;
+    }
+    
+    if (!chaveAtiva) {
+        console.error("[ASSISTENTE] Nenhuma chave de API Google disponível.");
+        return null;
+    }
 
     const STORAGE_KEY_GLOBAL = 'plattransp_global_routes_cache';
     const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';

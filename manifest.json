@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Plataforma SE2 - Otimizador",
-  "version": "4.2",
+  "version": "4.3",
   "description": "Melhorias de qualidade de vida e um guia para ajudar nas análises",
   "permissions": ["storage"],
   "config_ambiente": "teste",
