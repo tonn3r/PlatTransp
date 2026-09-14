@@ -89,7 +89,7 @@ function extrairDataNascimento(doc) {
     return extrairTextoEtiqueta(doc, ['Data de nascimento']);
 }
 
-const FAIXAS_ETARIAS_NIVEL = [
+window.FAIXAS_ETARIAS_NIVEL = window.FAIXAS_ETARIAS_NIVEL || [
     { nivel: 'EJA', idade: 14, idadeMaxima: 110 }, { nivel: '5º ANO', idade: 10, idadeMaxima: 13 },
     { nivel: '4º ANO', idade: 9, idadeMaxima: 10 }, { nivel: '3º ANO', idade: 8, idadeMaxima: 9 },
     { nivel: '2º ANO', idade: 7, idadeMaxima: 8 }, { nivel: '1º ANO', idade: 6, idadeMaxima: 7 },
@@ -112,7 +112,7 @@ window.calcularNivelPorIdade = function(doc) {
     const m = hoje.getMonth() - nasc.getMonth();
     if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
     
-    const faixa = FAIXAS_ETARIAS_NIVEL.find(f => idade >= f.idade && idade <= f.idadeMaxima);
+    var faixa = FAIXAS_ETARIAS_NIVEL.find(f => idade >= f.idade && idade <= f.idadeMaxima);
     return faixa ? window.normalizarTexto(faixa.nivel) : null;
 };
 
@@ -284,6 +284,16 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
         return resultadoFinal;
     }
 
+    // Função auxiliar para extrair texto de elementos parsed pelo DOMParser preservando os espaços nas quebras de linha
+    const extrairTextoCelula = (el) => {
+        if (!el) return "";
+        let html = el.innerHTML || "";
+        let textoComEspacos = html.replace(/<br\s*\/?>/gi, ' ').replace(/[\r\n]+/g, ' ');
+        let temp = document.createElement('div');
+        temp.innerHTML = textoComEspacos;
+        return (temp.textContent || '').replace(/\s+/g, ' ').trim();
+    };
+
     const ctxSeguro = (typeof ctx !== 'undefined') ? ctx : (window.dadosGeograficos || {});
     
     let raAlunoAtual = ctxSeguro.ra_aluno || ctxSeguro.raAluno || "";
@@ -354,32 +364,30 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
         const logradouroUpper = window.normalizarTexto(logradouro);
         
         resultadoFinal.dadosIrmaos = [];
-        resultadoFinal.irmaosAtendidos = 0; // Reinicia contador específico de irmãos válidos para o fluxo
+        resultadoFinal.irmaosAtendidos = 0; // Reinicia contador específico de irmãos atendidos
+        resultadoFinal.irmaosIndeferidos = 0; // Reinicia contador específico de irmãos indeferidos
 
         lines.forEach(linha => {
             const colunas = linha.querySelectorAll('td');
             
             // obter ID solicitacao
             let idSolicitacaoTabela = "";
-                if (colunas[1]) {
-                    // 1ª Tentativa: Busca o valor de forma limpa de dentro da tag <strong> se ela existir
+            if (colunas[1]) {
                 const strongEl = colunas[1].querySelector('strong');
                 if (strongEl) {
-        idSolicitacaoTabela = strongEl.innerText.trim();
+                    idSolicitacaoTabela = extrairTextoCelula(strongEl);
                 } else {
-        // 2ª Tentativa: Se não houver strong, remove tudo a partir da primeira barra da data "/"
-        const textoPuro = colunas[1].innerText.trim();
-        idSolicitacaoTabela = textoPuro.split('/')[0].replace(/\D/g, '').trim();
-            }
+                    const textoPuro = extrairTextoCelula(colunas[1]);
+                    idSolicitacaoTabela = textoPuro.split('/')[0].replace(/\D/g, '').trim();
+                }
     
-                // Fallback de Segurança Máxima: Se o ID capturado ainda for longo demais, mantém apenas os 6 primeiros dígitos
                 if (idSolicitacaoTabela.length > 7) {
-            idSolicitacaoTabela = idSolicitacaoTabela.substring(0, 6);
-             }
+                    idSolicitacaoTabela = idSolicitacaoTabela.substring(0, 6);
+                }
             }
 
-            const raTabela = (colunas[7] ? colunas[7].innerText.trim() : "") || (colunas[6] ? colunas[6].innerText.trim() : "");
-            const nomeTabela = colunas[8] ? colunas[8].innerText.trim() : (colunas[7] ? colunas[7].innerText.trim() : "");
+            const raTabela = (colunas[7] ? extrairTextoCelula(colunas[7]) : "") || (colunas[6] ? extrairTextoCelula(colunas[6]) : "");
+            const nomeTabela = colunas[8] ? extrairTextoCelula(colunas[8]) : (colunas[7] ? extrairTextoCelula(colunas[7]) : "");
             
             const idSolTabelaLimpo = idSolicitacaoTabela.replace(/\D/g, '').replace(/^0+/, '');
             const raTabelaLimpo = raTabela.replace(/\D/g, '').replace(/^0+/, '');
@@ -388,22 +396,19 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
                 return; 
             }
 
-            const enderecoTabela = window.normalizarTexto(colunas[10].innerText || "");
-            const detalhes = window.normalizarTexto(colunas[11].innerText || "");
-            const status = window.normalizarTexto(colunas[12].innerText || "");
+            const enderecoTabela = window.normalizarTexto(extrairTextoCelula(colunas[10]));
+            const detalhes = window.normalizarTexto(extrairTextoCelula(colunas[11]));
+            const status = window.normalizarTexto(extrairTextoCelula(colunas[12]));
             
-            // Definição estrita se este registro é fisicamente um irmão no mesmo número
             const ehIrmao = enderecoTabela.includes(logradouroUpper) && regexNumero.test(enderecoTabela);
-            const emAtend = status.includes('EM ATENDIMENTO') || status.includes('DEFERIDO');
-            const indeferido = status.includes('INDEFERIDO') || (status.includes('CANCELADO') && (detalhes.includes('MUDANÇA DE ENDEREÇO') || detalhes.includes('ATENDIMENTO INDEVIDO'))); // Considera como indeferido se for cancelado por mudança de endereço, mesmo que o status seja "cancelado"
-            // Filtros originais restritivos do sistema
+            const emAtend = status.includes('EM ATENDIMENTO') || (status.includes('DEFERIDO') && !status.includes('INDEFERIDO'));
+            const indeferido = status.includes('INDEFERIDO') || (status.includes('CANCELADO') && (detalhes.includes('MUDANÇA DE ENDEREÇO') || detalhes.includes('ATENDIMENTO INDEVIDO')));
+            
             const atendeFiltrosPadrao = !status.includes('CANCELADO') && !status.includes('ANALISE') && !status.includes('ANÁLISE') && !detalhes.includes('DEFICIEN') && !detalhes.includes('DEFICIÊN') && !detalhes.includes('CADEIRANTE') && !detalhes.includes('CADEIRA DE RODAS') && !detalhes.includes('AUTISMO') && !detalhes.includes('AUTISTA') && !detalhes.includes('CASOS OMISSOS') && !detalhes.includes('ART.') && !detalhes.includes('ENCAMINHAD') && !detalhes.includes('PRIORIZAD') && !detalhes.includes('MANDADO') && !detalhes.includes('JUDICIAL');
             
-            // Nova regra condicionada por você: Linha é válida se passar nos filtros normais OU se for comprovadamente um irmão
             const LinhasValidas = ehIrmao || atendeFiltrosPadrao;
             
             if (LinhasValidas) {
-                // Estatísticas gerais da rua só incrementam se o registro passar no filtro geral limpo
                 if (atendeFiltrosPadrao) {
                     resultadoFinal.totalAlunosRua++;
                     
@@ -424,14 +429,12 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
                     }
                 }
 
-                // Ingestão no array de dados residenciais
                 if (ehIrmao) {
-                    // É considerado apto para deferimento se NÃO for cancelado/análise e se passar no filtro de motivos padrão
                     const validoParaDeferir = emAtend;
                     
                     if (validoParaDeferir) {
                         resultadoFinal.irmaosAtendidos++; 
-                    }else if (indeferido) {
+                    } else if (indeferido) {
                         resultadoFinal.irmaosIndeferidos++;
                     }
 
@@ -439,8 +442,8 @@ window.analisarRuaFetch = async function(resultadoFinal, logradouro, numeroStr, 
                         nome: nomeTabela,
                         ra: raTabela,
                         id_solicitacao: idSolicitacaoTabela,
-                        status: colunas[12].innerText.trim(), // preserva caixa original para exibição
-                        status_motivo: colunas[11].innerText.trim(),
+                        status: extrairTextoCelula(colunas[12]),
+                        status_motivo: extrairTextoCelula(colunas[11]),
                         validoParaDeferir: validoParaDeferir
                     });
                 }
@@ -2208,182 +2211,197 @@ window.abrirModalAssistente = async function() {
             
             
             // =========================================================================
-            // VERIFICAÇÃO DE IRMÃOS
-            // =========================================================================
-            if (historicoRua && historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length > 0 && estado.verificacaoIrmaosConcluida !== true) {
-                console.debug("[ASSISTENTE] Verificando histórico de irmãos para o endereço...");
+// VERIFICAÇÃO DE IRMÃOS
+// =========================================================================
+if (historicoRua && historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length > 0 && estado.verificacaoIrmaosConcluida !== true) {
+    console.debug("[ASSISTENTE] Verificando histórico de irmãos para o endereço...");
 
-                vincularEventoUnico(document.getElementById('btn-voltar-assistente'), 'click', () => {
-                    console.log("[voltar]");    
-                    if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();    
-                        //salvarHistorico();
-                        
-                        estado.verificacaoIrmaosConcluida = null;
-                        estado.telaFinal = null;
-                        estado.escolaProximaUser = null;
-                        estado.mudancaOk = null;
-                                                                        
-                        renderizarPasso(); // Segue diretamente para a tela final previamente calculada
-                    });
+    vincularEventoUnico(document.getElementById('btn-voltar-assistente'), 'click', () => {
+        console.log("[voltar]");    
+        if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();    
+            
+        estado.verificacaoIrmaosConcluida = null;
+        estado.telaFinal = null;
+        estado.escolaProximaUser = null;
+        estado.mudancaOk = null;
+                                            
+        renderizarPasso();
+    });
 
-                const resultadoCalculado = estado.telaFinal.titulo; // "DEFERIR" ou "INDEFERIR"
-                const irmaosAtendidos = historicoRua.irmaosAtendidos || 0;
-                const irmaosIndeferidos = historicoRua.irmaosIndeferidos || 0;
-                let txtIrmaos = "";
-                let introTxtIrmaos = "";
-                if ((resultadoCalculado.includes('INDEFERIR') && irmaosAtendidos > 0) || (!resultadoCalculado.includes('INDEFERIR') && irmaosIndeferidos > 0)) {
-                         introTxtIrmaos = ` mas `; }else {introTxtIrmaos = ` e `;}
-                    if (irmaosAtendidos > 0 || irmaosIndeferidos > 0) {
-                        if (irmaosAtendidos > 0) { txtIrmaos = `<b>${irmaosAtendidos} aluno${irmaosAtendidos > 1 ? 's' : ''} ATENDIDO${irmaosAtendidos > 1 ? 'S' : ''}</b>`;}
-                        if(irmaosIndeferidos > 0) { txtIrmaos += `${txtIrmaos ? ' e ' : ''}<b>${irmaosIndeferidos} ${txtIrmaos ? '' : `aluno${irmaosIndeferidos > 1 ? 's' : ''}`} INDEFERIDO${irmaosIndeferidos > 1 ? 'S' : ''}</b>`;}
-                        if(txtIrmaos) { txtIrmaos = `${introTxtIrmaos} há ${txtIrmaos} no mesmo endereço`; }
+    const resultadoCalculado = estado.telaFinal ? (estado.telaFinal.titulo || "") : ""; // "DEFERIR" ou "INDEFERIR"
+    const irmaosAtendidos = historicoRua.irmaosAtendidos || 0;
+    const irmaosIndeferidos = historicoRua.irmaosIndeferidos || 0;
+
+    // Concatenação de texto limpa e sem espaços duplos
+    const partesIrmaos = [];
+    if (irmaosAtendidos > 0) { 
+        partesIrmaos.push(`<b>${irmaosAtendidos} aluno${irmaosAtendidos > 1 ? 's' : ''} ATENDIDO${irmaosAtendidos > 1 ? 'S' : ''}</b>`); 
+    }
+    if (irmaosIndeferidos > 0) { 
+        partesIrmaos.push(`<b>${irmaosIndeferidos} aluno${irmaosIndeferidos > 1 ? 's' : ''} INDEFERIDO${irmaosIndeferidos > 1 ? 'S' : ''}</b>`); 
+    }
+
+    const introTxtIrmaos = ((resultadoCalculado.includes('INDEFERIR') && irmaosAtendidos > 0) || (!resultadoCalculado.includes('INDEFERIR') && irmaosIndeferidos > 0)) ? "mas" : "e";
+    let txtIrmaos = "";
+    if (partesIrmaos.length > 0) {
+        txtIrmaos = `${introTxtIrmaos} há ${partesIrmaos.join(' e ')} no mesmo endereço`;
+    }
+
+    // Condição 1: Assistente vai indeferir, mas existem irmãos ATENDIDOS -> Copiar = DEFERIR
+    // Condição 2: Assistente vai deferir, mas existem irmãos INDEFERIDOS -> Copiar = INDEFERIR
+    const deveIntervir = (resultadoCalculado.includes("INDEFERIR") && irmaosAtendidos > 0) || 
+                         (resultadoCalculado.includes("DEFERIR") && !resultadoCalculado.includes("INDEFERIR") && irmaosIndeferidos > 0);
+
+    if (deveIntervir) {
+        const qtdIrmaos = historicoRua.dadosIrmaos.length;
+        const assistenteIaIndeferir = resultadoCalculado.includes("INDEFERIR");
+        
+        const bgCor = assistenteIaIndeferir ? "#d4edda" : "#fff3cd";
+        const textoCor = assistenteIaIndeferir ? "#155724" : "#856404";
+        const bordaCor = assistenteIaIndeferir ? "#c3e6cb" : "#ffeeba";
+        const iconeMdi = assistenteIaIndeferir ? "mdi-account-multiple-check" : "mdi-account-multiple-remove";
+
+        let htmlIrmaos = `<h3 class="section-title text-primary"><span class="mdi mdi-human-male-female" style="font-size: 22px; margin-right: 6px;"></span> Validação de Vínculo de Irmãos</h3>`;
+        htmlIrmaos += `<div style='background-color: ${bgCor}; color: ${textoCor}; padding: 12px; border-radius: 5px; margin-bottom: 15px; border: 1px solid ${bordaCor};'>`;
+        htmlIrmaos += `<span class='mdi ${iconeMdi}'></span> Pelas informações coletadas, você deveria <span class="badge ${assistenteIaIndeferir ? 'badge-danger' : 'badge-success'}">${resultadoCalculado}</span>, ${txtIrmaos}:`;
+        htmlIrmaos += `<ul style='margin-top: 8px; margin-bottom: 8px; padding-left: 20px;'>`;
+
+        // Exibe lista resumida dos irmãos
+        historicoRua.dadosIrmaos.slice(0, 3).forEach(irmao => {
+            const windowAlvo = document.defaultView || window;
+            const docAlvo = (typeof window.getAlvoDocument === 'function' ? window.getAlvoDocument() : windowAlvo.document);
+            const docHref = docAlvo?.location?.href || windowAlvo.location.href;
+            
+            const nomeArquivoFicha = (docHref.includes('ficha_transporte.php') && !docHref.includes('nova_versao'))
+                ? 'ficha_transporte.php'
+                : 'ficha_transporte_nova_versao.php';
+
+            const linkFicha = `modulos/transporte_escolar/${nomeArquivoFicha}?id_solicitacao=${irmao.id_solicitacao}`;
+            const badgeClass = irmao.validoParaDeferir ? "badge-success" : "badge-danger";
+            
+            htmlIrmaos += `
+                <li style="margin-bottom: 5px; font-size: 13px;">
+                    Aluno: <b>${irmao.nome}</b> (RA: ${irmao.ra})<br>
+                    Status: <span class="badge ${badgeClass}">${irmao.status}</span> | Motivo: <i>${irmao.status_motivo || 'Não informado'}</i><br>
+                    <a href="${linkFicha}" target="_blank" style="color: ${textoCor}; text-decoration: underline; font-size: 12px;"><b><span class="mdi mdi-open-in-new"></span> Abrir Ficha</b></a>
+                </li>`;
+        });
+
+        if (qtdIrmaos > 3) {
+            htmlIrmaos += `<li><i>E mais ${qtdIrmaos - 3} passageiro(s) registrado(s) neste local.</i></li>`;
+        }
+        htmlIrmaos += `</ul></div>`;
+
+        htmlIrmaos += `
+            <p><b>Atenção:</b> Confirme se o passageiro atual possui vínculo familiar direto com os alunos citados acima (verifique sobrenome, nomes dos pais, o complemento do endereço, etc).</p>
+            <p>São irmãos? Devemos seguir o mesmo critério dos demais?</p>
+            
+            <div class="action-group" style="margin-top: 15px; display: flex; gap: 10px;">
+                <button id="btn-irmao-sim" class="btn btn-primary"><span class="mdi mdi-check-all"></span> Sim, copiar análise dos irmãos</button>
+                <button id="btn-irmao-nao" class="btn btn-secondary"><span class="mdi mdi-scale-balance"></span> Não, manter minha análise</button>
+            </div>
+        `;
+
+        conteudo.innerHTML = htmlIrmaos;
+
+        // AÇÃO SIM: Importa a decisão e os dados do fetch correspondentes ao irmão
+        vincularEventoUnico(document.getElementById('btn-irmao-sim'), 'click', () => {
+            salvarHistorico();
+
+            // Se ia indeferir -> Copia irmão e DEFERE
+            // Se ia deferir -> Copia irmão e INDEFERE
+            const vaiDeferirComIrmaos = assistenteIaIndeferir;
+
+            let motivoMaisFrequente = "";
+            let detalheMaisFrequente = "";
+
+            const grupoMaioria = historicoRua.dadosIrmaos.filter(irmao => {
+                if (vaiDeferirComIrmaos) {
+                    return irmao.validoParaDeferir === true || 
+                        (irmao.status && (irmao.status.toUpperCase().includes("ATENDIDO") || irmao.status.toUpperCase().includes("DEFERIDO")) && !irmao.status.toUpperCase().includes("INDEFERIDO"));
+                } else {
+                    return irmao.validoParaDeferir === false || 
+                        (irmao.status && (irmao.status.toUpperCase().includes("INDEFERIDO") || irmao.status.toUpperCase().includes("CANCELADO")));
+                }
+            });
+
+            if (grupoMaioria.length > 0) {
+                const contagemMotivos = {};
+                const contagemDetalhes = {};
+
+                grupoMaioria.forEach(i => {
+                    const motVal = i.status_motivo || i.motivo || i.motivoAnalise;
+                    const detVal = i.observacao_analise || i.detalhes || i.textoDetalhes || i.status_motivo_detalhe;
+                    if (motVal) { contagemMotivos[motVal] = (contagemMotivos[motVal] || 0) + 1; }
+                    if (detVal) { contagemDetalhes[detVal] = (contagemDetalhes[detVal] || 0) + 1; }
+                });
+
+                let maxMotivos = 0;
+                for (const mot in contagemMotivos) {
+                    if (contagemMotivos[mot] > maxMotivos) {
+                        maxMotivos = contagemMotivos[mot];
+                        motivoMaisFrequente = mot;
                     }
+                }
 
-                // Condição 1: Assistente vai indeferir, mas existem irmãos sendo ATENDIDOS
-                // Condição 2: Assistente vai deferir, mas existem irmãos INDEFERIDOS
-                const deveIntervir = (resultadoCalculado.includes("INDEFERIR") && irmaosAtendidos > 0) || 
-                                     (resultadoCalculado.includes("DEFERIR") && !resultadoCalculado.includes("INDEFERIR") && irmaosIndeferidos > 0);
-
-                if (deveIntervir) {
-                    const qtdIrmaos = historicoRua.dadosIrmaos.length;
-                    const temAtendidos = irmaosAtendidos > 0;
-                    const bgCor = temAtendidos ? "#d4edda" : "#fff3cd";
-                    const textoCor = temAtendidos ? "#155724" : "#856404";
-                    const bordaCor = temAtendidos ? "#c3e6cb" : "#ffeeba";
-                    const iconeMdi = temAtendidos ? "mdi-account-multiple-check" : "mdi-account-multiple-remove";
-
-                    let htmlIrmaos = `<h3 class="section-title text-primary"><span class="mdi mdi-human-male-female" style="font-size: 22px; margin-right: 6px;"></span> Validação de Vínculo de Irmãos</h3>`;
-                    htmlIrmaos += `<div style='background-color: ${bgCor}; color: ${textoCor}; padding: 12px; border-radius: 5px; margin-bottom: 15px; border: 1px solid ${bordaCor};'>`;
-                    htmlIrmaos += `<span class='mdi ${iconeMdi}'></span> Pelas informações coletadas, você deveria <span class="badge ${resultadoCalculado.includes('INDEFERIR') ? 'badge-danger' : 'badge-success'}">${resultadoCalculado}</span>, ${txtIrmaos}:`;
-                    htmlIrmaos += `<ul style='margin-top: 8px; margin-bottom: 8px; padding-left: 20px;'>`;
-
-                    // Lista detalhada (limita exibição a até 3 itens de forma limpa)
-                    historicoRua.dadosIrmaos.slice(0, 3).forEach(irmao => {
-                        // Captura segura e dinâmica do contexto da URL atual da página
-                        const windowAlvo = document.defaultView || window;
-                        const docAlvo = (typeof window.getAlvoDocument === 'function' ? window.getAlvoDocument() : windowAlvo.document);
-                        const docHref = docAlvo?.location?.href || windowAlvo.location.href;
-                        
-                        // Determina dinamicamente o arquivo correto com base na versão que o usuário está usando
-                        const nomeArquivoFicha = (docHref.includes('ficha_transporte.php') && !docHref.includes('nova_versao'))
-                            ? 'ficha_transporte.php'
-                            : 'ficha_transporte_nova_versao.php';
-
-                        const linkFicha = `modulos/transporte_escolar/${nomeArquivoFicha}?id_solicitacao=${irmao.id_solicitacao}`;
-                        const badgeClass = irmao.validoParaDeferir ? "badge-success" : "badge-danger";
-                        
-                        htmlIrmaos += `
-                            <li style="margin-bottom: 5px; font-size: 13px;">
-                                Aluno: <b>${irmao.nome}</b> (RA: ${irmao.ra})<br>
-                                Status: <span class="badge ${badgeClass}">${irmao.status}</span> | Motivo: <i>${irmao.status_motivo || 'Não informado'}</i><br>
-                                <a href="${linkFicha}" target="_blank" style="color: ${textoCor}; text-decoration: underline; font-size: 12px;"><b><span class="mdi mdi-open-in-new"></span> Abrir Ficha</b></a>
-                            </li>`;
-                    });
-
-                    if (qtdIrmaos > 3) {
-                        htmlIrmaos += `<li><i>E mais ${qtdIrmaos - 3} passageiro(s) registrado(s) neste local.</i></li>`;
+                let maxDetalhes = 0;
+                for (const det in contagemDetalhes) {
+                    if (contagemDetalhes[det] > maxDetalhes) {
+                        maxDetalhes = contagemDetalhes[det];
+                        detalheMaisFrequente = det;
                     }
-                    htmlIrmaos += `</ul></div>`;
-
-                    htmlIrmaos += `
-                        <p><b>Atenção:</b> Confirme se o passageiro atual possui vínculo familiar direto com os alunos citados acima (verifique sobrenome, nomes dos pais, o complemento do endereço, etc).</p>
-                        <p>São irmãos? Devemos seguir o mesmo critério dos demais?</p>
-                        
-                        <div class="action-group" style="margin-top: 15px;">
-                            <button id="btn-irmao-sim" class="btn btn-primary"><span class="mdi mdi-check-all"></span> Sim, copiar análise dos irmãos</button>
-                            <button id="btn-irmao-nao" class="btn btn-secondary"><span class="mdi mdi-scale-balance"></span> Não, manter minha análise</button>
-                        </div>
-                    `;
-
-                    conteudo.innerHTML = htmlIrmaos;
-
-                    // Ação SIM: Segue a tendência majoritária/histórica dos irmãos encontrados
-                    vincularEventoUnico(document.getElementById('btn-irmao-sim'), 'click', () => {
-                        salvarHistorico();
-                        estado.verificacaoIrmaosConcluida = true;
-
-                        // =========================================================================
-                        // LÓGICA DE EXTRAÇÃO DO MOTIVO MAIS RECORRENTE DA MAIORIA
-                        // =========================================================================
-                        let motivoMaisFrequente = "";
-                        let detalheMaisFrequente = "";
-
-                        // Filtra apenas o grupo de irmãos pertencentes à maioria analítica
-                        const grupoMaioria = historicoRua.dadosIrmaos.filter(irmao => {
-                            if (temAtendidos) {
-                                // Se a maioria for ATENDIDOS, filtra os válidos para deferimento
-                                return irmao.validoParaDeferir === true || (irmao.status && irmao.status.toUpperCase().includes("ATENDIDO") && irmao.status.toUpperCase() !== "INDEFERIDO" && irmao.status.toUpperCase() !== "NÃO ATENDIDO" && irmao.status.toUpperCase() !== "NAO ATENDIDO") || (irmao.status && (irmao.status.toUpperCase() === "ATENDIDO" || irmao.status.toUpperCase() === "DEFERIDO"));
-                            } else {
-                                // Se a maioria for INDEFERIDOS, filtra os inválidos para deferimento
-                                return irmao.validoParaDeferir === false || (irmao.status && irmao.status.toUpperCase().includes("INDEFERIDO")) || (irmao.status && irmao.status.toUpperCase() === "INDEFERIDO");
-                            }
-                        });
-
-                        if (grupoMaioria.length > 0) {
-                            const contagemMotivos = {};
-                            const contagemDetalhes = {};
-
-                            grupoMaioria.forEach(i => {
-                                // Conta recorrência dos motivos cadastrados no BD (ex: IDs de motivos ou nomes textuais exatos)
-                                if (i.status_motivo) {
-                                    contagemMotivos[i.status_motivo] = (contagemMotivos[i.status_motivo] || 0) + 1;
-                                }
-                                // Opcional: Se houver campo de observações detalhadas no objeto irmão, mapeia aqui
-                                if (i.observacao_analise) {
-                                    contagemDetalhes[i.observacao_analise] = (contagemDetalhes[i.observacao_analise] || 0) + 1;
-                                }
-                            });
-
-                            // Localiza o motivo mais votado/repetido da lista
-                            let maxMotivos = 0;
-                            for (const mot in contagemMotivos) {
-                                if (contagemMotivos[mot] > maxMotivos) {
-                                    maxMotivos = contagemMotivos[mot];
-                                    motivoMaisFrequente = mot;
-                                }
-                            }
-
-                            // Localiza os detalhes mais votados/repetidos da lista
-                            let maxDetalhes = 0;
-                            for (const det in contagemDetalhes) {
-                                if (contagemDetalhes[det] > maxDetalhes) {
-                                    maxDetalhes = contagemDetalhes[det];
-                                    detalheMaisFrequente = det;
-                                }
-                            }
-                        }
-
-                        // Aplica as definições dinâmicas dependendo do veredito final
-                        if (temAtendidos) {
-                            estado.telaFinal = { 
-                                titulo: "DEFERIR", 
-                                motivo: motivoMaisFrequente || '', // Copia o motivo idêntico ou deixa limpo se indetectável
-                                detalhes: detalheMaisFrequente || "Irmão de aluno já atendido no mesmo endereço",
-                                mensagem: "Deferido para acompanhar o histórico de atendimento ativo de irmão(s) residente(s) no mesmo endereço." 
-                            };
-                        } else {
-                            estado.telaFinal = { 
-                                titulo: "INDEFERIR", 
-                                motivo: motivoMaisFrequente || '', // Copia o motivo de indeferimento mais recorrente
-                                detalhes: detalheMaisFrequente || "Indeferido para acompanhar o histórico unificado de indeferimento familiar no mesmo endereço.",
-                                mensagem: "Indeferido para acompanhar o histórico unificado de indeferimento familiar no mesmo endereço." 
-                            };
-                        }
-                        renderizarPasso();
-                    });
-
-                    // Ação NÃO: Ignora o critério de irmãos e mantém o cálculo feito anteriormente
-                    vincularEventoUnico(document.getElementById('btn-irmao-nao'), 'click', () => {
-                        salvarHistorico();
-                        estado.verificacaoIrmaosConcluida = true;
-                        renderizarPasso(); // Segue diretamente para a tela final previamente calculada
-                    });
-                    
-
-                    return; // Interrompe o fluxo para colher a resposta do usuário antes da tela final
                 }
             }
-            // ===========fim da tela irmãos
+
+            if (vaiDeferirComIrmaos) {
+                const mot = motivoMaisFrequente || "DIFICULDADE DE ACESSO";
+                const det = detalheMaisFrequente || "Irmão de aluno já atendido no mesmo endereço";
+                estado.telaFinal = { 
+                    titulo: "DEFERIR", 
+                    motivoAnalise: mot,
+                    textoDetalhes: det,
+                    motivo: mot,
+                    detalhes: det,
+                    mensagem: "Deferido para acompanhar o histórico de atendimento ativo de irmão(s) residente(s) no mesmo endereço." 
+                };
+            } else {
+                const mot = motivoMaisFrequente || "ESCOLA POR OPÇÃO";
+                const det = detalheMaisFrequente || "Indeferido para acompanhar o histórico unificado de indeferimento familiar no mesmo endereço.";
+                estado.telaFinal = { 
+                    titulo: "INDEFERIR", 
+                    motivoAnalise: mot,
+                    textoDetalhes: det,
+                    motivo: mot,
+                    detalhes: det,
+                    mensagem: "Indeferido para acompanhar o histórico unificado de indeferimento familiar no mesmo endereço." 
+                };
+            }
+
+            estado.verificacaoIrmaosConcluida = true;
+            renderizarPasso();
+        });
+
+        // AÇÃO NÃO: Pula a cópia e mantém a análise calculada anteriormente
+        vincularEventoUnico(document.getElementById('btn-irmao-nao'), 'click', () => {
+            salvarHistorico();
+
+            if (estado.telaFinal) {
+                estado.telaFinal.motivoAnalise = estado.telaFinal.motivoAnalise || estado.telaFinal.motivo || "";
+                estado.telaFinal.textoDetalhes = estado.telaFinal.textoDetalhes || estado.telaFinal.detalhes || "";
+                estado.telaFinal.motivo = estado.telaFinal.motivoAnalise;
+                estado.telaFinal.detalhes = estado.telaFinal.textoDetalhes;
+            }
+
+            estado.verificacaoIrmaosConcluida = true;
+            renderizarPasso();
+        });
+
+        return;
+    } else {
+        estado.verificacaoIrmaosConcluida = true;
+    }
+}
+// ===========fim da tela irmãos
 
 
             
@@ -2680,6 +2698,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
                     return;
                 }
             }
+            
 
             // CAPTURA DOS DADOS (SE PREPARANDO PARA RENDERIZAR A TELA COMPLETA COM LISTA)
             const latAluno = dadosGeograficos?.geoEndereco_Latit || null;

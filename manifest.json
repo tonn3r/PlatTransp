@@ -7,7 +7,7 @@
   "config_ambiente": "main",
   "content_scripts": [
     {
-      "matches": ["http://plataforma-se2/*"],
+      "matches": ["http://plataforma-se2/administrador/modulos/transporte_escolar/*"],
       "js": [
         "escolas_db.js",
         "ruas.js",

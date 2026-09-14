@@ -3,9 +3,11 @@
     'use strict';
 
     // Obtém a versão e o ambiente diretamente do manifesto da extensão
-    const MANIFESTO = chrome.runtime.getManifest();
-    const VERSAO_ATUAL = MANIFESTO.version; 
-    const AMBIENTE = MANIFESTO.config_ambiente || "main"; // Fallback para main caso não definido
+    const manifest = (typeof chrome !== 'undefined' && chrome?.runtime?.getManifest) 
+  ? chrome.runtime.getManifest() 
+  : null;
+    const VERSAO_ATUAL = manifest ? manifest.version : null;
+    const AMBIENTE = manifest ? manifest.config_ambiente || "main" : "main"; // Fallback para main caso não definido
 
     // Constrói a URL de checagem apontando para a branch correspondente do ambiente
     const URL_VERSAO = `https://raw.githubusercontent.com/tonn3r/PlatTransp/${AMBIENTE}/version.json`;
