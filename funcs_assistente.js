@@ -2389,7 +2389,7 @@ window.abrirModalAssistente = async function() {
             
             
             // Verifica comprovante se for mudança de endereço, mas apenas se o resultado for DEFERIDO ou nulo. (indeferimento não precisa de documento)
-            if (isMudanca && estado.mudancaOk === null && !estado.telaFinal.titulo.includes('INDEFERIR')) {
+            if (estado.mudancaOk === null && !estado.telaFinal.titulo.includes('INDEFERIR')) {
                 conteudo.innerHTML = `
                     <h3 class="section-title text-warning">
                         <span class="mdi mdi-map-search" style="font-size: 22px; margin-right: 6px;"></span> Mudança de Endereço
