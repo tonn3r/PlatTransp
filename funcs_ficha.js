@@ -1,17 +1,3 @@
-window.limparCache = function() {
-    const storeEl = typeof window.getSharedStoreElement === 'function' 
-    ? window.getSharedStoreElement() 
-    : (window.top || window).document.getElementById('plattransp-shared-store');
-
-if (storeEl) {
-    storeEl.value = '{}';
-    console.log("🧹 SharedStore zerada com sucesso!");
-}
-
-localStorage.clear();
-sessionStorage.clear();
-console.log("🧹 Cache local do assistente e da sessão limpos!");
-};
 // Remove os acentos e normaliza os caracteres de um texto, além de passá-lo para maiúsculas.
 window.normalizarTexto = function(texto) {
     if (!texto) return "";

@@ -72,22 +72,27 @@ window.copiarCoordenadasEndereco = function() {
 // 🟢 Trava Singleton: Armazena requisições em andamento indexadas por URL
 const promessasGeoEmAndamento = new Map();
 
-window.extrairDadosGeograficos = async function(urlFichaNova) { // Extrai dados geográficos (como Lat e Lon) do mapa da ficha de transporte usando DOMParser e expressões regulares.
+window.extrairDadosGeograficos = async function(urlFichaNova) {
     if (!urlFichaNova) return null;
 
     // 1. PROTEÇÃO SINGLETON / RACE CONDITION: Se a URL já estiver sendo processada, reutiliza a mesma Promise
     if (promessasGeoEmAndamento.has(urlFichaNova)) {
-        console.log("⚠️ [GEO] Requisição já em andamento para esta URL. Reutilizando promessa ativa...");
+        if (typeof window.logDebug === 'function') {
+            window.logDebug('GEO', '⚠️ Requisição já em andamento para esta URL. Reutilizando promessa ativa...');
+        }
         return promessasGeoEmAndamento.get(urlFichaNova);
     }
 
     const execucaoExtracao = (async () => {
-        console.log("🔍 [GEO 1/5] Iniciando extração. URL da Ficha:", urlFichaNova);
+        if (typeof window.logDebug === 'function') {
+            window.logDebug('GEO', '🔍 [1/5] Iniciando extração. URL da Ficha:', urlFichaNova);
+        }
         let timeoutId = null;
 
         try {
             const controller = new AbortController();
-            timeoutId = setTimeout(() => controller.abort(), 8000);
+            // Timeout ajustado para 12s para acomodar oscilações do servidor legado
+            timeoutId = setTimeout(() => controller.abort(), 12000);
 
             const resposta = await fetch(urlFichaNova, { signal: controller.signal });
             if (!resposta.ok) return null;
@@ -111,13 +116,9 @@ window.extrairDadosGeograficos = async function(urlFichaNova) { // Extrai dados 
             const iframeMap = docVirtual.getElementById('map_endereco');
             const urlIframe = iframeMap?.src || "";
 
-            console.log("🔍 [GEO] URL do iframe original:", urlIframe || "NÃO ENCONTRADO");
-
             if (urlIframe) {
                 const matchOrigin = urlIframe.match(/origin=([^&]+)/i);
                 const matchDest = urlIframe.match(/destination=([^&]+)/i);
-
-                console.log("🔍 [GEO] Captura de Parâmetros -> Origin/Saddr:", matchOrigin ? matchOrigin[1] : "NÃO ENCONTRADO", "| Dest/Daddr:", matchDest ? matchDest[1] : "NÃO ENCONTRADO");
 
                 const parseCoord = (str) => {
                     if (!str) return { lat: null, lon: null };
@@ -150,10 +151,16 @@ window.extrairDadosGeograficos = async function(urlFichaNova) { // Extrai dados 
 
             return null;
         } catch (erro) {
-            console.error("❌ Erro ao extrair dados geográficos:", erro);
+            // Filtra o erro de Abort para evitar poluição no console quando for um encerramento esperado
+            if (erro.name === 'AbortError') {
+                if (typeof window.logDebug === 'function') {
+                    window.logDebug('GEO', '⏹️ Requisição de geolocalização abortada por limite de tempo ou ação do usuário.');
+                }
+            } else {
+                console.error("❌ Erro ao extrair dados geográficos:", erro);
+            }
             return null;
         } finally {
-            // Garante a limpeza do Timer em qualquer cenário (sucesso, erro ou abort)
             if (timeoutId) clearTimeout(timeoutId);
         }
     })();

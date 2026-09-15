@@ -1842,7 +1842,7 @@ window.gerenciarBotaoAssistente = function() {
         paginacao.style.zIndex = "900";
     }
 
-    // 🟢 2. Determina o documento alvo para inserção do botão (prefere a janela principal top)
+    // 🟢 2. Determina o documento alvo (janela principal top)
     let targetDoc = document;
     try {
         if (window.top && window.top.document) {
@@ -1851,6 +1851,14 @@ window.gerenciarBotaoAssistente = function() {
     } catch(e) {
         targetDoc = document;
     }
+
+    // Helper interno para remover elemento em ambos os contextos
+    const removerElementoAmbosEscopos = (id) => {
+        const elTarget = targetDoc.getElementById(id);
+        if (elTarget) elTarget.remove();
+        const elLocal = document.getElementById(id);
+        if (elLocal && elLocal !== elTarget) elLocal.remove();
+    };
 
     // 🟢 3. Busca elementos no documento atual ou alvo
     const getDocTarget = typeof window.getAlvoDocument === 'function' 
@@ -1876,9 +1884,11 @@ window.gerenciarBotaoAssistente = function() {
         }
     }
 
+    // Detecta mudança de aluno/ficha e força a limpeza total
     if (window.currentStudentId !== currentId) {
         window.currentStudentId = currentId;
         window.mapaSincronizado = false;
+        window.abrindoModalAssistente = false; // Reset da trava de abertura
         
         const resetStoreObj = {
             dadosGeograficos: null,
@@ -1897,8 +1907,8 @@ window.gerenciarBotaoAssistente = function() {
         if (typeof window.cancelarProcessamentosAssistente === 'function') {
             window.cancelarProcessamentosAssistente();
         }
-        const mod = targetDoc.getElementById('modal-assistente-analise') || document.getElementById('modal-assistente-analise');
-        if (mod) mod.remove();
+        removerElementoAmbosEscopos('modal-assistente-analise');
+        removerElementoAmbosEscopos('btn-assistente-transporte');
     }
 
     let isVisivel = true;
@@ -1911,12 +1921,10 @@ window.gerenciarBotaoAssistente = function() {
         }
     }
 
-    let btn = targetDoc.getElementById('btn-assistente-transporte') || document.getElementById('btn-assistente-transporte');
-
     if (!isVisivel) {
-        if (btn) btn.remove();
-        const modal = targetDoc.getElementById('modal-assistente-analise') || document.getElementById('modal-assistente-analise');
-        if (modal) modal.remove();
+        removerElementoAmbosEscopos('modal-assistente-analise');
+        removerElementoAmbosEscopos('btn-assistente-transporte');
+        window.abrindoModalAssistente = false;
         return;
     }
 
@@ -1936,9 +1944,9 @@ window.gerenciarBotaoAssistente = function() {
                       textoStatusSemAcento.includes('PENDENTE');
 
     if (!ehUsuarioTestador && !ehAnalise) {
-        if (btn) btn.remove();
-        const modal = targetDoc.getElementById('modal-assistente-analise') || document.getElementById('modal-assistente-analise');
-        if (modal) modal.remove();
+        removerElementoAmbosEscopos('modal-assistente-analise');
+        removerElementoAmbosEscopos('btn-assistente-transporte');
+        window.abrindoModalAssistente = false;
         return;
     }
 
@@ -1949,12 +1957,13 @@ window.gerenciarBotaoAssistente = function() {
         });
     }
 
+    let btn = targetDoc.getElementById('btn-assistente-transporte') || document.getElementById('btn-assistente-transporte');
+
     if (!btn) {
         btn = targetDoc.createElement('button');
         btn.id = 'btn-assistente-transporte';
         btn.className = 'fab-assistente assistente-transporte-wrapper';
         
-        // Estilos de garantia para exibição flutuante
         btn.style.position = 'fixed';
         btn.style.bottom = '20px';
         btn.style.right = '20px';
@@ -2128,15 +2137,22 @@ window.abrirModalAssistente = async function() {
     `;
     document.body.appendChild(modal);
     
-    vincularEventoUnico(document.getElementById('btn-fechar-assistente'), 'click', () => {
-        if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-        const btnFinalizar = document.getElementById('btn-aplicar-resultado');
-        if (btnFinalizar) {
-            btnFinalizar.click();
-        } else {
-            modal.style.display = 'none';
-        }
-    });
+    const docPai = (window.top || window).document;
+const btnFechar = docPai.getElementById('btn-fechar-assistente') || document.getElementById('btn-fechar-assistente');
+
+vincularEventoUnico(btnFechar, 'click', () => {
+    if (typeof window.logDebug === 'function') window.logDebug('ASSISTENTE', 'Botão fechar assistente clicado.');
+    if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+    
+    const btnFinalizar = docPai.getElementById('btn-aplicar-resultado') || document.getElementById('btn-aplicar-resultado');
+    const modalAlvo = docPai.getElementById('modal-assistente-analise') || modal;
+
+    if (btnFinalizar) {
+        btnFinalizar.click();
+    } else if (modalAlvo) {
+        modalAlvo.style.display = 'none';
+    }
+});
 
     let estado = {
         ehAnalise: ehAnaliseInicial,

@@ -141,21 +141,43 @@ const interceptarLinkSessaoExpirada = (contextoDoc) => {
 
     // Remove os modais, botões e limpa o armazenamento global do Assistente de Análise.
     function ocultarBotaoAssistente() {
-        const btn = document.getElementById('btn-assistente-transporte');
-        const mod = document.getElementById('modal-assistente-analise');
+        const docTop = (window.top && window.top.document) ? window.top.document : document;
+
+        // Busca o botão e o modal tanto no DOM local quanto no window.top
+        const btn = document.getElementById('btn-assistente-transporte') || docTop.getElementById('btn-assistente-transporte');
+        const mod = document.getElementById('modal-assistente-analise') || docTop.getElementById('modal-assistente-analise');
+        
+        if (mod) {
+            mod.remove();
+        }
         if (btn) {
             btn.style.display = 'none';
             btn.remove();
         }
-        if (mod) mod.remove();
+
+        // Reset de variáveis de estado com fallback em window.top
         window.mapaSincronizado = false;
+        try { window.top.mapaSincronizado = false; } catch(e) {}
+
         if (typeof window.setSharedStoreValue === 'function') {
             window.setSharedStoreValue('dadosGeograficos', null);
         } else {
             window.dadosGeograficos = null;
+            try { window.top.dadosGeograficos = null; } catch(e) {}
         }
+
         window.currentStudentId = null;
-        if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+        try { window.top.currentStudentId = null; } catch(e) {}
+
+        // Cancela chamadas OSRM pendentes no escopo local e top
+        if (typeof window.cancelarProcessamentosAssistente === 'function') {
+            window.cancelarProcessamentosAssistente();
+        }
+        try {
+            if (window.top && typeof window.top.cancelarProcessamentosAssistente === 'function') {
+                window.top.cancelarProcessamentosAssistente();
+            }
+        } catch(e) {}
     }
 
     // Empacota a função "FechaModal" nativa para rodar nossa limpeza interna sempre que um modal for fechado no SE2.
@@ -172,42 +194,45 @@ const interceptarLinkSessaoExpirada = (contextoDoc) => {
 
     // Tenta sobrescrever funções vitais e acompanhar iframes carregados para embutir as modificações necessárias sem perdas.
     function monitorarCicloDeVidaModal() {
-        if (typeof window.FechaModal === 'function') {
-            window.FechaModal = envolverFechaModal(window.FechaModal);
-        } else {
-            const descriptor = Object.getOwnPropertyDescriptor(window, 'FechaModal');
-            if (!descriptor || descriptor.configurable) {
-                let atual = window.FechaModal;
-                Object.defineProperty(window, 'FechaModal', {
-                    configurable: true,
-                    enumerable: true,
-                    get() {
-                        return atual;
-                    },
-                    set(valor) {
-                        atual = envolverFechaModal(valor);
-                    }
-                });
+        // Mapeia os alvos (escopo local e janela principal)
+        const alvos = [window];
+        try {
+            if (window.top && window.top !== window) {
+                alvos.push(window.top);
             }
-        }
+        } catch(e) {}
 
-        const iframePlatform = document.getElementById('img01'); 
+        // Aplica a interceptação da FechaModal em todos os contextos disponíveis
+        alvos.forEach(winTarget => {
+            if (typeof winTarget.FechaModal === 'function') {
+                winTarget.FechaModal = envolverFechaModal(winTarget.FechaModal);
+            } else {
+                const descriptor = Object.getOwnPropertyDescriptor(winTarget, 'FechaModal');
+                if (!descriptor || descriptor.configurable) {
+                    let atual = winTarget.FechaModal;
+                    Object.defineProperty(winTarget, 'FechaModal', {
+                        configurable: true,
+                        enumerable: true,
+                        get() {
+                            return atual;
+                        },
+                        set(valor) {
+                            atual = envolverFechaModal(valor);
+                        }
+                    });
+                }
+            }
+        });
+
+        // Monitora o carregamento do Iframe 'img01' para limpeza preventiva
+        const docTop = (window.top && window.top.document) ? window.top.document : document;
+        const iframePlatform = document.getElementById('img01') || docTop.getElementById('img01'); 
+        
         if (iframePlatform && !iframePlatform.dataset.monitoradoLoad) {
             iframePlatform.dataset.monitoradoLoad = "true";
             
             iframePlatform.addEventListener('load', () => {
-                const mod = document.getElementById('modal-assistente-analise');
-                if (mod) mod.remove();
-                
-                window.mapaSincronizado = false;
-                if (typeof window.setSharedStoreValue === 'function') {
-                    window.setSharedStoreValue('dadosGeograficos', null);
-                } else {
-                    window.dadosGeograficos = null;
-                }
-                window.currentStudentId = null;
-
-                if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
+                ocultarBotaoAssistente();
             });
         }
     }
