@@ -1,3 +1,17 @@
+window.limparCache = function() {
+    const storeEl = typeof window.getSharedStoreElement === 'function' 
+    ? window.getSharedStoreElement() 
+    : (window.top || window).document.getElementById('plattransp-shared-store');
+
+if (storeEl) {
+    storeEl.value = '{}';
+    console.log("🧹 SharedStore zerada com sucesso!");
+}
+
+localStorage.clear();
+sessionStorage.clear();
+console.log("🧹 Cache local do assistente e da sessão limpos!");
+};
 // Remove os acentos e normaliza os caracteres de um texto, além de passá-lo para maiúsculas.
 window.normalizarTexto = function(texto) {
     if (!texto) return "";
@@ -40,81 +54,66 @@ window.getSharedStoreElement = function() {
     return el;
 };
 
-function blindarElementosAnalise(doc) {
-    const selectMotivo = doc.getElementById("status_motivo_");
-
-    if (selectMotivo) {
-        console.log("[PLUGIN] Elemento select encontrado. Iniciando correção estrutural e de eventos...");
-
-        // --- CORREÇÃO ESTRUTURAL (DOM EXTRACTION) ---
-        const elStatusDetalhes = doc.getElementById("status_detalhes_div");
-        const elEscolaProxima = doc.getElementById("escola_mais_proxima_div");
-
-        // Se ambos existirem e um estiver erroneamente dentro do outro
-        if (elStatusDetalhes && elEscolaProxima && elEscolaProxima.contains(elStatusDetalhes)) {
-            console.log("[PLUGIN] Detectado status_detalhes_div dentro de escola_mais_proxima_div. Corrigindo estrutura...");
-            
-            // Move o status_detalhes_div para fora, posicionando-o logo após o escola_mais_proxima_div
-            elEscolaProxima.after(elStatusDetalhes);
-            
-            console.log("[PLUGIN] ✅ Estrutura corrigida! As divs agora são irmãs independentes.");
-        }
-
-        // --- MANIPULAÇÃO DE EVENTOS E VISIBILIDADE ---
-        // Remove completamente o atributo nativo onchange para evitar que chame a função original da página
-        selectMotivo.removeAttribute("onchange");
-
-        // Nova lógica de exibição robusta unificada usando querySelectorAll
-        const aplicarRegrasVisibilidade = () => {
-            const valorSelecionado = selectMotivo.value || "";
-
-            // 1. Seletores que SEMPRE devem ficar visíveis (tratados em lote via querySelectorAll)
-            const seletoresSempreVisiveis = [
-                "#distancia_aferida_div",
-                "#status_detalhes_div",
-                "#botao_salvar_modal"
-            ];
-
-            seletoresSempreVisiveis.forEach(seletor => {
-                const elementos = doc.querySelectorAll(seletor);
-                
-                elementos.forEach(el => {
-                    // Força a visibilidade aplicando estilos importantes
-                    el.style.setProperty("display", "block", "important");
-                    el.style.setProperty("visibility", "visible", "important");
-                    el.style.setProperty("opacity", "1", "important");
-                    
-                    // Se for o botão de salvar, garante também a exibição da div pai (.divsubmit)
-                    if (seletor === "#botao_salvar_modal") {
-                        const divPai = el.closest('.divsubmit');
-                        if (divPai) {
-                            divPai.style.setProperty("display", "block", "important");
-                        }
-                    }
-
-                    console.log("[DOM] Elemento "+ seletor + " forçado a ser visível.");
-                });
-            });
-
-            // 2. Elemento dinâmico (escola_mais_proxima_div) - agora independente
-            const elementosEscolaProxima = doc.querySelectorAll("#escola_mais_proxima_div");
-            elementosEscolaProxima.forEach(elEscolaProximaAtualizado => {
-                if (valorSelecionado.toUpperCase().includes("OPCAO")) {
-                    elEscolaProximaAtualizado.style.setProperty("display", "block", "important");
-                    elEscolaProximaAtualizado.style.setProperty("visibility", "visible", "important");
-                    elEscolaProximaAtualizado.style.setProperty("opacity", "1", "important");
-                } else {
-                    elEscolaProximaAtualizado.style.setProperty("display", "none", "important");
-                }
-            });
-        };
-
-        // Adiciona o ouvinte de evento moderno ao select
-        selectMotivo.addEventListener("change", aplicarRegrasVisibilidade);
-
-        // Dispara a execução imediata para ajustar a tela logo no carregamento inicial
-        aplicarRegrasVisibilidade();
+const garantirVisibilidadeViaCSS = (doc) => {
+    if (!doc || !doc.head) return;
+    const styleId = "fix-visibilidade-botoes";
+    
+    if (!doc.getElementById(styleId)) {
+        const style = doc.createElement("style");
+        style.id = styleId;
+        style.textContent = `
+            #modal_Informativo #botao_salvar_modal,
+            #modal_Informativo .buttonsalva,
+            [id="botao_salvar_modal"],
+            .buttonsalva,
+            #distancia_aferida_div,
+            #status_detalhes_div,
+            .divsubmit {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+        `;
+        doc.head.appendChild(style);
     }
+};
+
+function blindarElementosAnalise(doc) {
+    if (!doc) return;
+
+    // 1. Injeta as regras de CSS persistentes no head
+    garantirVisibilidadeViaCSS(doc);
+
+    const selectMotivo = doc.getElementById("status_motivo_");
+    if (!selectMotivo) return;
+
+    // Evita re-vincular eventos se já foi processado
+    if (selectMotivo.dataset.plattranspBlindado) return;
+    selectMotivo.dataset.plattranspBlindado = "true";
+
+    // 2. Correção de DOM (reparenting)
+    const elStatusDetalhes = doc.getElementById("status_detalhes_div");
+    const elEscolaProxima = doc.getElementById("escola_mais_proxima_div");
+
+    if (elStatusDetalhes && elEscolaProxima && elEscolaProxima.contains(elStatusDetalhes)) {
+        elEscolaProxima.after(elStatusDetalhes);
+    }
+
+    // 3. Remove evento nativo legado
+    selectMotivo.removeAttribute("onchange");
+
+    // 4. Lógica estritamente para o container condicional (escola_mais_proxima_div)
+    const aplicarRegrasVisibilidade = () => {
+        const valorSelecionado = (selectMotivo.value || "").toUpperCase();
+        const exibirEscolaProxima = valorSelecionado.includes("OPCAO");
+
+        doc.querySelectorAll("#escola_mais_proxima_div").forEach(el => {
+            el.style.setProperty("display", exibirEscolaProxima ? "block" : "none", "important");
+        });
+    };
+
+    selectMotivo.addEventListener("change", aplicarRegrasVisibilidade);
+    aplicarRegrasVisibilidade();
 }
 
 // Pega os valores armazenados no estado global (shared store) a partir do elemento escondido do DOM.
@@ -448,7 +447,7 @@ window.adicionarBotoesCopiarDados = function() {
 };
 
 // Inicia o processo automático de captura de informações (como RA e status) e chama outras funções auxiliares quando a página da ficha é carregada.
-window.iniciarPaginaFicha = function() {
+window.iniciarPaginaFicha = async function() {
 
     // Captura o RA do aluno (se houver) e o salva no estado global da aplicação.
     // Esta informação será utilizada pelo assistente na etapa de "Encaminhamento".
@@ -467,26 +466,42 @@ window.iniciarPaginaFicha = function() {
         window.setSharedStoreValue('statusFichaEmAnalise', isEmAnalise);
     }
 
-    if (
-        typeof window.realizarCalculosIniciaisDistancia ===
-        'function'
-    ) {
-        window.realizarCalculosIniciaisDistancia();
+    if (typeof window.sincronizarMapaECoordenadas === 'function') {
+        console.log('[FICHA] Sincronizando mapa e coordenadas...');
+        window.sincronizarMapaECoordenadas(document);
+    }else {
+    console.warn('[FICHA] window.sincronizarMapaECoordenadas ainda não foi carregada. Aguardando...');
+    // Aguarda 300ms caso o script de geolocalização ainda esteja carregando
+    setTimeout(() => {
+        if (typeof window.sincronizarMapaECoordenadas === 'function') {
+            window.sincronizarMapaECoordenadas(document);
+        }
+    }, 300);
+}
+
+    if (typeof window.realizarCalculosIniciaisDistancia === 'function') {
+        console.log('[FICHA] Realizando cálculos iniciais de distância...');
+        await window.realizarCalculosIniciaisDistancia();
+    }else{
+        console.warn('[FICHA] window.realizarCalculosIniciaisDistancia ainda não foi carregada. Aguardando...');
     }
 
     if (
         typeof window.aplicarLinkPesquisaEndereco ===
         'function'
     ) {
+        console.log('[FICHA] Aplicando link de pesquisa de endereço...');
         window.aplicarLinkPesquisaEndereco();
     }
 
     if (typeof window.adicionarBotoesCopiarDados === 'function') {
+        console.log('[FICHA] Adicionando botões de cópia de dados...');
         window.adicionarBotoesCopiarDados();
     }
 
 
     if (typeof window.blindarElementosAnalise === 'function') {
+        console.log('[FICHA] Blindando elementos de análise...');
         window.blindarElementosAnalise(document);
     }
 
@@ -554,13 +569,13 @@ window.iniciarPaginaFicha = function() {
         'dados_analise_assistente',
         (dadosSalvos) => {
 
-            if (!dadosSalvos) return;
+            if (!dadosSalvos) {return; console.warn('[ASSISTENTE] Nenhum dado de análise salvo encontrado no storage.')};
 
             if (
                 dadosSalvos.distanciamedia ||
                 dadosSalvos.distancia
             ) {
-
+                console.log('[ASSISTENTE] Distância encontrada no storage. distanciamedia:', dadosSalvos.distanciamedia, 'distancia:', dadosSalvos.distancia);
                 const valDist =
                     dadosSalvos.distanciamedia ||
                     dadosSalvos.distancia;
@@ -608,6 +623,7 @@ window.iniciarPaginaFicha = function() {
                     lonAluno &&
                     dbLocal.length > 0
                 ) {
+                    console.log('[ASSISTENTE] "' + dbLocal.length + '" distancias obtidas no cache:', latAluno, lonAluno);
 
                     textoArr.push(
                         `\n--- ESCOLAS MAIS PRÓXIMAS (Em linha reta) ---`
@@ -684,7 +700,7 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
     if (!forcarRecalculo && CHAVE_REGISTRO) {
         const cacheSalvo = window.obterValorCachePersistente(NOME_CACHE_STORAGE, CHAVE_REGISTRO);
         if (cacheSalvo && cacheSalvo.dadosGeraisRota) {
-            //console.log(`[ASSISTENTE] ⚡ Dados de rota recuperados do cache persistente para a ficha: ${idFicha}`);
+            console.log(`[ASSISTENTE] ⚡ Dados de rota recuperados do cache persistente para a ficha: ${idFicha}`);
             
             // Restaura o SharedStore global da sessão com os dados cacheados
             window.setSharedStore({
@@ -701,9 +717,11 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
                 if (toggleContainer && toggleContainer.children[1] && cacheSalvo.modoTransporteAtual === 'carro') {
                     toggleContainer.children[1].innerHTML = "🚗 De Carro";
                 }
+                console.log(`[ASSISTENTE] Modo de transporte atual restaurado do cache: ${cacheSalvo.modoTransporteAtual}`);
             }
             return; // Interrompe a execução poupando APIs externas
         }
+        console.log(`[ASSISTENTE] Nenhum cache persistente encontrado para a ficha: ${idFicha}. Executando cálculos tradicionais...`);
     }
 
     // --- SE NÃO TIVER CACHE OU SE FOR FORÇADO, EXECUTA O CÁLCULO TRADICIONAL ---
@@ -752,8 +770,10 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
 
     let dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
 
-    if (!dadosGeo || !dadosGeo.geoEscola_Latit) return;
-
+    if (!dadosGeo || !dadosGeo.geoEscola_Latit || !dadosGeo.geoEscola_Longit) {console.error('[FICHA] Coordenadas geográficas incompletas. Não é possível calcular distâncias.'); return;}else{
+        console.log(`[FICHA] Coordenadas geográficas extraídas com sucesso: Escola(${dadosGeo.geoEscola_Latit}, ${dadosGeo.geoEscola_Longit}), Endereço(${dadosGeo.geoEndereco_Latit}, ${dadosGeo.geoEndereco_Longit})`);
+    }
+    
     const isEmAnalise = window.getSharedStoreValue?.('statusFichaEmAnalise');
     if (!isEmAnalise) {
         console.info('[ASSISTENTE] Ficha não está em análise. Pulando chamadas de geolocalização.');
@@ -829,9 +849,12 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
         toggleContainer.style.display = 'none'; 
     }
 
-    if (typeof window.atualizarURLsMapasGlobal === 'function') {
-        window.atualizarURLsMapasGlobal();
-    }
+    // if (typeof window.atualizarURLsMapasGlobal === 'function') {
+    //     console.log('[ASSISTENTE] Atualizando URLs dos mapas globais com base nos cálculos recentes...');
+    //     window.atualizarURLsMapasGlobal();
+    // }else{
+    //     console.assert(false, '[ASSISTENTE] Função atualizarURLsMapasGlobal não encontrada. Não é possível atualizar os links dos mapas.');
+    // }
 
     // --- SALVA NO CACHE PERSISTENTE ANTES DE CONCLUIR ---
     if (CHAVE_REGISTRO) {
@@ -845,6 +868,17 @@ window.realizarCalculosIniciaisDistancia = async function(forcarRecalculo = fals
         window.gerenciarEsalvarCachePersistente(NOME_CACHE_STORAGE, CHAVE_REGISTRO, dadosParaGravar);
         //console.log(`[ASSISTENTE] ✅ Dados salvos no cache com sucesso automático para ficha: ${idFicha}`);
     }
+
+//     if (typeof window.atualizarURLsMapasGlobal === 'function') {
+//     console.log('[ASSISTENTE] Atualizando URLs dos mapas globais...');
+//     window.atualizarURLsMapasGlobal();
+// } else if (typeof window.sincronizarMapaECoordenadas === 'function') {
+//     console.log('[ASSISTENTE] Inicializando sincronização de mapas para registrar atualizarURLsMapasGlobal...');
+//     await window.sincronizarMapaECoordenadas(document);
+//     if (typeof window.atualizarURLsMapasGlobal === 'function') {
+//         window.atualizarURLsMapasGlobal();
+//     }
+// }
 };
 
 

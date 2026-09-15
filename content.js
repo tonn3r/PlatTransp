@@ -1,3 +1,36 @@
+// ============================================================================
+// 🔘 SISTEMA CENTRAL DE LOGS DO ASSISTENTE
+// ============================================================================
+window.DEBUG_ASSISTENTE = true; // 🔴 Mude para false quando quiser DESLIGAR todos os logs de debug
+
+window._ultimoLogCache = {};
+
+/**
+ * Exibe logs de debug com tag formatada e proteção contra repetição excessiva em loop/setInterval.
+ * @param {string} modulo Tag do módulo (ex: 'GEO', 'ASSISTENTE', 'FICHA')
+ * @param {string} mensagem Mensagem do log
+ * @param  {...any} args Argumentos adicionais
+ */
+window.logDebug = function(modulo, mensagem, ...args) {
+    if (!window.DEBUG_ASSISTENTE) return;
+
+    const chaveLog = `${modulo}:${mensagem}`;
+    const agora = Date.now();
+
+    // Evita imprimir exatamente a mesma mensagem se disparada em menos de 1,5 segundos
+    if (window._ultimoLogCache[chaveLog] && (agora - window._ultimoLogCache[chaveLog] < 1500)) {
+        return;
+    }
+    window._ultimoLogCache[chaveLog] = agora;
+
+    console.log(`[${modulo.toUpperCase()}] ${mensagem}`, ...args);
+};
+
+window.logErro = function(modulo, mensagem, ...args) {
+    // Erros graves sempre serão exibidos
+    console.error(`[${modulo.toUpperCase()}] ❌ ${mensagem}`, ...args);
+};
+
 // Escopo auto-executável: inicializa o Addon, faz chamadas iniciais dependendo da URL e configura o monitoramento do sistema.
 (function() {
     'use strict';
@@ -179,18 +212,37 @@ const interceptarLinkSessaoExpirada = (contextoDoc) => {
         }
     }
 
-    if (!window._plattransp_monitor_interval_set) {
-        window._plattransp_monitor_interval_set = true;
-        setInterval(() => {
-            try {
-                if (typeof window.gerenciarBotaoAssistente === 'function') {
-                    window.gerenciarBotaoAssistente();
-                }
-                monitorarCicloDeVidaModal();
-            } catch (e) {
-                console.error('Erro em monitor loop:', e);
+    // ============================================================================
+    // MONITORAMENTO DO DOM VIA MUTATION OBSERVER (Sem setInterval)
+    // ============================================================================
+    
+    function monitorarEGerenciar() {
+        try {
+            if (typeof window.gerenciarBotaoAssistente === 'function') {
+                window.gerenciarBotaoAssistente();
             }
-        }, 1500);
+            monitorarCicloDeVidaModal();
+        } catch (e) {
+            console.error('Erro no monitoramento do DOM:', e);
+        }
     }
+
+    // Executa uma verificação inicial
+    monitorarEGerenciar();
+
+    // Substitui o setInterval por MutationObserver com Debounce (evita múltiplos disparos simultâneos)
+    let debounceTimer = null;
+    const observer = new MutationObserver(() => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            monitorarEGerenciar();
+        }, 300); // Aguarda 300ms de estabilização do DOM antes de rodar
+    });
+
+    // Observa mudanças de elementos no body
+    observer.observe(document.body || document.documentElement, { 
+        childList: true, 
+        subtree: true 
+    });
 
 })();

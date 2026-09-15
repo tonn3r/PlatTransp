@@ -69,305 +69,319 @@ window.copiarCoordenadasEndereco = function() {
     }
 };
 
-// Extrai dados geográficos (como Lat e Lon) do mapa da ficha de transporte usando DOMParser e expressões regulares.
-window.extrairDadosGeograficos = async function(urlFichaNova) {
+// 🟢 Trava Singleton: Armazena requisições em andamento indexadas por URL
+const promessasGeoEmAndamento = new Map();
+
+window.extrairDadosGeograficos = async function(urlFichaNova) { // Extrai dados geográficos (como Lat e Lon) do mapa da ficha de transporte usando DOMParser e expressões regulares.
+    if (!urlFichaNova) return null;
+
+    // 1. PROTEÇÃO SINGLETON / RACE CONDITION: Se a URL já estiver sendo processada, reutiliza a mesma Promise
+    if (promessasGeoEmAndamento.has(urlFichaNova)) {
+        console.log("⚠️ [GEO] Requisição já em andamento para esta URL. Reutilizando promessa ativa...");
+        return promessasGeoEmAndamento.get(urlFichaNova);
+    }
+
+    const execucaoExtracao = (async () => {
+        console.log("🔍 [GEO 1/5] Iniciando extração. URL da Ficha:", urlFichaNova);
+        let timeoutId = null;
+
+        try {
+            const controller = new AbortController();
+            timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            const resposta = await fetch(urlFichaNova, { signal: controller.signal });
+            if (!resposta.ok) return null;
+
+            const htmlText = await resposta.text();
+            const parser = new DOMParser();
+            const docVirtual = parser.parseFromString(htmlText, "text/html");
+
+            let latE = null, lonE = null, latS = null, lonS = null;
+
+            // 2. EXTRAÇÃO VIA TEXTO (Uso de textContent seguro para DOM Virtual)
+            const textoCompleto = docVirtual.body?.textContent || docVirtual.documentElement?.textContent || '';
+            const matchGeo = textoCompleto.match(/GEOLOCALIZAÇÃO:\s*Latitude:\s*([-\d,.]+)\s*Longitude:\s*([-\d,.]+)/i);
+
+            if (matchGeo) {
+                latE = parseFloat(matchGeo[1].replace(',', '.'));
+                lonE = parseFloat(matchGeo[2].replace(',', '.'));
+            }
+
+            // 3. EXTRAÇÃO VIA IFRAME (Com Optional Chaining para evitar erro de Null)
+            const iframeMap = docVirtual.getElementById('map_endereco');
+            const urlIframe = iframeMap?.src || "";
+
+            console.log("🔍 [GEO] URL do iframe original:", urlIframe || "NÃO ENCONTRADO");
+
+            if (urlIframe) {
+                const matchOrigin = urlIframe.match(/origin=([^&]+)/i);
+                const matchDest = urlIframe.match(/destination=([^&]+)/i);
+
+                console.log("🔍 [GEO] Captura de Parâmetros -> Origin/Saddr:", matchOrigin ? matchOrigin[1] : "NÃO ENCONTRADO", "| Dest/Daddr:", matchDest ? matchDest[1] : "NÃO ENCONTRADO");
+
+                const parseCoord = (str) => {
+                    if (!str) return { lat: null, lon: null };
+                    const partes = decodeURIComponent(str).replace(/\+/g, ' ').split(/[\s,]+/);
+                    if (partes.length >= 2) {
+                        return {
+                            lat: parseFloat(partes[0].replace(',', '.')),
+                            lon: parseFloat(partes[1].replace(',', '.'))
+                        };
+                    }
+                    return { lat: null, lon: null };
+                };
+
+                const origin = parseCoord(matchOrigin ? matchOrigin[1] : null);
+                const dest = parseCoord(matchDest ? matchDest[1] : null);
+
+                if (!latE) { latE = origin.lat; lonE = origin.lon; }
+                if (!latS) { latS = dest.lat; lonS = dest.lon; }
+            }
+
+            if (latE !== null && lonE !== null && !isNaN(latE) && !isNaN(lonE)) {
+                return {
+                    urlMaps: urlIframe,
+                    geoEndereco_Latit: latE,
+                    geoEndereco_Longit: lonE,
+                    geoEscola_Latit: latS,
+                    geoEscola_Longit: lonS
+                };
+            }
+
+            return null;
+        } catch (erro) {
+            console.error("❌ Erro ao extrair dados geográficos:", erro);
+            return null;
+        } finally {
+            // Garante a limpeza do Timer em qualquer cenário (sucesso, erro ou abort)
+            if (timeoutId) clearTimeout(timeoutId);
+        }
+    })();
+
+    // Registra a Promise no Map de controle
+    promessasGeoEmAndamento.set(urlFichaNova, execucaoExtracao);
+
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
-        const resposta = await fetch(urlFichaNova, { signal: controller.signal });
-        if (!resposta.ok) return null;
-        const htmlText = await resposta.text();
-        clearTimeout(timeoutId);
-
-        const parser = new DOMParser();
-        const docVirtual = parser.parseFromString(htmlText, "text/html");
-
-        // 1. TENTATIVA: Extração via Texto (Mais robusta)
-        let latE = null, lonE = null, latS = null, lonS = null;
-        const textoCompleto = docVirtual.body.innerText;
-        
-        // Busca Latitude e Longitude do Endereço (usando Regex que aceita vírgulas ou pontos)
-        const matchGeo = textoCompleto.match(/GEOLOCALIZAÇÃO: Latitude:\s*([-\d,.]+)\s*Longitude:\s*([-\d,.]+)/i);
-        if (matchGeo) {
-            latE = parseFloat(matchGeo[1].replace(',', '.'));
-            lonE = parseFloat(matchGeo[2].replace(',', '.'));
-        }
-
-        // 2. TENTATIVA: Extração via Iframe (Fallback)
-        const iframeMap = docVirtual.getElementById('map_endereco');
-        if (iframeMap && iframeMap.src) {
-            const urlCompleta = iframeMap.src;
-            const regexOrigin = /origin=([^&]+)/i;
-            const regexDest = /destination=([^&]+)/i;
-            const matchOrigin = urlCompleta.match(regexOrigin);
-            const matchDest = urlCompleta.match(regexDest);
-
-            const parseCoord = (str) => {
-                if(!str) return {lat: null, lon: null};
-                // Limpa a string do mapa (ex: "-23,7111 -46,5921")
-                const partes = decodeURIComponent(str).replace(/\+/g, ' ').split(/[\s,]+/);
-                if(partes.length >= 2) return { lat: parseFloat(partes[0].replace(',', '.')), lon: parseFloat(partes[1].replace(',', '.')) };
-                return { lat: null, lon: null };
-            };
-
-            const origin = parseCoord(matchOrigin ? matchOrigin[1] : null);
-            const dest = parseCoord(matchDest ? matchDest[1] : null);
-            
-            // Prioriza o texto, usa o iframe se o texto falhou
-            if (!latE) { latE = origin.lat; lonE = origin.lon; }
-            if (!latS) { latS = dest.lat; lonS = dest.lon; }
-        }
-
-        if (latE !== null && lonE !== null) {
-            return {
-                urlMaps: iframeMap ? iframeMap.src : "",
-                geoEndereco_Latit: latE,
-                geoEndereco_Longit: lonE,
-                geoEscola_Latit: latS,
-                geoEscola_Longit: lonS
-            };
-        }
-        return null;
-    } catch (erro) {
-        console.error("❌ Erro ao extrair dados geográficos:", erro);
-        return null;
+        return await execucaoExtracao;
+    } finally {
+        // Remove a Promise da memória após a conclusão
+        promessasGeoEmAndamento.delete(urlFichaNova);
     }
 };
 
+// Variável de controle de estado no escopo global/módulo
+window.sincronizandoGeolocalizacaoEmAndamento = false;
+
 // Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
-window.sincronizarMapaECoordenadas = async function(docAlvo) {
-    let urlOrigem = docAlvo.location ? docAlvo.location.href : window.location.href;
-    let idSolInput = docAlvo.querySelector('input[name="id_solicitacao"]') || docAlvo.querySelector('input[name="id"]');
-    let idFicha = idSolInput ? idSolInput.value : '';
-    let basePath = urlOrigem.substring(0, urlOrigem.lastIndexOf('/') + 1);
+window.sincronizarMapaECoordenadas = async function(docAlvo, forcarRecalculo = false) {
 
-    const moduloPath = "modulos/transporte_escolar/";
-    const prefixo = basePath.includes(moduloPath) ? "" : moduloPath;
-    let urlFichaNova = basePath + prefixo + 'ficha_transporte_nova_versao.php?id_solicitacao=' + idFicha;
+    // 🟢 1. Se já existe uma sincronização em andamento e NÃO foi um clique manual de forçar, ignora!
+    if (window.sincronizandoGeolocalizacaoEmAndamento && !forcarRecalculo) {
+        window.logDebug('GEO', '⏳ Sincronização já em andamento. Ignorando chamada duplicada.');
+        // Ignora silenciosamente para não encadear novos chamados do setInterval
+        return null; 
+    }
 
-    const dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
+    // 🔴 TRAVA 2: Se já foi sincronizado para ESTA mesma ficha, não roda de novo
+    if (window.mapaSincronizado && window.currentStudentId === idFicha) {
+        window.logDebug('GEO', `✅ Ficha ${idFicha} já está sincronizada. Ignorando reexecução.`);
+        return;
+    }
 
-    if (dadosGeo && dadosGeo.geoEndereco_Latit.length > 4 && dadosGeo.geoEndereco_Longit.length > 4) {
+    // Ativa as travas para bloquear chamadas simultâneas do setInterval
+    window.sincronizandoGeolocalizacaoEmAndamento = true;
+    window.mapaSincronizado = 'em_andamento';
 
-        const localValido = window.estaDentroDaCidade(dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit);
-    
-            // Se não estiver dentro, força o modo 'endereco' para ignorar as coordenadas corrompidas/distantes
+    const execId = Math.random().toString(36).substring(2, 7);
+    console.log(`🧭 [GEO SYNC #${execId}] Função chamada.`);
+
+    // Garante fallback seguro para docAlvo
+    docAlvo = docAlvo || document;
+
+    // Garante que a função global SEMPRE exista desde o primeiro milissegundo
+    if (typeof window.atualizarURLsMapasGlobal !== 'function') {
+        window.atualizarURLsMapasGlobal = () => console.warn('[GEO] atualizarURLsMapasGlobal chamada antes da inicialização completa do mapa.');
+    }
+
+    try {
+        let urlOrigem = docAlvo.location ? docAlvo.location.href : window.location.href;
+        let idSolInput = docAlvo.querySelector('input[name="id_solicitacao"]') || docAlvo.querySelector('input[name="id"]');
+        let idFicha = idSolInput ? idSolInput.value : '';
+        let basePath = urlOrigem.substring(0, urlOrigem.lastIndexOf('/') + 1);
+
+        const moduloPath = "modulos/transporte_escolar/";
+        const prefixo = basePath.includes(moduloPath) ? "" : moduloPath;
+        let urlFichaNova = basePath + prefixo + 'ficha_transporte_nova_versao.php?id_solicitacao=' + idFicha;
+
+        let dadosGeo = null;
+
+        // Extração dos dados geográficos
+        try {
+            console.log(`🔍 [GEO SYNC #${execId}] Solicitando extração de dados geográficos para ficha ID: ${idFicha}`);
+            dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
+            console.log(`🔍 [GEO SYNC #${execId}] Dados geográficos recebidos:`, dadosGeo);
+        } catch (err) {
+            window.mapaSincronizado = false; // 🟢 Reseta estado do mapa
+            if (err.name === 'AbortError') {
+                console.warn(`🛑 [GEO SYNC #${execId}] Requisição de dados geográficos abortada por uma chamada mais recente.`);
+                return null;
+            }
+            console.error(`❌ [GEO SYNC #${execId}] Erro ao extrair dados geográficos:`, err);
+            window.setSharedStoreValue?.('dadosGeograficos', { erro: true });
+            return null;
+        }
+
+        // Validação das coordenadas
+        const latOk = dadosGeo && dadosGeo.geoEndereco_Latit && String(dadosGeo.geoEndereco_Latit).length > 4;
+        const lonOk = dadosGeo && dadosGeo.geoEndereco_Longit && String(dadosGeo.geoEndereco_Longit).length > 4;
+
+        if (latOk && lonOk) {
+            const localValido = typeof window.estaDentroDaCidade === 'function' 
+                ? window.estaDentroDaCidade(dadosGeo.geoEndereco_Latit, dadosGeo.geoEndereco_Longit) 
+                : true;
+        
             if (!localValido) {
-                console.warn("[ASSISTENTE] Coordenadas fora de SBC. Forçando modo Endereço. urlFichaNova: " + urlFichaNova + " | Lat: " + dadosGeo.geoEndereco_Latit + " | Lon: " + dadosGeo.geoEndereco_Longit);
+                console.warn(`⚠️ [GEO SYNC #${execId}] Coordenadas fora de SBC. Forçando modo Endereço.`);
                 window.setSharedStore?.({ modoMapaAtual: 'endereco' });
             }
 
-        const iframeAtual = docAlvo.getElementById('map_endereco');
-        const linkMapaNovaGuia = docAlvo.getElementById('botao_mapa');
-        const btnAbrirFicha = docAlvo.getElementById('botaoAbrirFicha');
+            const iframeAtual = docAlvo.getElementById('map_endereco');
+            const linkMapaNovaGuia = docAlvo.getElementById('botao_mapa');
+            const btnAbrirFicha = docAlvo.getElementById('botaoAbrirFicha');
 
-        if (btnAbrirFicha) {
-            if (!btnAbrirFicha.dataset.copyBound) {
+            if (btnAbrirFicha && !btnAbrirFicha.dataset.copyBound) {
                 btnAbrirFicha.dataset.copyBound = 'true';
                 btnAbrirFicha.addEventListener('click', window.copiarCoordenadasEndereco);
             }
-        }
 
-        if (iframeAtual && !urlOrigem.includes('nova_versao')) {
-            if (!window.urlEnderecoGlobal) {
-                window.urlEnderecoGlobal = iframeAtual.src;
-                window.urlBotaoEnderecoGlobal = linkMapaNovaGuia ? linkMapaNovaGuia.href : iframeAtual.src;
-            }
-
-            if (typeof window.gerarEstilosAssistente === 'function') {
-                window.gerarEstilosAssistente(docAlvo);
-            }
-
-            let currentModoMapa = window.getSharedStoreValue?.('modoMapaAtual');
-            if (!currentModoMapa) {
-                const statusTexto = (docAlvo.getElementById('status_atendimento')?.innerText || "").toUpperCase();
-                const ehMudanca = statusTexto.includes("MUDANCA") || statusTexto.includes("MUDANÇA");
-                window.setSharedStore?.({
-                    modoMapaAtual: ehMudanca ? 'endereco' : 'coordenada',
-                    modoTransporteAtual: 'pe'
-                });
-            }
-            
-            const statusTextoAux = (docAlvo.getElementById('status_atendimento')?.innerText || "").toUpperCase();
-            const ehMudancaAux = statusTextoAux.includes("MUDANCA") || statusTextoAux.includes("MUDANÇA");
-
-            const atualizarURLsMapas = async (atualizarLista = false) => {
-                // --- OCULTAÇÃO DO TOGGLE SWITCH AUTOMÁTICA ---
-                // Localiza o elemento visual do interruptor/toggle e o esconde com segurança
-                const elementoToggle = document.getElementById('switch-transporte-mapa') || 
-                                       document.querySelector('.switch-transporte-mapa') ||
-                                       document.getElementById('toggle-transporte'); // Fallbacks comuns de ID
-                if (elementoToggle) {
-                    elementoToggle.style.setProperty('display', 'none', 'important');
+            if (iframeAtual && !urlOrigem.includes('nova_versao')) {
+                if (!window.urlEnderecoGlobal) {
+                    window.urlEnderecoGlobal = iframeAtual.src;
+                    window.urlBotaoEnderecoGlobal = linkMapaNovaGuia ? linkMapaNovaGuia.href : iframeAtual.src;
                 }
 
-                const modoTransporte = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
-                let sufixoTransporteBotao = modoTransporte === 'pe' ? "&travelmode=walking&dirflg=w" : "";
-                let sufixoTransporteFrame = modoTransporte === 'pe' ? "&mode=walking" : "";
+                if (typeof window.gerarEstilosAssistente === 'function') {
+                    window.gerarEstilosAssistente(docAlvo);
+                }
 
-                // --- PROCESSAMENTO DOS WAYPOINTS PARA EXIBIÇÃO NO IFRAME ---
-                let sufixoWaypoints = "";
-                if (typeof listaExibirBase !== 'undefined' && Array.isArray(listaExibirBase)) {
-                    const pontosEscolas = listaExibirBase
-                        .filter(e => e.lat && e.lon && (Number(e.lat) !== Number(dadosGeo.geoEscola_Latit) || Number(e.lon) !== Number(dadosGeo.geoEscola_Longit)))
-                        .map(e => `${e.lat},${e.lon}`);
+                let currentModoMapa = window.getSharedStoreValue?.('modoMapaAtual');
+                if (!currentModoMapa) {
+                    const statusTexto = (docAlvo.getElementById('status_atendimento')?.innerText || "").toUpperCase();
+                    const ehMudanca = statusTexto.includes("MUDANCA") || statusTexto.includes("MUDANÇA");
+                    window.setSharedStore?.({
+                        modoMapaAtual: ehMudanca ? 'endereco' : 'coordenada',
+                        modoTransporteAtual: 'pe'
+                    });
+                }
+
+                const atualizarURLsMapas = async (atualizarLista = false) => {
+                    console.log(`🗺️ [GEO MAPA #${execId}] Atualizando URLs e renderizando mapa... (atualizarLista: ${atualizarLista})`);
                     
-                    if (pontosEscolas.length > 0) {
-                        sufixoWaypoints = `&waypoints=${encodeURIComponent(pontosEscolas.join('|'))}`;
+                    const elementoToggle = docAlvo.getElementById('switch-transporte-mapa') || 
+                                           docAlvo.querySelector('.switch-transporte-mapa') ||
+                                           docAlvo.getElementById('toggle-transporte');
+                    if (elementoToggle) {
+                        elementoToggle.style.setProperty('display', 'none', 'important');
                     }
-                }
 
-                const normalizeUrl = (url) => url ? url.replace(/&/g, '&') : url;
+                    const modoTransporte = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
+                    let sufixoTransporteBotao = modoTransporte === 'pe' ? "&travelmode=walking&dirflg=w" : "";
 
-                const setLinkHref = (newUrl) => {
-                    if (!linkMapaNovaGuia || !newUrl) return;
-                    const normalized = normalizeUrl(newUrl);
-                    if (linkMapaNovaGuia.dataset.currentHref !== normalized) {
-                        linkMapaNovaGuia.dataset.currentHref = normalized;
-                        linkMapaNovaGuia.href = normalized;
+                    let sufixoWaypoints = "";
+                    if (typeof listaExibirBase !== 'undefined' && Array.isArray(listaExibirBase)) {
+                        const pontosEscolas = listaExibirBase
+                            .filter(e => e.lat && e.lon && (Number(e.lat) !== Number(dadosGeo.geoEscola_Latit) || Number(e.lon) !== Number(dadosGeo.geoEscola_Longit)))
+                            .map(e => `${e.lat},${e.lon}`);
+                        
+                        if (pontosEscolas.length > 0) {
+                            sufixoWaypoints = `&waypoints=${encodeURIComponent(pontosEscolas.join('|'))}`;
+                        }
+                    }
+
+                    const normalizeUrl = (url) => url ? url.replace(/&/g, '&') : url;
+
+                    const setLinkHref = (newUrl) => {
+                        if (!linkMapaNovaGuia || !newUrl) return;
+                        const normalized = normalizeUrl(newUrl);
+                        if (linkMapaNovaGuia.dataset.currentHref !== normalized) {
+                            linkMapaNovaGuia.dataset.currentHref = normalized;
+                            linkMapaNovaGuia.href = normalized;
+                        }
+                    };
+
+                    const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
+                    let coordenadaOrigemCalculada = { lat: dadosGeo.geoEndereco_Latit, lon: dadosGeo.geoEndereco_Longit };
+                    const coordenadaDestinoCalculada = { lat: dadosGeo.geoEscola_Latit, lon: dadosGeo.geoEscola_Longit };
+                    
+                    let urlIframeFallback = "";
+                    let urlLinkBotao = "";
+
+                    if (modoMapa === 'coordenada') {
+                        urlIframeFallback = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit},${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}&output=embed`;
+                        urlLinkBotao = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit},${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}`;
+                    } else {
+                        let rota = window.getSharedStoreValue?.('dadosGeraisRota');
+                        if (rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd === 'string') {
+                            let stringEndereco = encodeURIComponent(rota.coordAlunoEnd);
+                            urlIframeFallback = `https://maps.google.com/maps?saddr=${stringEndereco}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}&output=embed`;
+                            urlLinkBotao = `https://maps.google.com/maps?saddr=${stringEndereco}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}`;
+                        } else if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
+                            coordenadaOrigemCalculada = { lat: rota.coordAlunoEnd.lat, lon: rota.coordAlunoEnd.lon };
+                            urlIframeFallback = `https://maps.google.com/maps?saddr=${rota.coordAlunoEnd.lat},${rota.coordAlunoEnd.lon}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}&output=embed`;
+                            urlLinkBotao = `https://maps.google.com/maps?saddr=${rota.coordAlunoEnd.lat},${rota.coordAlunoEnd.lon}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}`;
+                        } else {
+                            urlIframeFallback = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit},${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}&output=embed`;
+                            urlLinkBotao = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit},${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}`;
+                        }
+                    }
+
+                    if (!window.google || !window.google.maps) {
+                        const chaves = [window.apiKeyGoogle, window.apiKeyGoogle2, window.apiKeyGoogle3];
+                        for (const chave of chaves) {
+                            if (!chave) continue;
+                            if (typeof carregarSDKGoogleMaps === 'function') {
+                                const ok = await carregarSDKGoogleMaps(chave);
+                                if (ok) break;
+                            }
+                        }
+                    }
+
+                    if (typeof window.gerarMapa === 'function') {
+                        window.gerarMapa(iframeAtual, coordenadaOrigemCalculada, coordenadaDestinoCalculada, urlIframeFallback);
+                    }
+                    setLinkHref(urlLinkBotao);
+
+                    if (atualizarLista && typeof window.atualizarListaEscolasDinamicamente === 'function') {
+                        window.atualizarListaEscolasDinamicamente();
                     }
                 };
 
-                const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-                
-                let coordenadaOrigemCalculada = { lat: dadosGeo.geoEndereco_Latit, lon: dadosGeo.geoEndereco_Longit };
-                const coordenadaDestinoCalculada = { lat: dadosGeo.geoEscola_Latit, lon: dadosGeo.geoEscola_Longit };
-                
-                let urlIframeFallback = "";
-                let urlLinkBotao = "";
-
-                if (modoMapa === 'coordenada') {
-                    urlIframeFallback = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit},${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}&output=embed`;
-                    urlLinkBotao = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit},${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}`;
-                } else {
-                    let rota = window.getSharedStoreValue?.('dadosGeraisRota');
-
-                    if (rota && rota.coordAlunoEnd && typeof rota.coordAlunoEnd === 'string') {
-                        let stringEndereco = encodeURIComponent(rota.coordAlunoEnd);
-                        urlIframeFallback = `https://maps.google.com/maps?saddr=${stringEndereco}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}&output=embed`;
-                        urlLinkBotao = `https://maps.google.com/maps?saddr=${stringEndereco}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}`;
-                    } else if (rota && rota.coordAlunoEnd && rota.coordAlunoEnd.lat) {
-                        coordenadaOrigemCalculada = { lat: rota.coordAlunoEnd.lat, lon: rota.coordAlunoEnd.lon };
-                        urlIframeFallback = `https://maps.google.com/maps?saddr=${rota.coordAlunoEnd.lat},${rota.coordAlunoEnd.lon}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}&output=embed`;
-                        urlLinkBotao = `https://maps.google.com/maps?saddr=${rota.coordAlunoEnd.lat},${rota.coordAlunoEnd.lon}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}`;
-                    } else {
-                        urlIframeFallback = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit},${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}&output=embed`;
-                        urlLinkBotao = `https://maps.google.com/maps?saddr=${dadosGeo.geoEndereco_Latit},${dadosGeo.geoEndereco_Longit}&daddr=${dadosGeo.geoEscola_Latit},${dadosGeo.geoEscola_Longit}${sufixoWaypoints}${sufixoTransporteBotao}`;
-                    }
-                }
-
-                // Tenta forçar o carregamento assíncrono do SDK limpando restrições prévias de cota
-                if (!window.google || !window.google.maps) {
-                    const chaves = [window.apiKeyGoogle, window.apiKeyGoogle2, window.apiKeyGoogle3];
-                    for (const chave of chaves) {
-                        const ok = await carregarSDKGoogleMaps(chave);
-                        if (ok) break;
-                    }
-                }
-
-                // Invoca a verificação dinâmica. Caso o SDK siga nulo por falha das chaves, urlIframeFallback garantirá a rota e os pins no iframe de forma nativa e estável!
-                window.gerarMapa(iframeAtual, coordenadaOrigemCalculada, coordenadaDestinoCalculada, urlIframeFallback);
-                setLinkHref(urlLinkBotao);
-
-                if (atualizarLista && typeof window.atualizarListaEscolasDinamicamente === 'function') {
-                    window.atualizarListaEscolasDinamicamente();
-                }
-            };
-
-            atualizarURLsMapas(false);
-            window.atualizarURLsMapasGlobal = () => atualizarURLsMapas(true);
-
-            let retryCount = 0;
-            const maxRetries = 5;
-            const retryInterval = 500;
-
-            const injectToggleContainer = () => {
-                if (docAlvo.getElementById('mapa-toggle-container')) return;
-
-                const toggleContainer = docAlvo.createElement('div');
-                toggleContainer.id = 'mapa-toggle-container';
-                toggleContainer.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; font-size: 11px;";
-
-                const btnModoMapa = docAlvo.createElement('button');
-                btnModoMapa.id = 'switch-origem-mapa';
-                btnModoMapa.className = 'toggle-btn';
-                btnModoMapa.innerHTML = ehMudancaAux
-                    ? `<span class="mdi mdi-map-search" style="font-size:14px; margin-right:4px;"></span> Por Endereço`
-                    : `<span class="mdi mdi-map-marker-radius-outline" style="font-size:14px; margin-right:4px;"></span> Por Coordenadas`;
-
-                const btnModoTransp = docAlvo.createElement('button');
-                btnModoTransp.id = 'switch-transporte-mapa';
-                btnModoTransp.className = 'toggle-btn';
-                btnModoTransp.innerHTML = `<span class="mdi mdi-walk" style="font-size:14px; margin-right:4px; display:none;"></span> A pé`;
-
-                if (!btnModoMapa.dataset.boundclick) {
-                    btnModoMapa.dataset.boundclick = 'true';
-                    btnModoMapa.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const modoAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-                        const novoModo = modoAtual === 'endereco' ? 'coordenada' : 'endereco';
-                        window.setSharedStoreValue('modoMapaAtual', novoModo);
-                        btnModoMapa.innerHTML = novoModo === 'endereco'
-                            ? `<span class="mdi mdi-map-search" style="font-size:14px; margin-right:4px;"></span> Por Endereço`
-                            : `<span class="mdi mdi-map-marker-radius-outline" style="font-size:14px; margin-right:4px;"></span> Por Coordenadas`;
-                        atualizarURLsMapas(true);
-
-                        const distanciaCoord = Number(window.getSharedStoreValue?.('distanciaCoord'));
-                        const distanciaEnd = Number(window.getSharedStoreValue?.('distanciaEnd'));
-                        const distanciaAtual = novoModo === 'endereco' ? distanciaEnd : distanciaCoord;
-                        if (typeof window.atualizarInputDistancia === 'function') {
-                            window.atualizarInputDistancia(distanciaAtual);
-                        }
-                    });
-                }
-
-                if (!btnModoTransp.dataset.boundclick) {
-                    btnModoTransp.dataset.boundclick = 'true';
-                    btnModoTransp.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const modoAtual = window.getSharedStoreValue?.('modoTransporteAtual') || 'pe';
-                        const novoModo = modoAtual === 'pe' ? 'carro' : 'pe';
-                        window.setSharedStoreValue('modoTransporteAtual', novoModo);
-                        btnModoTransp.innerHTML = novoModo === 'pe'
-                            ? `<span class="mdi mdi-walk" style="font-size:14px; margin-right:4px;"></span> A pé`
-                            : `<span class="mdi mdi-car" style="font-size:14px; margin-right:4px;"></span> De Carro`;
-                        atualizarURLsMapas(true);
-                    });
-                }
-
-                toggleContainer.appendChild(btnModoMapa);
-                toggleContainer.appendChild(btnModoTransp);
-
-                if (iframeAtual && iframeAtual.parentNode) {
-                    iframeAtual.parentNode.insertBefore(toggleContainer, iframeAtual.nextSibling);
-                } else if (retryCount < maxRetries) {
-                    retryCount++;
-                    setTimeout(injectToggleContainer, retryInterval);
-                }
-            };
-
-            if (typeof MutationObserver !== 'undefined') {
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.type === 'childList' && !docAlvo.getElementById('mapa-toggle-container')) {
-                            injectToggleContainer();
-                        }
-                    });
-                    if (docAlvo.getElementById('mapa-toggle-container')) {
-                        try { observer.disconnect(); } catch(e) {}
-                    }
-                });
-                observer.observe(docAlvo.body, { childList: true, subtree: true });
+                await atualizarURLsMapas(false);
+                window.atualizarURLsMapasGlobal = () => atualizarURLsMapas(true);
             }
-            injectToggleContainer();
-        }
 
-        if (linkMapaNovaGuia) {
-            linkMapaNovaGuia.target = "_blank";
+            if (linkMapaNovaGuia) {
+                linkMapaNovaGuia.target = "_blank";
+            }
+            window.setSharedStoreValue?.('dadosGeograficos', dadosGeo);
+
+            // 🟢 Marca o sucesso da sincronização
+            window.mapaSincronizado = true;
+            console.log(`✅ [GEO SYNC #${execId}] Sincronização concluída com sucesso.`);
+            return dadosGeo;
+        } else {
+            console.warn(`⚠️ [GEO SYNC #${execId}] Coordenadas inválidas recebidas.`, dadosGeo);
+            window.setSharedStoreValue?.('dadosGeograficos', { erro: true });
+            window.mapaSincronizado = false; // 🟢 Reseta a trava em caso de dados inválidos
+            return null;
         }
-        window.setSharedStoreValue('dadosGeograficos', dadosGeo);
-    } else {
-        window.setSharedStoreValue('dadosGeograficos', { erro: true });
+    } catch (erroInesperado) {
+        console.error(`❌ [GEO SYNC #${execId}] Erro não tratado durante a sincronização:`, erroInesperado);
+        window.mapaSincronizado = false; // 🟢 Garante liberação do estado se houver exceção
+        return null;
+    } finally {
+        // 🟢 CRUCIAL: Libera a trava global ao encerrar a execução (sucesso ou falha)
+        window.sincronizandoGeolocalizacaoEmAndamento = false;
     }
 };
 
@@ -444,9 +458,11 @@ function carregarSDKGoogleMaps(apiKey) {
         script.onerror = () => {
             window._promiseGoogleMaps = null; // Permite tentar de novo se der falha real
             resolve(false);
+            console.error("❌ Falha ao carregar o SDK do Google Maps. Verifique a chave de API e a conexão.");
         };
         
         document.head.appendChild(script);
+        console.log("🔄 Carregado SDK Google com a chave:", apiKey);
     });
 
     return window._promiseGoogleMaps;
@@ -755,6 +771,7 @@ if (
 // --- SECTION: GOOGLE MAPS / NOMINATIM GEOCODING ---
 // Busca as coordenadas geográficas (Lat/Lon) correspondentes a um texto de endereço via Google ou Nominatim.
 window.obterCoordenadasPorEndereco = async function(enderecoCompleto) {
+    console.log("[PLUGIN-MAPA] Iniciando geocodificação para:", enderecoCompleto);
     if (!enderecoCompleto) return null;
 
     function substituirAbreviacoes(endereco) {
@@ -922,21 +939,39 @@ window.obterEnderecoPorCoordenadas = async function(latitude, longitude) {
     }
     return googleSucesso ? enderecoEncontrado : null;
 };
+
+// 1. Função de sanitização e correção automática de longitude para o Brasil
+function normalizarCoordenada(valor, ehLongitude = false) {
+    if (valor === null || valor === undefined) return null;
+    let num = typeof valor === "number" ? valor : parseFloat(String(valor).replace(',', '.').trim());
+    if (isNaN(num)) return null;
+
+    // No Brasil, a longitude deve ser SEMPRE negativa (entre -34 e -74)
+    if (ehLongitude && num > 0) {
+        console.warn(`[MAPA] Longitude positiva (${num}) corrigida para negativa (-${num}).`);
+        num = -num;
+    }
+    return num;
+}
+
 window.gerarMapa = async function(iframeAtual, origem, destino, urlFallbackIframe) {
-    // Caso o SDK do Google não esteja carregado ou falte dados geográficos fundamentais, aciona o Fallback de URLs estáticas
-    if (!window.google || !window.google.maps || !origem.lat || !destino.lat) {
-        console.warn("[gerarMapa] SDK do Google Maps ausente ou dados incompletos. Usando fallback de URL estática.");
+    // Tratamento dos campos de origem e destino
+    const origLat = normalizarCoordenada(origem?.lat ?? origem?.latitude, false);
+    const origLon = normalizarCoordenada(origem?.lon ?? origem?.lng ?? origem?.longitude, true);
+    const destLat = normalizarCoordenada(destino?.lat ?? destino?.latitude, false);
+    const destLon = normalizarCoordenada(destino?.lon ?? destino?.lng ?? destino?.longitude, true);
+
+    console.log(`📍 Coordenadas Tratas -> Origem: (${origLat}, ${origLon}) | Destino: (${destLat}, ${destLon})`);
+
+    // Se alguma coordenada for nula/inválida, vai direto para o Fallback SEM tentar criar o mapa
+    if (!window.google || !window.google.maps || !origLat || !origLon || !destLat || !destLon) {
+        console.warn("[gerarMapa] Coordenadas inválidas. Acionando Fallback nativo diretamente.");
         if (iframeAtual && urlFallbackIframe) {
             iframeAtual.style.display = "block";
             const idContainerDinamico = "google-maps-container-dinamico";
-            const mapaDinamicoAntigo = iframeAtual.parentNode ? iframeAtual.parentNode.querySelector(`#${idContainerDinamico}`) : null;
-            if (mapaDinamicoAntigo) mapaDinamicoAntigo.remove();
-            
-            const normalizedFallback = urlFallbackIframe.replace(/&/g, '&');
-            if (iframeAtual.dataset.currentSrc !== normalizedFallback) {
-                iframeAtual.dataset.currentSrc = normalizedFallback;
-                iframeAtual.src = normalizedFallback;
-            }
+            const mapaAntigo = iframeAtual.parentNode ? iframeAtual.parentNode.querySelector(`#${idContainerDinamico}`) : null;
+            if (mapaAntigo) mapaAntigo.remove();
+            iframeAtual.src = urlFallbackIframe.replace(/&amp;/g, '&');
         }
         return;
     }
