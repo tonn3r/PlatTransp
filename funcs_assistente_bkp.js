@@ -81,16 +81,16 @@ window.gerarEstilosAssistente = function(targetDoc) {
         }
         
         .modal-assistente {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
+            position: fixed !important;
+            bottom: 80px !important;
+            right: 20px !important;
             width: 450px;
             max-width: 90%;
             background-color: #FFF;
             border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             border: 1px solid #e1e4e8;
-            z-index: 100000;
+            z-index: 2147483647 !important; /* Eleva para a camada máxima do navegador */
             display: flex;
             flex-direction: column;
             overflow: hidden;

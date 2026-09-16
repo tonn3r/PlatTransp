@@ -1958,7 +1958,9 @@ window.gerenciarBotaoAssistente = function() {
     }
 
     let btn = targetDoc.getElementById('btn-assistente-transporte') || document.getElementById('btn-assistente-transporte');
-
+    const docTop = (window.top && window.top.document) ? window.top.document : document;
+    const iframeFicha = document.getElementById('img01') || docTop.getElementById('img01'); 
+    
     if (!btn) {
         btn = targetDoc.createElement('button');
         btn.id = 'btn-assistente-transporte';
@@ -1981,7 +1983,9 @@ window.gerenciarBotaoAssistente = function() {
         
         const HandlerClique = (e) => {
             e.preventDefault();
+            
             const modal = targetDoc.getElementById('modal-assistente-analise') || document.getElementById('modal-assistente-analise');
+            
             if (modal) {
                 const isHidden = modal.style.display === 'none' || window.getComputedStyle(modal).display === 'none';
                 modal.style.display = isHidden ? 'flex' : 'none';
@@ -1999,7 +2003,10 @@ window.gerenciarBotaoAssistente = function() {
         targetDoc.body.appendChild(btn); 
         console.log('[ASSISTENTE] ✅ Botão do Assistente criado e exibido com sucesso!');
     } else {
-        btn.style.display = 'flex';
+        if(iframeFicha && iframeFicha.style.display !== 'none') {
+            logDebug('[ASSISTENTE] ✅ Botão do Assistente já existe e será exibido.');
+            btn.style.display = 'flex';
+        }
     }
 };
 
@@ -2245,7 +2252,7 @@ vincularEventoUnico(btnFechar, 'click', () => {
     }
 
     // Gera o texto explicativo sobre o contexto do aluno baseado na rua e encaminhamentos.
-    function gerarHtmlMensagensContexto() {
+    function gerarHtmlMensagensContexto() {  // REMOVER FUNCAO ORFA?
         const mensagens = [];
         if (ctx.historicoRua?.temMatch) {
             mensagens.push(`
@@ -2845,7 +2852,6 @@ const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
     const chaveCacheAtual = `${mapModeAtual}_${transpModeAtual}`;
     const chaveListaAtual = mapModeAtual;
 
-    // 🔴 CORREÇÃO AQUI: Declaradas no escopo principal para estarem visíveis na montagem e no OSRM
     const latOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lat : latAluno;
     const lonOrigemLista = (mapModeAtual === 'endereco' && dadosGeraisRotaSessao?.coordAlunoEnd && typeof dadosGeraisRotaSessao.coordAlunoEnd !== 'string') ? dadosGeraisRotaSessao.coordAlunoEnd.lon : lonAluno;
 
@@ -2873,7 +2879,7 @@ const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
 
     const obterStatusText = (lista, ehMaisProx, ehMaisProxParcial) => {
         if (!verificarTodosCalculados()) {
-            return `<p>Verifique se a escola matriculada é a mais próxima do endereço do aluno.</p>`;
+            return `<p style="margin:0;">Verifique se a escola matriculada é a mais próxima do endereço do aluno.</p>`;
         }
         
         const possuiEstimativa = lista.some(esc => {
@@ -3027,9 +3033,10 @@ const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
     const statusIniciais = recalcularStatusECorrespondencias();
     let statusText = obterStatusText(listaOrdenada, statusIniciais.ehMaisProxima, statusIniciais.ehMaisProximaParcial);
 
+    // 🔴 AJUSTE DE LAYOUT E Z-INDEX NO BOTÃO DE RECALCULAR
     let listaHtml = `<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; position:relative;">
-        <div class="status-text-container">${statusText}</div>
-        <button id="btn-refresh-lista" class="btn-icon-transparent" style="position:absolute; top:0; right:0; display:block;" title="Recalcular distâncias">
+        <div class="status-text-container" style="padding-right: 32px; flex: 1;">${statusText}</div>
+        <button id="btn-refresh-lista" class="btn-icon-transparent" style="position:absolute; top:0; right:0; display:block; z-index:10; background:transparent; border:none; cursor:pointer;" title="Recalcular distâncias">
             <span class="mdi mdi-refresh" style="font-size: 18px;"></span>
         </button>
     </div>`;

@@ -45,6 +45,7 @@ window.logErro = function(modulo, mensagem, ...args) {
     // Constrói a URL de checagem apontando para a branch correspondente do ambiente
     const URL_VERSAO = `https://raw.githubusercontent.com/tonn3r/PlatTransp/${AMBIENTE}/version.json`;
 
+    
     async function verificarAtualizacao() {
         try {
             const response = await fetch(URL_VERSAO + "?t=" + new Date().getTime());
@@ -79,7 +80,7 @@ window.logErro = function(modulo, mensagem, ...args) {
             console.log("Erro ao verificar atualização do Addon PlatTransp:", e);
         }
     }
-    
+
     if (window === window.top) {
         // verificarAtualizacao();
     }
@@ -139,135 +140,83 @@ const interceptarLinkSessaoExpirada = (contextoDoc) => {
         window.osrmAbortController = null;
     };
 
-    // Remove os modais, botões e limpa o armazenamento global do Assistente de Análise.
-    function ocultarBotaoAssistente() {
-        const docTop = (window.top && window.top.document) ? window.top.document : document;
 
-        // Busca o botão e o modal tanto no DOM local quanto no window.top
-        const btn = document.getElementById('btn-assistente-transporte') || docTop.getElementById('btn-assistente-transporte');
-        const mod = document.getElementById('modal-assistente-analise') || docTop.getElementById('modal-assistente-analise');
-        
-        if (mod) {
-            mod.remove();
-        }
-        if (btn) {
-            btn.style.display = 'none';
-            btn.remove();
-        }
+// Exibir e ocultar o assistente por monkey patching
+(function() {
+    const win = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
-        // Reset de variáveis de estado com fallback em window.top
-        window.mapaSincronizado = false;
-        try { window.top.mapaSincronizado = false; } catch(e) {}
+    const originalShowmodal = win.Showmodal;
+    const originalAbrirLinkModal = win.AbrirLinkModal;
+    const originalFechaModal = win.FechaModal;
 
-        if (typeof window.setSharedStoreValue === 'function') {
-            window.setSharedStoreValue('dadosGeograficos', null);
-        } else {
-            window.dadosGeograficos = null;
-            try { window.top.dadosGeograficos = null; } catch(e) {}
-        }
+    const getTargetDoc = () => (win.top && win.top.document) ? win.top.document : win.document;
 
-        window.currentStudentId = null;
-        try { window.top.currentStudentId = null; } catch(e) {}
-
-        // Cancela chamadas OSRM pendentes no escopo local e top
-        if (typeof window.cancelarProcessamentosAssistente === 'function') {
-            window.cancelarProcessamentosAssistente();
-        }
-        try {
-            if (window.top && typeof window.top.cancelarProcessamentosAssistente === 'function') {
-                window.top.cancelarProcessamentosAssistente();
-            }
-        } catch(e) {}
-    }
-
-    // Empacota a função "FechaModal" nativa para rodar nossa limpeza interna sempre que um modal for fechado no SE2.
-    function envolverFechaModal(originalFechaModal) {
-        if (typeof originalFechaModal !== 'function') return originalFechaModal;
-        if (originalFechaModal.__plattransp_wrapped) return originalFechaModal;
-        const wrapped = function(...args) {
-            ocultarBotaoAssistente();
-            return originalFechaModal.apply(this, args);
+    function ocultarAssistente() {
+        const targetDoc = getTargetDoc();
+        const removerElemento = (id) => {
+            const elTarget = targetDoc.getElementById(id);
+            if (elTarget) elTarget.remove();
+            const elLocal = win.document.getElementById(id);
+            if (elLocal && elLocal !== elTarget) elLocal.remove();
         };
-        wrapped.__plattransp_wrapped = true;
-        return wrapped;
+
+        removerElemento('modal-assistente-analise');
+        removerElemento('btn-assistente-transporte');
+
+        if (typeof win.setVarEscopos === 'function') {
+            win.setVarEscopos('abrindoModalAssistente', false);
+        } else {
+            win.abrindoModalAssistente = false;
+        }
     }
 
-    // Tenta sobrescrever funções vitais e acompanhar iframes carregados para embutir as modificações necessárias sem perdas.
-    function monitorarCicloDeVidaModal() {
-        // Mapeia os alvos (escopo local e janela principal)
-        const alvos = [window];
-        try {
-            if (window.top && window.top !== window) {
-                alvos.push(window.top);
-            }
-        } catch(e) {}
+    // Tenta exibir o botão e vincula o evento 'load' ao iframe para garantir a renderização na 1ª abertura
+    function prepararExibicaoBotao() {
+        if (typeof win.gerenciarBotaoAssistente === 'function') {
+            win.gerenciarBotaoAssistente();
+        }
 
-        // Aplica a interceptação da FechaModal em todos os contextos disponíveis
-        alvos.forEach(winTarget => {
-            if (typeof winTarget.FechaModal === 'function') {
-                winTarget.FechaModal = envolverFechaModal(winTarget.FechaModal);
-            } else {
-                const descriptor = Object.getOwnPropertyDescriptor(winTarget, 'FechaModal');
-                if (!descriptor || descriptor.configurable) {
-                    let atual = winTarget.FechaModal;
-                    Object.defineProperty(winTarget, 'FechaModal', {
-                        configurable: true,
-                        enumerable: true,
-                        get() {
-                            return atual;
-                        },
-                        set(valor) {
-                            atual = envolverFechaModal(valor);
-                        }
-                    });
+        const targetDoc = getTargetDoc();
+        const iframeFicha = targetDoc.getElementById('img01') || win.document.getElementById('img01');
+
+        if (iframeFicha && !iframeFicha.dataset.plattranspCarregado) {
+            iframeFicha.dataset.plattranspCarregado = "true";
+            iframeFicha.addEventListener('load', () => {
+                if (typeof win.gerenciarBotaoAssistente === 'function') {
+                    win.gerenciarBotaoAssistente();
                 }
-            }
-        });
-
-        // Monitora o carregamento do Iframe 'img01' para limpeza preventiva
-        const docTop = (window.top && window.top.document) ? window.top.document : document;
-        const iframePlatform = document.getElementById('img01') || docTop.getElementById('img01'); 
-        
-        if (iframePlatform && !iframePlatform.dataset.monitoradoLoad) {
-            iframePlatform.dataset.monitoradoLoad = "true";
-            
-            iframePlatform.addEventListener('load', () => {
-                ocultarBotaoAssistente();
-            });
+            }, { once: true });
         }
     }
 
-    // ============================================================================
-    // MONITORAMENTO DO DOM VIA MUTATION OBSERVER (Sem setInterval)
-    // ============================================================================
-    
-    function monitorarEGerenciar() {
-        try {
-            if (typeof window.gerenciarBotaoAssistente === 'function') {
-                window.gerenciarBotaoAssistente();
-            }
-            monitorarCicloDeVidaModal();
-        } catch (e) {
-            console.error('Erro no monitoramento do DOM:', e);
+    win.AbrirLinkModal = function() {
+        if (typeof originalAbrirLinkModal === 'function') {
+            originalAbrirLinkModal.apply(this, arguments);
         }
-    }
+        prepararExibicaoBotao();
+    };
 
-    // Executa uma verificação inicial
-    monitorarEGerenciar();
+    win.Showmodal = function() {
+        if (typeof originalShowmodal === 'function') {
+            originalShowmodal.apply(this, arguments);
+        }
+        prepararExibicaoBotao();
+    };
 
-    // Substitui o setInterval por MutationObserver com Debounce (evita múltiplos disparos simultâneos)
-    let debounceTimer = null;
-    const observer = new MutationObserver(() => {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            monitorarEGerenciar();
-        }, 300); // Aguarda 300ms de estabilização do DOM antes de rodar
-    });
+    win.FechaModal = function() {
+        if (typeof originalFechaModal === 'function') {
+            originalFechaModal.apply(this, arguments);
+        }
 
-    // Observa mudanças de elementos no body
-    observer.observe(document.body || document.documentElement, { 
-        childList: true, 
-        subtree: true 
-    });
+        const modalSite = win.document.getElementById("myModal");
+        if (!modalSite || modalSite.style.display === "none") {
+            ocultarAssistente();
+        }
+    };
+})();
+
+
 
 })();
+
+

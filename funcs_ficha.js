@@ -452,17 +452,24 @@ window.iniciarPaginaFicha = async function() {
         window.setSharedStoreValue('statusFichaEmAnalise', isEmAnalise);
     }
 
+    const mapaExistente = document.getElementById('google-maps-container-dinamico');
+const mapaJaRenderizado = mapaExistente && window.getComputedStyle(mapaExistente).display !== 'none';
+
+if (!mapaJaRenderizado) {
     if (typeof window.sincronizarMapaECoordenadas === 'function') {
         console.log('[FICHA] Sincronizando mapa e coordenadas...');
         window.sincronizarMapaECoordenadas(document);
-    }else {
-    console.warn('[FICHA] window.sincronizarMapaECoordenadas ainda não foi carregada. Aguardando...');
-    // Aguarda 300ms caso o script de geolocalização ainda esteja carregando
-    setTimeout(() => {
-        if (typeof window.sincronizarMapaECoordenadas === 'function') {
-            window.sincronizarMapaECoordenadas(document);
-        }
-    }, 300);
+    } else {
+        console.warn('[FICHA] window.sincronizarMapaECoordenadas ainda não foi carregada. Aguardando...');
+        setTimeout(() => {
+            const mapaAindaExistente = document.getElementById('google-maps-container-dinamico');
+            if (typeof window.sincronizarMapaECoordenadas === 'function' && !mapaAindaExistente) {
+                window.sincronizarMapaECoordenadas(document);
+            }
+        }, 300);
+    }
+} else {
+    console.log('[FICHA] ℹ️ Mapa dinâmico já renderizado. Chamada duplicada ignorada.');
 }
 
     if (typeof window.realizarCalculosIniciaisDistancia === 'function') {
@@ -555,7 +562,7 @@ window.iniciarPaginaFicha = async function() {
         'dados_analise_assistente',
         (dadosSalvos) => {
 
-            if (!dadosSalvos) {return; console.warn('[ASSISTENTE] Nenhum dado de análise salvo encontrado no storage.')};
+            if (!dadosSalvos) {console.warn('[ASSISTENTE] Nenhum dado de análise salvo encontrado no storage.'); return;};
 
             if (
                 dadosSalvos.distanciamedia ||

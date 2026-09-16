@@ -182,28 +182,39 @@ window.sincronizandoGeolocalizacaoEmAndamento = false;
 // Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
 window.sincronizarMapaECoordenadas = async function(docAlvo, forcarRecalculo = false) {
 
+    // Garante fallback seguro para docAlvo no topo da execução
+    docAlvo = docAlvo || document;
+
+    let urlOrigem = docAlvo.location ? docAlvo.location.href : window.location.href;
+    let idSolInput = docAlvo.querySelector('input[name="id_solicitacao"]') || docAlvo.querySelector('input[name="id"]');
+    let idFicha = idSolInput ? idSolInput.value : '';
+
     // 🟢 1. Se já existe uma sincronização em andamento e NÃO foi um clique manual de forçar, ignora!
     if (window.sincronizandoGeolocalizacaoEmAndamento && !forcarRecalculo) {
-        window.logDebug('GEO', '⏳ Sincronização já em andamento. Ignorando chamada duplicada.');
-        // Ignora silenciosamente para não encadear novos chamados do setInterval
+        window.logDebug?.('GEO', '⏳ Sincronização já em andamento. Ignorando chamada duplicada.');
         return null; 
     }
 
-    // 🔴 TRAVA 2: Se já foi sincronizado para ESTA mesma ficha, não roda de novo
-    if (window.mapaSincronizado && window.currentStudentId === idFicha) {
-        window.logDebug('GEO', `✅ Ficha ${idFicha} já está sincronizada. Ignorando reexecução.`);
+    // 🔴 TRAVA 2: Se o container dinâmico do mapa já existe e está visível na página, cancela a reexecução
+    const containerMapaDinamico = docAlvo.getElementById('google-maps-container-dinamico');
+    if (containerMapaDinamico && window.getComputedStyle(containerMapaDinamico).display !== 'none' && !forcarRecalculo) {
+        window.logDebug?.('GEO', `✅ Mapa dinâmico já renderizado na página. Ignorando reexecução.`);
+        window.mapaSincronizado = true;
         return;
     }
 
-    // Ativa as travas para bloquear chamadas simultâneas do setInterval
+    // 🔴 TRAVA 3: Se já foi sincronizado para ESTA mesma ficha, não roda de novo
+    if (window.mapaSincronizado === true && window.currentStudentId === idFicha && !forcarRecalculo) {
+        window.logDebug?.('GEO', `✅ Ficha ${idFicha} já está sincronizada. Ignorando reexecução.`);
+        return;
+    }
+
+    // Ativa as travas para bloquear chamadas simultâneas
     window.sincronizandoGeolocalizacaoEmAndamento = true;
     window.mapaSincronizado = 'em_andamento';
 
     const execId = Math.random().toString(36).substring(2, 7);
     console.log(`🧭 [GEO SYNC #${execId}] Função chamada.`);
-
-    // Garante fallback seguro para docAlvo
-    docAlvo = docAlvo || document;
 
     // Garante que a função global SEMPRE exista desde o primeiro milissegundo
     if (typeof window.atualizarURLsMapasGlobal !== 'function') {
@@ -211,9 +222,6 @@ window.sincronizarMapaECoordenadas = async function(docAlvo, forcarRecalculo = f
     }
 
     try {
-        let urlOrigem = docAlvo.location ? docAlvo.location.href : window.location.href;
-        let idSolInput = docAlvo.querySelector('input[name="id_solicitacao"]') || docAlvo.querySelector('input[name="id"]');
-        let idFicha = idSolInput ? idSolInput.value : '';
         let basePath = urlOrigem.substring(0, urlOrigem.lastIndexOf('/') + 1);
 
         const moduloPath = "modulos/transporte_escolar/";
