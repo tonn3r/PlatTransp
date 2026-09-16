@@ -580,7 +580,7 @@ if (!mapaJaRenderizado) {
 
                 if (inputDist) {
                     inputDist.value =
-                        valDist.replace(/[^0-9]/g, '');
+                        String(valDist).replace(/[^0-9]/g, '');
                 }
             }
 

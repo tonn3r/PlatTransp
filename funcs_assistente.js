@@ -1233,6 +1233,7 @@ async function extrairContextoFicha(doc) {
         inputDistanciaFicha: doc.querySelector('input[name="distancia_aferida"], #distancia_aferida'),
         encaminhamento: encaminhamento
     };
+    if(window.logDebug) window.logDebug("[ASSISTENTE] Contexto extraído da ficha:", partialCtx, partialEstado, encaminhamento);
 }
 
 // Filtra a base de escolas retornando apenas aquelas compatíveis com o nível de ensino atual do aluno.
@@ -1261,6 +1262,7 @@ function filtrarEscolasAptas(baseEscolas, nivelAlunoNorm, isBercarioGeral) {
 
 // Monta a lista de escolas mais próximas e as ordena para exibição, limitando a quantidade exibida.
 function montarListaEscolasExibicao(escolasAptas, latAluno, lonAluno, modo, idEscolaAtual, rotaSessao) {
+    if(window.logDebug) window.logDebug("[ASSISTENTE] Montando lista de escolas para exibição. Total escolas aptas:", escolasAptas.length);
     let latBase = latAluno;
     let lonBase = lonAluno;
     if (modo === 'endereco') {
@@ -1315,38 +1317,16 @@ function obterBancoEncaminhamentos() {
     return null;
 }
 
-// Preenche automaticamente o formulário de análise da solicitação e abre os modais do sistema SE2.
-function preencheAnalise(resultado, resultado_motivo, resultado_detalhes, distancia, idEscolaMaisProxima = null) {
-    const docFinal = window.getAlvoDocument();
-    console.debug('[ASSISTENTE] Preenchendo análise:', { resultado, resultado_motivo, resultado_detalhes, distancia, idEscolaMaisProxima });
-
-    // 1. Normalização de Distância
-    if (!distancia) {
-        const modoMapa = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
-        const rota = window.getSharedStoreValue?.('dadosGeraisRota');
-        distancia = modoMapa === 'endereco' ? rota?.distanciaEnd : rota?.distanciaCoord;
-        
-        if (distancia == null) {
-            const inputDist = docFinal.getElementById('input-assistente-dist') || docFinal.querySelector('input[name="distancia_aferida"], #distancia_aferida');
-            if (inputDist?.value) distancia = parseInt(inputDist.value, 10);
-        }
-    }
+// ============================================================================
+// 🤖 PREENCHIMENTO DA ANÁLISE E INTEGRAÇÃO DE DECISÃO
+// ============================================================================
+function preencheAnalise(resultadoOverride, motivoOverride, detalhesOverride) {
+    const docFinal = document;
     
-    let baseArred = 50; // Valor padrão
+    let resultado = resultadoOverride;
+    let resultado_motivo = motivoOverride;
+    let resultado_detalhes = detalhesOverride;
 
-if (distancia != null && !isNaN(distancia)) {
-    let dist = Number(distancia);
-    if (dist >= 10000) {
-        baseArred = 500;
-    } else if (dist >= 1000) {
-        baseArred = 100;
-    }else if (dist < 300) {
-        baseArred = 10;
-}
-}
-    distancia = (distancia != null && !isNaN(distancia)) ? Math.round(Number(distancia) / baseArred) * baseArred : 0;
-
-    // 2. Normalização de Dados Visuais (Fallback do DOM)
     if (!resultado) {
         const h2 = docFinal.querySelector('#modal-assistente-analise h2');
         resultado = h2?.textContent.toUpperCase().includes('INDEFERIR') ? 'INDEFERIR' : 'DEFERIR';
@@ -1357,7 +1337,7 @@ if (distancia != null && !isNaN(distancia)) {
         resultado_motivo = bMotivo?.nextSibling?.textContent.trim() || "";
     }
 
-    // [NOVA LÓGICA]: Captura o top3EscolasNomes do estado caso haja mais de uma escola mais próxima
+    // Captura o top3EscolasNomes do estado compartilhado caso haja mais de uma escola mais próxima
     const top3EscolasNomes = window.getSharedStoreValue?.('top3EscolasNomes') || [];
     
     if (!resultado_detalhes) {
@@ -1365,7 +1345,7 @@ if (distancia != null && !isNaN(distancia)) {
         resultado_detalhes = spanObs?.textContent.replace('Obs:', '').trim() || "";
     }
 
-    // [NOVA LÓGICA]: Se houver mais de 1 escola elegível no top3, anexa os nomes no campo de detalhes
+    // Se houver mais de 1 escola elegível no top3, anexa os nomes no campo de detalhes
     if (resultado === 'INDEFERIR' && window.normalizarTexto(resultado_motivo).includes('ESCOLA') && window.normalizarTexto(resultado_motivo).includes('OPCAO') && top3EscolasNomes.length > 1) {
         const listaNomesFormatada = "UEs mais próximas: " + top3EscolasNomes.map((esc) => `${esc.nome} (${esc.distancia})`).join('; ');
         
@@ -1374,85 +1354,187 @@ if (distancia != null && !isNaN(distancia)) {
         }
     }
 
-    // 3. Preenchimento de Campos no DOM
-    try {
-        docFinal.querySelectorAll('input[name="distancia_aferida"], #distancia_aferida').forEach(c => { c.value = distancia; c.setAttribute('value', distancia); });
-        
-        const camposDet = docFinal.querySelectorAll('textarea[name="status_detalhes"], #status_atual_detalhes, textarea[name="motivo_detalhes"]');
-        camposDet.forEach(c => { if(resultado_detalhes) c.value = c.innerHTML = resultado_detalhes; });
-    } catch (e) { console.error(e); }
-
-    // 4. Seleção do Motivo (com Regex para ignorar acentos e case)
-    if (resultado_motivo) {
-        const selector = (resultado === 'INDEFERIR') ? 'select[name="status_motivo"], #status_motivo_' : 'select[name="status_motivo"], #status_motivo';
-        const selectsMotivo = docFinal.querySelectorAll(selector);
-        const alvo = window.normalizarTexto(resultado_motivo);
-
-        selectsMotivo.forEach(select => {
-            for (let i = 0; i < select.options.length; i++) {
-                const opt = select.options[i];
-                if (window.normalizarTexto(opt.text).includes(alvo) || window.normalizarTexto(opt.value).includes(alvo)) {
-                    select.selectedIndex = i;
-                    select.dispatchEvent(new Event('change', { bubbles: true }));
-                    break;
-                }
-            }
-        });
-    }
-
-    // 5. Caso Específico: Escola por Opção
-    if (resultado === 'INDEFERIR' && window.normalizarTexto(resultado_motivo).includes('ESCOLA') && window.normalizarTexto(resultado_motivo).includes('OPCAO')) {
-        const selectEscola = docFinal.getElementById('escola_mais_proxima');
-        
-        if (selectEscola) {
-            // [NOVA LÓGICA]: Atualiza o select apenas se houver EXATAMENTE 1 escola mais próxima na lista do estado
-            if (top3EscolasNomes.length <= 1 && idEscolaMaisProxima && window.escolasDB) {
-                const escolaObj = window.escolasDB.find(e => String(e.id) === String(idEscolaMaisProxima));
-                if (escolaObj) {
-                    const nomesPossiveis = [
-                        escolaObj.nome_select_analise,
-                        escolaObj.nome, 
-                        escolaObj.nome_unidade_SOMAR, 
-                        escolaObj.nome_prodesp_sed, 
-                        escolaObj.nome_abreviado_unidade
-                    ].filter(Boolean).map(n => window.normalizarTexto(n));
-
-                    for (let i = 0; i < selectEscola.options.length; i++) {
-                        const opt = selectEscola.options[i];
-                        if (nomesPossiveis.includes(window.normalizarTexto(opt.text)) || nomesPossiveis.includes(window.normalizarTexto(opt.value))) {
-                            selectEscola.selectedIndex = i;
-                            selectEscola.dispatchEvent(new Event('change', { bubbles: true }));
-                            break;
-                        }
-                    }
-                }
-            } else {
-                // [NOVA LÓGICA]: Se houver mais de 1 escola no top3, limpa/reseta a seleção do combo nativo
-                selectEscola.selectedIndex = 0; 
-                selectEscola.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        }
-    }
-
-    // 6. Finalização e Abertura do Modal do Sistema
-    const modalAssis = document.getElementById('modal-assistente-analise');
+    // Finalização e Remoção do Modal do Assistente
+    const modalAssis = docFinal.getElementById('modal-assistente-analise');
     if (modalAssis) modalAssis.remove();
 
-    const win = docFinal.defaultView || window;
+    const win = window;
     if (win.location.href.includes('ficha_transporte.php') && !win.location.href.includes('nova_versao') && typeof win.ShowModal === 'function') {
         const modalId = (resultado === 'DEFERIR') ? "modal_Deferir" : "modal_Indeferir";
         if (docFinal.getElementById(modalId)) win.ShowModal(modalId);
     }
 }
 
+
+
 // ==============
-// SECTION: ESTILOS E UI BASE
+// SECTION: CACHE DO ASSISTENTE
 // ==============
 
-// Injeta na página os estilos CSS utilizados pela interface do Assistente.
+// Recupera o cache de análise (ex: distâncias) salvo anteriormente no localStorage para o pedido.
+window.getCacheAssistente = function(id) {
+    try {
+        let cacheCompleto = JSON.parse(localStorage.getItem('plattransp_assistente_cache_v2') || '{}');
+        const agora = Date.now();
+        const LIMITE_EXPIRACAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 Dias
+
+        if (cacheCompleto[id]) {
+            // Se o cache da solicitação passou de 7 dias, invalida reativamente
+            if (agora - cacheCompleto[id].timestamp > LIMITE_EXPIRACAO_MS) {
+                delete cacheCompleto[id];
+                localStorage.setItem('plattransp_assistente_cache_v2', JSON.stringify(cacheCompleto));
+                return null;
+            }
+            return cacheCompleto[id].dados;
+        }
+    } catch(e) { 
+        return null; 
+    }
+    return null;
+};
+
+window.setCacheAssistente = function(id, dados) {
+    if (!id) return;
+    try {
+        let cacheCompleto = JSON.parse(localStorage.getItem('plattransp_assistente_cache_v2') || '{}');
+        const agora = Date.now();
+        const LIMITE_EXPIRACAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 Dias
+
+        // 1. Limpa registros expirados com mais de 7 dias
+        for (let k in cacheCompleto) {
+            if (cacheCompleto[k] && cacheCompleto[k].timestamp && (agora - cacheCompleto[k].timestamp > LIMITE_EXPIRACAO_MS)) {
+                delete cacheCompleto[k];
+            }
+        }
+
+        // 2. Atualiza ou insere a ficha atual com o carimbo do tempo
+        cacheCompleto[id] = {
+            dados: dados,
+            timestamp: agora
+        };
+
+        // 3. Aplica o limite estrito de no máximo os últimos 100 registros gravados no histórico
+        let listaChaves = Object.keys(cacheCompleto);
+        if (listaChaves.length > 100) {
+            listaChaves.sort((a, b) => (cacheCompleto[a]?.timestamp || 0) - (cacheCompleto[b]?.timestamp || 0));
+            while (listaChaves.length > 100) {
+                const chaveDeletar = listaChaves.shift();
+                delete cacheCompleto[chaveDeletar];
+            }
+        }
+
+        localStorage.setItem('plattransp_assistente_cache_v2', JSON.stringify(cacheCompleto));
+    } catch(e) {
+        console.error("❌ Falha de gravação no cache de fichas do assistente:", e);
+    }
+};
+
+// ============================================================================
+// 1. VARIÁVEIS DE ESTADO E CONTEXTO COMPARTILHADAS
+// ============================================================================
+let estado = {};
+let ctx = {};
+let historicoRua = {};
+let encaminhamentoResolvido = {};
+let dadosGeraisRotaSessao = null;
+
+// Helper para obter o documento correto (janela principal ou iframe)
+function getTargetDocument() {
+    try {
+        if (window.top && window.top.document) return window.top.document;
+    } catch (e) {
+        // Ignora erros de CORS se houver
+    }
+    return document;
+}
+
+if (typeof window.historico === 'undefined') window.historico = [];
+if (typeof window.estado === 'undefined') window.estado = {};
+
+var historico = window.historico;
+window.atualizarListaEscolasDinamicamente = null;
+
+// ============================================================================
+// 2. FUNÇÃO: ABRIR E EXIBIR O MODAL
+// ============================================================================
+async function abrirModalAssistente(contextoRecebido) {
+    if (window.logDebug) window.logDebug('ASSISTENTE', 'Ação: disparou abrirModalAssistente()');
+    
+    if (window.abrindoModalAssistente) return;
+    window.abrindoModalAssistente = true;
+
+    try {
+        if (contextoRecebido) {
+            ctx = contextoRecebido;
+        }
+
+        const targetDoc = typeof getTargetDocument === 'function' ? getTargetDocument() : document;
+        let modalElemento = targetDoc.getElementById('modal-assistente-analise') || document.getElementById('modal-assistente-analise');
+
+        if (!modalElemento) {
+            if (typeof window.criarModalAssistente === 'function') {
+                modalElemento = await window.criarModalAssistente(targetDoc);
+            } else {
+                modalElemento = targetDoc.createElement('div');
+                modalElemento.id = 'modal-assistente-analise';
+                modalElemento.className = 'modal-assistente assistente-transporte-wrapper';
+                modalElemento.style.display = 'none';
+                modalElemento.innerHTML = `
+                    <div class="modal-header">
+                        <div class="modal-header-info">
+                            <span><span class="mdi mdi-lightning-bolt"></span> Assistente de Análise</span>
+                        </div>
+                        <div class="modal-header-actions" style="display: flex; gap: 8px; align-items: center;">
+                            <button type="button" id="btn-voltar-assistente" class="btn-icon-transparent" style="display: none;" title="Voltar">
+                                <span class="mdi mdi-arrow-left"></span>
+                            </button>
+                            <button type="button" class="btn-icon-transparent" onclick="const doc = (typeof getTargetDocument === 'function' ? getTargetDocument() : document); const m = doc.getElementById('modal-assistente-analise') || document.getElementById('modal-assistente-analise'); if(m) m.style.display='none';">
+                                <span class="mdi mdi-close" style="color: #fff; font-size: 18px;">✖</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-body" id="modal-assistente-body">
+                        <div id="conteudo-assistente">
+                            <div class="message-box">Carregando dados do assistente...</div>
+                        </div>
+                    </div>
+                `;
+                targetDoc.body.appendChild(modalElemento);
+                if (window.logDebug) window.logDebug('ASSISTENTE', '🛠️ Estrutura completa de #modal-assistente-analise injetada com sucesso.');
+            }
+        }
+
+        if (modalElemento) {
+            const escondido = modalElemento.style.display === 'none' || window.getComputedStyle(modalElemento).display === 'none';
+            modalElemento.style.display = escondido ? 'flex' : 'none';
+            modalElemento.classList.toggle('show', escondido);
+            
+            if (window.logDebug) window.logDebug('ASSISTENTE', 'Status do modal alterado:', escondido ? 'Exibido (flex)' : 'Ocultado (none)');
+        }
+
+        if (typeof window.renderizarPasso === 'function') {
+            if (window.logDebug) window.logDebug('ASSISTENTE', 'Iniciando window.renderizarPasso()...');
+            await window.renderizarPasso();
+            window.logDebug('ASSISTENTE', 'window.renderizarPasso() concluído.');
+        }
+
+    } catch (erro) {
+        if (window.logDebug) window.logDebug('ASSISTENTE', 'Erro ao processar abertura do modal:', erro);
+        console.error('[ASSISTENTE] Erro ao abrir o modal:', erro);
+    } finally {
+        window.abrindoModalAssistente = false;
+        window.logDebug('ASSISTENTE', 'Finalizado abrirModalAssistente()');
+    }
+}
+window.abrirModalAssistente = abrirModalAssistente;
+
+// ============================================================================
+// 3. ESTILOS DO ASSISTENTE
+// ============================================================================
 window.gerarEstilosAssistente = function(targetDoc) {
     targetDoc = targetDoc || document;
     if (targetDoc.getElementById('estilos-assistente-transporte')) return;
+    
     const style = targetDoc.createElement('style');
     style.id = 'estilos-assistente-transporte';
     style.innerHTML = `
@@ -1826,33 +1908,391 @@ window.gerarEstilosAssistente = function(targetDoc) {
     targetDoc.head.appendChild(style);
 };
 
+// window.gerarEstilosAssistente = function(targetDoc) {
+//     targetDoc = targetDoc || document;
+//     if (targetDoc.getElementById('estilos-assistente-transporte')) return;
+//     const style = targetDoc.createElement('style');
+//     style.id = 'estilos-assistente-transporte';
+//     style.innerHTML = `
+//         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
+        
+//         .assistente-transporte-wrapper {
+//             font-family: "DM Sans", verdana, sans-serif;
+//             line-height: 1.5;
+//             box-sizing: border-box;
+//         }
+        
+//         .assistente-transporte-wrapper *,
+//         .assistente-transporte-wrapper *:before,
+//         .assistente-transporte-wrapper *:after {
+//             box-sizing: inherit;
+//         }
+        
+//         .mdi mdi-keyboard-backspace{
+//         color: #fff;
+//         }
+//         .fab-assistente {
+//             position: fixed;
+//             bottom: 20px;
+//             right: 20px;
+//             background-color: #6658d3;
+//             color: white;
+//             border: none;
+//             border-radius: 50px;
+//             padding: 12px 20px;
+//             font-size: 14px;
+//             font-weight: 700;
+//             cursor: pointer;
+//             box-shadow: 0 4px 15px rgba(102, 88, 211, 0.4);
+//             z-index: 99999;
+//             display: flex;
+//             align-items: center;
+//             gap: 8px;
+//             transition: transform 0.2s, box-shadow 0.2s;
+//             font-family: "DM Sans", verdana, sans-serif;
+//         }
+//         .fab-assistente:hover {
+//             transform: translateY(-2px);
+//             box-shadow: 0 6px 20px rgba(102, 88, 211, 0.5);
+//         }
+        
+//         .modal-assistente {
+//             position: fixed;
+//             bottom: 80px;
+//             right: 20px;
+//             width: 450px;
+//             max-width: 90%;
+//             background-color: #FFF;
+//             border-radius: 10px;
+//             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+//             border: 1px solid #e1e4e8;
+//             z-index: 100000;
+//             display: flex;
+//             flex-direction: column;
+//             overflow: hidden;
+//             font-family: "DM Sans", verdana, sans-serif;
+//         }
+        
+//         .modal-header {
+//             background-color: #2c3e50;
+//             color: #fff;
+//             padding: 15px 20px;
+//             font-size: 15px;
+//             font-weight: 700;
+//             display: flex;
+//             justify-content: space-between;
+//             align-items: center;
+//         }
+        
+//         .modal-header-info {
+//             display: flex;
+//             align-items: center;
+//             gap: 10px;
+//             overflow: hidden;
+//             flex: 1;
+//         }
+        
+//         .modal-header-info span {
+//             white-space: nowrap;
+//             overflow: hidden;
+//             text-overflow: ellipsis;
+//             display: flex;
+//             align-items: center;
+//             gap: 6px;
+//         }
+        
+//         .btn-icon-transparent {
+//             background: transparent;
+//             border: none;
+//             cursor: pointer;
+//             padding: 0;
+//             outline: none;
+//             display: flex;
+//             align-items: center;
+//             justify-content: center;
+//             transition: opacity 0.2s;
+//         }
+//         .btn-icon-transparent:hover { opacity: 0.7; }
+        
+//         .modal-body {
+//             padding: 20px;
+//             font-size: 14px;
+//             color: #333;
+//             max-height: 70vh;
+//             overflow-y: auto;
+//         }
+        
+//         .section-title {
+//             color: #2c3e50;
+//             margin-top: 0;
+//             margin-bottom: 10px;
+//             font-size: 16px;
+//             font-weight: 700;
+//             display: flex;
+//             align-items: center;
+//             gap: 8px;
+//         }
+        
+//         .text-danger { color: #c0392b; font-weight: 700; }
+//         .text-warning { color: #d35400; font-weight: 700; }
+//         .text-success { color: #27ae60; font-weight: 700; }
+//         .text-info { color: #2980b9; font-weight: 700; }
+//         .text-primary { color: #6658d3; font-weight: 700; }
+//         .text-muted { color: #8597a3; }
+        
+//         .divider {
+//             border: 0;
+//             border-top: 1px solid #e1e4e8;
+//             margin: 20px 0;
+//         }
+        
+//         .school-list-container {
+//             background: #f8f9fa;
+//             padding: 15px;
+//             border-radius: 8px;
+//             border: 1px solid #e1e4e8;
+//             margin-top: 10px;
+//             margin-bottom: 15px;
+//         }
+        
+//         .school-list {
+//             list-style: none;
+//             padding: 0;
+//             margin: 0;
+//         }
+        
+//         .school-item {
+//             margin-bottom: 12px;
+//             color: #555;
+//             padding-bottom: 12px;
+//             border-bottom: 1px dashed #e1e4e8;
+//         }
+//         .school-item:last-child {
+//             margin-bottom: 0;
+//             padding-bottom: 0;
+//             border-bottom: none;
+//         }
+//         .school-item.selected {
+//             color: #ae2727;
+//             font-weight: 750;
+//             font-size: 15px;
+//         }
+        
+//         .badge {
+//             font-size: 10px;
+//             padding: 2px 6px;
+//             border-radius: 4px;
+//             background: #e8e5fc;
+//             color: #6658d3;
+//             font-weight: 700;
+//             margin-left: 4px;
+//             display: inline-block;
+//             vertical-align: middle;
+//         }
 
-window.atualizarListaEscolasDinamicamente = null;
+//         .badge-parcial {
+//             background: #bdf7b6;
+//             color: #1c660d;
+//         }
 
-// ==============
-// SECTION: INICIALIZAÇÃO DO BOTÃO DO ASSISTENTE
-// ==============
+//         .badge-integral {
+//             background: #e8e5fc;
+//             color: #6658d3;
+//         }
+//         .badge-noite {
+//             background: #115185;
+//             color: #ffffff;
+//         }
+        
+//         .school-meta {
+//             font-size: 12px;
+//             display: flex;
+//             align-items: center;
+//             gap: 5px;
+//             margin-top: 4px;
+//         }
+        
+//         .link-action {
+//             font-size: 11px;
+//             color: #6658d3;
+//             text-decoration: none;
+//             display: inline-flex;
+//             align-items: center;
+//             gap: 4px;
+//             margin-top: 6px;
+//             font-weight: 500;
+//         }
+//         .link-action:hover { text-decoration: underline; }
+        
+//         .input-group {
+//             display: flex;
+//             flex-direction: column-reverse;
+//             position: relative;
+//             padding-top: 1.5rem;
+//             margin-bottom: 20px;
+//         }
+        
+//         .input-label {
+//             color: #8597a3;
+//             position: absolute;
+//             top: 1.5rem;
+//             left: 0;
+//             transition: .25s ease;
+//             pointer-events: none;
+//             font-size: 14px;
+//         }
+        
+//         .input-field {
+//             border: 0;
+//             z-index: 1;
+//             background-color: transparent;
+//             border-bottom: 2px solid #e1e4e8; 
+//             font: inherit;
+//             font-size: 16px;
+//             padding: .25rem 0;
+//             color: #333;
+//             width: 100%;
+//         }
+        
+//         .input-field:focus, 
+//         .input-field:valid {
+//             outline: 0;
+//             border-bottom-color: #6658d3;
+//         }
+        
+//         .input-field:focus + .input-label, 
+//         .input-field:valid + .input-label {
+//             color: #6658d3;
+//             transform: translateY(-1.5rem);
+//             font-size: 12px;
+//             font-weight: 700;
+//         }
+        
+//         .action-group { display: flex; gap: 10px; }
+//         .action-group-col { display: flex; flex-direction: column; gap: 10px; }
+        
+//         .btn {
+//             font-family: inherit;
+//             font-size: 14px;
+//             padding: 12px;
+//             border-radius: 6px;
+//             border: none;
+//             cursor: pointer;
+//             font-weight: 700;
+//             transition: all 0.2s ease;
+//             display: flex;
+//             align-items: center;
+//             justify-content: center;
+//             gap: 8px;
+//             width: 100%;
+//             text-decoration: none;
+//             box-sizing: border-box;
+//         }
+        
+//         .btn:focus { outline: none; }
+        
+//         .btn-primary { background-color: #6658d3; color: white; }
+//         .btn-primary:hover { background-color: #5548c8; }
+//         .btn-success { background-color: #27ae60; color: white; }
+//         .btn-info { background-color: #2980b9; color: white; }
+//         .btn-danger { background-color: #c0392b; color: white; }
+//         .btn-warning { background-color: #d35400; color: white; }
+//         .btn-outline { background-color: #f1f3fb; color: #2c3e50; border: 1px solid #d1d5db; }
+//         .btn-outline:hover { background-color: #e2e6f3; }
+        
+//         .btn.destaque { flex: 1.3; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+//         .btn.dimmed { 
+//     flex: 0.7; 
+//     background-color: transparent; /* Remove o fundo cinza */
+//     opacity: 1; /* Retira a opacidade que dá aspecto de "desligado" */
+//     font-weight: 500; /* Opcional: um peso de fonte ligeiramente menor que o botão principal */
+//     transition: all 0.2s ease-in-out; /* Suaviza a interação */
+// }
 
-// Gerencia a criação, exibição e estado do botão flutuante para abrir o assistente de análise.
+// /* Sucesso - Secundário */
+// .btn-success.dimmed { 
+//     border: 2px solid #27ae60; /* Borda da cor principal */
+//     color: #27ae60; /* Texto da cor principal (em vez de branco/cinza) */
+// }
+
+// /* Danger - Secundário */
+// .btn-danger.dimmed { 
+//     border: 2px solid #c0392b; 
+//     color: #c0392b; 
+// }
+
+// .btn-success.dimmed:hover, 
+// .btn-success.dimmed:focus {
+//     background-color: rgba(39, 174, 96, 0.1); 
+// }
+
+// .btn-danger.dimmed:hover, 
+// .btn-danger.dimmed:focus {
+//     background-color: rgba(192, 57, 43, 0.1); 
+// }
+
+
+// .btn-success:not(.dimmed):hover, 
+// .btn-success:not(.dimmed):focus {
+//     background-color: #239c56; 
+// }
+
+// .btn-danger:not(.dimmed):hover, 
+// .btn-danger:not(.dimmed):focus {
+//     background-color: #b33628; 
+// }
+
+
+//         .toggle-btn {
+//             display: flex;
+//             align-items: center;
+//             gap: 6px;
+//             padding: 6px 10px;
+//             cursor: pointer;
+//             border: 1px solid #d1d5db;
+//             background-color: #f8f9fa;
+//             color: #2c3e50;
+//             border-radius: 20px;
+//             font-size: 12px;
+//             font-weight: 600;
+//             font-family: "DM Sans", verdana, sans-serif;
+//             transition: all 0.2s;
+//         }
+//         .toggle-btn:hover {
+//             background-color: #e2e6f3;
+//             border-color: #6658d3;
+//         }
+//         .toggle-btn.active {
+//             background-color: #e8e5fc;
+//             color: #6658d3;
+//             border-color: #6658d3;
+//         }
+        
+//         .message-box {
+//             background: #f8f9fa;
+//             padding: 15px;
+//             border-radius: 5px;
+//             border-left: 4px solid #e1e4e8;
+//             margin-bottom: 0;
+//             text-align: left;
+//             font-size: 15px;
+//         }
+//         .message-box.danger { border-left-color: #c0392b; }
+//         .message-box.success { border-left-color: #27ae60; }
+//         .message-box.warning { border-left-color: #f39c12; }
+//     `;
+//     targetDoc.head.appendChild(style);
+// };
+
+// ============================================================================
+// 4. GERENCIAMENTO DO BOTÃO (VERSÃO COMPLETA UNIFICADA)
+// ============================================================================
 window.gerenciarBotaoAssistente = function() {
-    
-    // 🟢 1. Garantia para a Barra de Paginação Flutuante rodar sempre
     const paginacao = document.getElementById('barra-paginacao-flutuante');
-    if (paginacao) {
-        paginacao.style.zIndex = "900";
-    }
+    if (paginacao) paginacao.style.zIndex = "900";
 
-    // 🟢 2. Determina o documento alvo (janela principal top)
-    let targetDoc = document;
-    try {
-        if (window.top && window.top.document) {
-            targetDoc = window.top.document;
-        }
-    } catch(e) {
-        targetDoc = document;
-    }
+    const targetDoc = getTargetDocument();
 
-    // Helper interno para remover elemento em ambos os contextos
     const removerElementoAmbosEscopos = (id) => {
         const elTarget = targetDoc.getElementById(id);
         if (elTarget) elTarget.remove();
@@ -1860,12 +2300,7 @@ window.gerenciarBotaoAssistente = function() {
         if (elLocal && elLocal !== elTarget) elLocal.remove();
     };
 
-    // 🟢 3. Busca elementos no documento atual ou alvo
-    const getDocTarget = typeof window.getAlvoDocument === 'function' 
-        ? window.getAlvoDocument 
-        : () => document;
-    
-    const doc = getDocTarget() || document; 
+    const doc = (typeof window.getAlvoDocument === 'function' ? window.getAlvoDocument() : null) || document; 
 
     const statusDiv = doc.getElementById('status_atendimento') || 
                       doc.getElementById('mostra_status_pedido') ||
@@ -1879,48 +2314,20 @@ window.gerenciarBotaoAssistente = function() {
 
     if (typeof window.gerarEstilosAssistente === 'function') {
         window.gerarEstilosAssistente(targetDoc);
-        if (targetDoc !== document) {
-            window.gerarEstilosAssistente(document);
-        }
+        if (targetDoc !== document) window.gerarEstilosAssistente(document);
     }
 
-    // Detecta mudança de aluno/ficha e força a limpeza total
+    // Limpeza por troca de ficha/aluno
     if (window.currentStudentId !== currentId) {
         window.currentStudentId = currentId;
         window.mapaSincronizado = false;
-        window.abrindoModalAssistente = false; // Reset da trava de abertura
-        
-        const resetStoreObj = {
-            dadosGeograficos: null,
-            dadosGeraisRota: null,
-            distanciaCoord: null,
-            distanciaEnd: null,
-            DistDiferentesEntreMapas: false
-        };
-
-        if (typeof window.setSharedStore === 'function') {
-            window.setSharedStore(resetStoreObj);
-        } else if (typeof window.setSharedStoreValue === 'function') {
-            Object.entries(resetStoreObj).forEach(([k, v]) => window.setSharedStoreValue(k, v));
-        }
-
-        if (typeof window.cancelarProcessamentosAssistente === 'function') {
-            window.cancelarProcessamentosAssistente();
-        }
+        window.abrindoModalAssistente = false;
         removerElementoAmbosEscopos('modal-assistente-analise');
         removerElementoAmbosEscopos('btn-assistente-transporte');
     }
 
-    let isVisivel = true;
-    if (!statusDiv) {
-        isVisivel = false;
-    } else {
-        const displayStyle = window.getComputedStyle(statusDiv).display;
-        if (displayStyle === 'none') {
-            isVisivel = false;
-        }
-    }
-
+    // Validação de visibilidade do status no DOM
+    let isVisivel = !!statusDiv && window.getComputedStyle(statusDiv).display !== 'none';
     if (!isVisivel) {
         removerElementoAmbosEscopos('modal-assistente-analise');
         removerElementoAmbosEscopos('btn-assistente-transporte');
@@ -1928,7 +2335,7 @@ window.gerenciarBotaoAssistente = function() {
         return;
     }
 
-    // --- IDENTIFICAÇÃO DO USUÁRIO TESTADOR E STATUS ---
+    // Validação de regras de negócio (Usuário Testador / Status Em Análise)
     const userInput = doc.querySelector('input[name="nome_usuario_alt"]') || 
                       doc.querySelector('input[name="usuario_logado"]') ||
                       document.querySelector('input[name="nome_usuario_alt"]') ||
@@ -1937,11 +2344,11 @@ window.gerenciarBotaoAssistente = function() {
     const ehUsuarioTestador = /EVERTON.*MONTEIRO/i.test(nomeUsuario);
 
     const textoStatus = (statusDiv.innerText || statusDiv.textContent || "").toUpperCase().trim();
-    const textoStatusSemAcento = textoStatus.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const textoStatusSemAcento = textoStatus.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
     
     const ehAnalise = textoStatusSemAcento.includes('ANALISE') || 
                       textoStatusSemAcento.includes('AGUARDANDO') ||
-                      textoStatusSemAcento.includes('PENDENTE');
+                      textoStatusSemAcento.includes('ANÁLISE');
 
     if (!ehUsuarioTestador && !ehAnalise) {
         removerElementoAmbosEscopos('modal-assistente-analise');
@@ -1950,363 +2357,92 @@ window.gerenciarBotaoAssistente = function() {
         return;
     }
 
-    // 🟢 Dispara sincronização apenas se não estiver sincronizado e nem com sincronização em andamento
+    // Sincronização de coordenadas
     if (!window.mapaSincronizado && !window.sincronizandoGeolocalizacaoEmAndamento && typeof window.sincronizarMapaECoordenadas === 'function') {
-        window.sincronizarMapaECoordenadas(doc).catch(e => { 
-            console.error('[ASSISTENTE] Erro na sincronização:', e); 
-        });
+        window.sincronizarMapaECoordenadas(doc).catch(e => console.error('[ASSISTENTE] Erro na sincronização:', e));
     }
 
+    // Criação/Exibição do Botão Flutuante
     let btn = targetDoc.getElementById('btn-assistente-transporte') || document.getElementById('btn-assistente-transporte');
-    const docTop = (window.top && window.top.document) ? window.top.document : document;
-    const iframeFicha = document.getElementById('img01') || docTop.getElementById('img01'); 
     
+    const acaoCliqueBotao = function(e) {
+        if (e) e.preventDefault();
+        if (window.logDebug) window.logDebug('ASSISTENTE', 'Clique no botão assistente disparado.');
+        
+        if (typeof window.abrirModalAssistente === 'function') {
+            window.abrirModalAssistente();
+        } else if (typeof abrirModalAssistente === 'function') {
+            abrirModalAssistente();
+        } else if (window.logDebug) {
+            window.logDebug('ASSISTENTE', '❌ Função abrirModalAssistente não localizada.');
+        }
+    };
+
     if (!btn) {
         btn = targetDoc.createElement('button');
         btn.id = 'btn-assistente-transporte';
         btn.className = 'fab-assistente assistente-transporte-wrapper';
-        
-        btn.style.position = 'fixed';
-        btn.style.bottom = '20px';
-        btn.style.right = '20px';
-        btn.style.zIndex = '999999';
-        btn.style.padding = '10px 16px';
-        btn.style.backgroundColor = '#27ae60';
-        btn.style.color = '#ffffff';
-        btn.style.border = 'none';
-        btn.style.borderRadius = '20px';
-        btn.style.cursor = 'pointer';
-        btn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
-        btn.style.fontWeight = 'bold';
-        
-        btn.innerHTML = `<span class="mdi mdi-lightning-bolt" style="font-size: 18px; margin-right: 4px;"></span> Assistente de Análise`;
-        
-        const HandlerClique = (e) => {
-            e.preventDefault();
-            
-            const modal = targetDoc.getElementById('modal-assistente-analise') || document.getElementById('modal-assistente-analise');
-            
-            if (modal) {
-                const isHidden = modal.style.display === 'none' || window.getComputedStyle(modal).display === 'none';
-                modal.style.display = isHidden ? 'flex' : 'none';
-            } else if (typeof window.abrirModalAssistente === 'function') {
-                window.abrirModalAssistente();
-            }
-        };
-
-        if (typeof window.vincularEventoUnico === 'function') {
-            window.vincularEventoUnico(btn, 'click', HandlerClique);
-        } else {
-            btn.addEventListener('click', HandlerClique);
-        }
+        btn.innerHTML = `<span class="mdi mdi-lightning-bolt"></span> Assistente de Análise`;
+        btn.onclick = acaoCliqueBotao;
 
         targetDoc.body.appendChild(btn); 
-        console.log('[ASSISTENTE] ✅ Botão do Assistente criado e exibido com sucesso!');
+        if (window.logDebug) window.logDebug('ASSISTENTE', '✅ Botão criado e evento onclick associado.');
     } else {
-        if(iframeFicha && iframeFicha.style.display !== 'none') {
-            logDebug('[ASSISTENTE] ✅ Botão do Assistente já existe e será exibido.');
-            btn.style.display = 'flex';
-        }
+        btn.style.display = 'flex';
+        btn.onclick = acaoCliqueBotao;
     }
 };
 
-// ==============
-// SECTION: CACHE DO ASSISTENTE
-// ==============
+// Dispara a criação do botão assim que o script é lido
+window.gerenciarBotaoAssistente();
 
-// Recupera o cache de análise (ex: distâncias) salvo anteriormente no localStorage para o pedido.
-window.getCacheAssistente = function(id) {
-    try {
-        let cacheCompleto = JSON.parse(localStorage.getItem('plattransp_assistente_cache_v2') || '{}');
-        const agora = Date.now();
-        const LIMITE_EXPIRACAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 Dias
 
-        if (cacheCompleto[id]) {
-            // Se o cache da solicitação passou de 7 dias, invalida reativamente
-            if (agora - cacheCompleto[id].timestamp > LIMITE_EXPIRACAO_MS) {
-                delete cacheCompleto[id];
-                localStorage.setItem('plattransp_assistente_cache_v2', JSON.stringify(cacheCompleto));
-                return null;
-            }
-            return cacheCompleto[id].dados;
-        }
-    } catch(e) { 
-        return null; 
-    }
-    return null;
-};
-
-window.setCacheAssistente = function(id, dados) {
-    if (!id) return;
-    try {
-        let cacheCompleto = JSON.parse(localStorage.getItem('plattransp_assistente_cache_v2') || '{}');
-        const agora = Date.now();
-        const LIMITE_EXPIRACAO_MS = 7 * 24 * 60 * 60 * 1000; // 7 Dias
-
-        // 1. Limpa registros expirados com mais de 7 dias
-        for (let k in cacheCompleto) {
-            if (cacheCompleto[k] && cacheCompleto[k].timestamp && (agora - cacheCompleto[k].timestamp > LIMITE_EXPIRACAO_MS)) {
-                delete cacheCompleto[k];
-            }
-        }
-
-        // 2. Atualiza ou insere a ficha atual com o carimbo do tempo
-        cacheCompleto[id] = {
-            dados: dados,
-            timestamp: agora
-        };
-
-        // 3. Aplica o limite estrito de no máximo os últimos 100 registros gravados no histórico
-        let listaChaves = Object.keys(cacheCompleto);
-        if (listaChaves.length > 100) {
-            listaChaves.sort((a, b) => (cacheCompleto[a]?.timestamp || 0) - (cacheCompleto[b]?.timestamp || 0));
-            while (listaChaves.length > 100) {
-                const chaveDeletar = listaChaves.shift();
-                delete cacheCompleto[chaveDeletar];
-            }
-        }
-
-        localStorage.setItem('plattransp_assistente_cache_v2', JSON.stringify(cacheCompleto));
-    } catch(e) {
-        console.error("❌ Falha de gravação no cache de fichas do assistente:", e);
-    }
-};
-
-// ==============
-// SECTION: ABERTURA DO MODAL E MÁQUINA DE ESTADOS
-// ==============
-
-// Inicializa o Assistente de Análise processando o contexto e os dados para mostrar o modal.
-window.abrirModalAssistente = async function() {
-    if (window.abrindoModalAssistente) return;
-    window.abrindoModalAssistente = true;
-    
-    const ctx = await extrairContextoFicha(window.getAlvoDocument());
-    const doc = ctx.doc;
-    if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] abrirModalAssistente');
-
-    const modalAnterior = document.getElementById('modal-assistente-analise');
-    if (modalAnterior?.parentNode) modalAnterior.parentNode.removeChild(modalAnterior);
-
-    const idSolicitacaoAtual = ctx.idSolicitacao;
-    let historicoRua = ctx.historicoRua;
-    const escolasAptas = ctx.escolasAptas;
-    const urlPesquisaRua = ctx.urlPesquisaRua;
-    const encaminhamentoResolvido = ctx.encaminhamento;
-
-    let cacheSalvo = window.getCacheAssistente(idSolicitacaoAtual);
-    if (cacheSalvo && cacheSalvo.ultimoModo) {
-        const parts = cacheSalvo.ultimoModo.split('_');
-        if (parts.length === 2 && typeof window.setSharedStoreValue === 'function') {
-            window.setSharedStoreValue('modoMapaAtual', parts[0]);
-            window.setSharedStoreValue('modoTransporteAtual', parts[1]);
-        }
-    }
-    
-    if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-
-    window.MODO_PADRAO = ctx.isMudanca ? 'Endereço' : 'Coordenada';
-    if (!window.MODO_PADRAO) window.MODO_PADRAO = 'Endereço';
-    const isMudanca = ctx.isMudanca;
-
-    const enderecoCompleto = ctx.enderecoCompleto;
-    const endRua = ctx.endRua;
-    const endCEP = ctx.cepVal;
-    const ruaMatch = ctx.ruaMatch;
-    const ehAnaliseInicial = ctx.ehAnalise;
-    const nomeRuaTitulo = ctx.nomeRuaTitulo;
-    const nomeStr = ctx.nomeAluno;
-    //const nomesResponsaveis = ctx.nomesResponsaveis;
-    const nomesResponsaveis = (nomeStr && ctx.nomesResponsaveis) 
-    ? ctx.nomesResponsaveis + '; ou<br>' + nomeStr
-    : ctx.nomesResponsaveis;    const sugestaoDeficienciaHtml = ctx.sugestaoDeficienciaHtml;
-    let idEscolaAtual = ctx.idEscolaAtual;
-    let nivelAlunoOriginal = ctx.nivelAlunoOriginal;
-    let nivelAlunoNorm = ctx.nivelAlunoNorm;
-    let isBercarioGeral = ctx.isBercarioGeral;
-
-    const modal = document.createElement('div');
-    modal.id = 'modal-assistente-analise';
-    modal.className = 'modal-assistente assistente-transporte-wrapper';
-    
-    modal.innerHTML = `
-        <div class="modal-header">
-            <div class="modal-header-info">
-                <button id="btn-voltar-assistente" class="btn-icon-transparent" style="display:none;" title="Voltar ao passo anterior">
-                    <span class="mdi mdi-keyboard-backspace" style="font-size: 18px;"></span>
-                </button>
-                <span><span class="mdi mdi-map-marker" style="font-size: 16px; margin-right: 4px;"></span> ${nomeRuaTitulo}</span>
-            </div>
-            <button id="btn-fechar-assistente" class="btn-icon-transparent" style="font-size: 24px;" title="Fechar"><span class="mdi mdi-close" style="font-size: 22px;"></span></button>
-        </div>
-        <div id="conteudo-assistente" class="modal-body">
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    const docPai = (window.top || window).document;
-const btnFechar = docPai.getElementById('btn-fechar-assistente') || document.getElementById('btn-fechar-assistente');
-
-vincularEventoUnico(btnFechar, 'click', () => {
-    if (typeof window.logDebug === 'function') window.logDebug('ASSISTENTE', 'Botão fechar assistente clicado.');
-    if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-    
-    const btnFinalizar = docPai.getElementById('btn-aplicar-resultado') || document.getElementById('btn-aplicar-resultado');
-    const modalAlvo = docPai.getElementById('modal-assistente-analise') || modal;
-
-    if (btnFinalizar) {
-        btnFinalizar.click();
-    } else if (modalAlvo) {
-        modalAlvo.style.display = 'none';
-    }
-});
-
-    let estado = {
-        ehAnalise: ehAnaliseInicial,
-        mudancaOk: null,
-        escolaProximaUser: null,
-        escolaProximaCalc: null,
-        ehEncaminhado: null,
-        isEncaminhamentoDispensado: false,
-        distancia: null,
-        deficiencia: null, 
-        dificuldadeAcesso: null,
-        tentouResgate: false,
-        telaFinal: null,
-        distanciaSugeridaInput: "",
-        distanciasOSRM: {}, 
-        buscandoOSRM: false,
-        distanciasVerificadasInicialmente: false,
-        perfilOSRM: 'foot',
-        cacheDistancias: cacheSalvo ? (cacheSalvo.distancias || {}) : {},
-        listaEscolasPorModo: cacheSalvo ? (cacheSalvo.listas || {}) : {},
-        ultimoModoUsado: cacheSalvo ? cacheSalvo.ultimoModo : null,
-        listaEscolas: [],
-        ruaMatch: ruaMatch,
-        confirmacaoFeita: false,
-        ehMaisProxima: null,
-        ehMaisProximaParcial: false,
-        ehMaisProximaIntegral: false,
-        isEspecial: ctx.isEspecial,
-        nomeEscolaAtual: ctx.nomeEscolaAtual,
-        areaRuralProcessada: false,
-        deficienciaEspecialProcessada: false,
-        pularDeficiencia: false,
-        top3EscolasNomes: "",
-        idEscolaMaisProxima: null,
-        distMaisProxima: null,
-        opcoesMaisProx: '',
-        opcoesMaisProxCount: 0,
-        opcoesMaisProxItems: [],
-        fetchRealizado: false
-    };
-    
-    // Salva as distâncias obtidas ou em erro no cache local para persistência.
-    function persistirEstado() {
-        let distanciasLimpas = {};
-        if (estado.cacheDistancias) {
-            for (let modo in estado.cacheDistancias) {
-                distanciasLimpas[modo] = {};
-                for (let escId in estado.cacheDistancias[modo]) {
-                    if (estado.cacheDistancias[modo][escId] !== 'Erro' && estado.cacheDistancias[modo][escId] !== null) {
-                        distanciasLimpas[modo][escId] = estado.cacheDistancias[modo][escId];
-                    }
-                }
-            }
-        }
-        window.setCacheAssistente(idSolicitacaoAtual, {
-            distancias: distanciasLimpas,
-            listas: estado.listaEscolasPorModo,
-            ultimoModo: estado.ultimoModoUsado
-        });
-    }
-    
-    let historico = [];
-    let listaExibirBase = [];
-
-    let dadosGeograficosSessao = window.getSharedStoreValue?.('dadosGeograficos');
-    let dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota');
-
-    // Salva os dados de geolocalização no estado compartilhado da aplicação.
-    function gravarDadosGeograficosSessao(valor) {
-        dadosGeograficosSessao = valor;
-        if (typeof window.setSharedStoreValue === 'function') {
-            window.setSharedStoreValue('dadosGeograficos', valor);
-        }
-    }
-
-    // Armazena o estado atual do assistente no histórico para o botão 'Voltar'.
-    function salvarHistorico() {
-        historico.push(JSON.parse(JSON.stringify(estado)));
-    }
-
-    // Retorna o assistente para a etapa anterior restaurando os dados do histórico.
-    function voltarPasso() {
-        if (historico.length > 0) {
-            if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
-            estado = historico.pop();
-            estado.telaFinal = false;
-            estado.buscandoOSRM = false; 
-            renderizarPasso();
-        }
-    }
-
-    // Gera o texto explicativo sobre o contexto do aluno baseado na rua e encaminhamentos.
-    function gerarHtmlMensagensContexto() {  // REMOVER FUNCAO ORFA?
-        const mensagens = [];
-        if (ctx.historicoRua?.temMatch) {
-            mensagens.push(`
-                <span class="assistente-info-extra" style="display:block; margin-top:10px; color:#444; font-size:13px;">
-                    <strong>Histórico de rua:</strong> ${ctx.historicoRua.motivo || 'Informação presente no cadastro de ruas'}.
-                </span>
-            `);
-        }
-        if (ctx.encaminhamento?.maisRecente) {
-            const m = ctx.encaminhamento.maisRecente;
-            const situacao = m.situacao && m.situacao.toUpperCase().includes('NÃO ATENDER') ? 'NÃO ATENDER' : 'DEFERIDO';
-            const unidade = m.unidade || m.unidadeOrigem || 'unidade não informada';
-            const ano = m.ano ? ` em ${m.ano}` : '';
-            mensagens.push(`
-                <span class="assistente-info-extra" style="display:block; margin-top:8px; color:#444; font-size:13px;">
-                    <strong>Encaminhamento:</strong> ${situacao} para ${unidade}${ano}.
-                </span>
-            `);
-        }
-        return mensagens.join('');
-    }
-
-    if (!ctx.idEscolaAtual) {
-    console.error("[ASSISTENTE] ID da escola não detectado na ficha. A lista de escolas próximas não será exibida corretamente.");
-    }
-
-    // ==============
-    // SECTION: MÁQUINA DE ESTADOS (renderizarPasso)
-    // ==============
-    // Analisa a situação atual e renderiza no Assistente qual deve ser a próxima pergunta ou a resposta final.
+// ============================================================================
+// 3. FUNÇÃO 2: GERAR O CONTEÚDO INTERNO (Sua Máquina de Estados Intacta)
+// ============================================================================
     async function renderizarPasso() {
+        window.logDebug('ASSISTENTE', 'renderizarPasso() chamado.');
         if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] renderizarPasso');
-        const conteudo = document.getElementById('conteudo-assistente');
-        if (!conteudo) return; 
+        
+        const targetDoc = typeof getTargetDocument === 'function' ? getTargetDocument() : document;
+        const conteudo = targetDoc.getElementById('conteudo-assistente') || document.getElementById('conteudo-assistente');
+        if (!conteudo) {
+            if (window.logDebug) window.logDebug('ASSISTENTE', '⚠️ Container #conteudo-assistente não encontrado.');
+            return;
+        }
 
         conteudo.scrollTop = 0;
+        window.logDebug('ASSISTENTE', 'Container #conteudo-assistente encontrado e scroll resetado.');
+        const listaHistorico = (typeof historico !== 'undefined') ? historico : (window.historico || []);
+        const btnVoltar = targetDoc.getElementById('btn-voltar-assistente') || document.getElementById('btn-voltar-assistente');
+    if(window.logDebug) window.logDebug('ASSISTENTE', 'Lista de histórico atual:', listaHistorico);
+    if (btnVoltar) {
+        btnVoltar.style.display = (Array.isArray(listaHistorico) && listaHistorico.length > 0) ? 'flex' : 'none';
         
-        const btnVoltar = document.getElementById('btn-voltar-assistente');
-        if (btnVoltar) {
-            btnVoltar.style.display = historico.length > 0 ? 'flex' : 'none';
-            vincularEventoUnico(btnVoltar, 'click', voltarPasso);
-        }
+        btnVoltar.onclick = function(e) {
+            if (e) e.preventDefault();
+            if (typeof window.voltarPasso === 'function') {
+                window.voltarPasso();
+            } else if (typeof voltarPasso === 'function') {
+                voltarPasso();
+            } else if (window.logDebug) {
+                window.logDebug('ASSISTENTE', '⚠️ Função voltarPasso não encontrada.');
+            }
+        };
+    }
 
+if(window.logDebug) window.logDebug('ASSISTENTE', 'Estado atual do assistente:', estado);
         if (estado.telaFinal) {
+            if(window.logDebug) window.logDebug('ASSISTENTE', 'Renderizando tela final com base no estado atual.');
             
-            
-            // =========================================================================
+// =========================================================================
 // VERIFICAÇÃO DE IRMÃOS
 // =========================================================================
 if (historicoRua && historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length > 0 && estado.verificacaoIrmaosConcluida !== true) {
-    console.debug("[ASSISTENTE] Verificando histórico de irmãos para o endereço...");
+    if(window.logDebug) window.logDebug('ASSISTENTE', '[ASSISTENTE] Verificando histórico de irmãos para o endereço...');
 
     vincularEventoUnico(document.getElementById('btn-voltar-assistente'), 'click', () => {
-        console.log("[voltar]");    
+        if(window.logDebug) window.logDebug('ASSISTENTE', '[voltar]');    
         if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();    
             
         estado.verificacaoIrmaosConcluida = null;
@@ -2497,6 +2633,7 @@ if (historicoRua && historicoRua.dadosIrmaos && historicoRua.dadosIrmaos.length 
             
             // Verifica comprovante se for mudança de endereço, mas apenas se o resultado for DEFERIDO ou nulo. (indeferimento não precisa de documento)
             if (estado.mudancaOk === null && !estado.telaFinal.titulo.includes('INDEFERIR')) {
+                if(window.logDebug) window.logDebug('ASSISTENTE', 'Renderizando tela de verificação de comprovante de mudança de endereço.');
                 conteudo.innerHTML = `
                     <h3 class="section-title text-warning">
                         <span class="mdi mdi-map-search" style="font-size: 22px; margin-right: 6px;"></span> Mudança de Endereço
@@ -2584,6 +2721,7 @@ if (!motivoAnalise) {
 
 
 if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE] Renderizando tela final:', { tipoAcao, motivoAnalise, textoDetalhes, distancia: estado.distancia });
+if(window.logDebug) window.logDebug('ASSISTENTE', 'Renderizando tela final:', { tipoAcao, motivoAnalise, textoDetalhes, distancia: estado.distancia });
             conteudo.innerHTML = `
                 <div style="text-align:center; padding:10px;">
                     <h2 style="color:${corTitulo}; margin-top:0; font-size:24px; display:flex; align-items:center; justify-content:center; gap:8px;">
@@ -2609,20 +2747,28 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
     // Tenta ler o campo de distância do HTML caso o estado esteja vazio
     let valorDistancia = estado.distancia;
     if (valorDistancia === null || valorDistancia === undefined) {
+        if(window.logDebug) window.logDebug('ASSISTENTE', 'Campo de distância aferida lido do HTML:', valorDistancia);
         const campo = docFinal.querySelector('input[name="distancia_aferida"], #distancia_aferida, #input-assistente-dist');
         valorDistancia = campo ? parseInt(campo.value, 10) : null;
+        
     }
 
     // Agora usa valorDistancia em vez de estado.distancia
     preencheAnalise(tipoAcao, motivoAnalise, textoDetalhes, valorDistancia, estado.idEscolaMaisProxima);
+    if(window.logDebug) window.logDebug('ASSISTENTE', 'Botão Finalizar clicado. Resultado aplicado com sucesso. tipoAcao: ', tipoAcao, ', motivoAnalise: ', motivoAnalise, ', textoDetalhes: ', textoDetalhes, ', distancia: ', valorDistancia, ', idEscolaMaisProxima: ', estado.idEscolaMaisProxima);
 });
+if(window.logDebug) window.logDebug('ASSISTENTE', 'Tela final renderizada com sucesso.', { tipoAcao, motivoAnalise, textoDetalhes, distancia: estado.distancia });
             return;
         }
-
-        const temSugestaoDeficiencia = sugestaoDeficienciaHtml === 'ALUNO' || sugestaoDeficienciaHtml === 'FAMILIA';
         
+        const sugestaoDeficienciaHtml = (typeof window.sugestaoDeficienciaHtml !== 'undefined') 
+    ? window.sugestaoDeficienciaHtml 
+    : (estado.sugestaoDeficiencia || (ctx && ctx.sugestaoDeficiencia) || null);
+        const temSugestaoDeficiencia = sugestaoDeficienciaHtml === 'ALUNO' || sugestaoDeficienciaHtml === 'FAMILIA';
+        if(window.logDebug) window.logDebug('ASSISTENTE', 'Sugestão de deficiência detectada:', { sugestaoDeficienciaHtml, temSugestaoDeficiencia });
         function garantirDistanciaPreenchida() {
             if (estado.distancia === null) {
+                if(window.logDebug) window.logDebug('ASSISTENTE', 'Distância não preenchida. Tentando obter distância sugerida com base no contexto e modo de mapa.');
                 const mapMode = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
                 const rotaSessao = window.getSharedStoreValue?.('dadosGeraisRota');
                 const distSug = obterDistanciaSugeridaInput(ctx, mapMode, rotaSessao);
@@ -2636,6 +2782,7 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
             } else {
                 if (temSugestaoDeficiencia || estado.deficiencia === null) {estado.pularDeficiencia= false;}else{estado.pularDeficiencia= true;}
                 estado.areaRuralProcessada = true;
+                if(window.logDebug) window.logDebug('ASSISTENTE', 'Processando área rural ou dificuldade de acesso. Atualizando estado e garantindo distância preenchida.');
                 garantirDistanciaPreenchida();
                 if (estado.deficiencia === 'ALUNO') {
                     estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido por motivo de deficiência do aluno.", motivoAnalise: "ALUNO DEFICIENTE" };
@@ -2654,12 +2801,15 @@ if (typeof console !== 'undefined' && console.debug) console.debug('[ASSISTENTE]
 
         // etapa DEFICIENCIA do assistente
         // --- INÍCIO: BLOCO UNIFICADO DA ETAPA DEFICIÊNCIA ---
+
+if(window.logDebug) window.logDebug('ASSISTENTE', 'Verificando necessidade de renderizar etapa de deficiência com base no estado atual.', { estado, temSugestaoDeficiencia });
 const precisaDeficienciaEspecial = estado.isEspecial && estado.deficiencia === null;
 const precisaDeficienciaDistancia = (estado.distancia !== null && estado.distancia < 1500 && estado.deficiencia === null) || (temSugestaoDeficiencia === true && estado.deficiencia === null && estado.distancia !== null && estado.pularDeficiencia !== true);
 const precisaDeficiencia_ = (estado.areaRuralProcessada || (temSugestaoDeficiencia && estado.ehEncaminhado !== null)) && estado.pularDeficiencia === false && estado.deficiencia === null;
-const precisaDeficienciaEJA = ((ctx.ehEJA && temSugestaoDeficiencia && estado.deficiencia === null) || (ctx.ehEJA && estado.deficiencia === null && estado.distancia !== null && estado.pularDeficiencia !== true));
+const precisaDeficienciaEJA = ((ctx && ctx.ehEJA && temSugestaoDeficiencia && estado.deficiencia === null) || (ctx && ctx.ehEJA && estado.deficiencia === null && estado.distancia !== null && estado.pularDeficiencia !== true));
 
 if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaDeficienciaDistancia || precisaDeficiencia_ || precisaDeficienciaEJA)) {
+    if(window.logDebug) window.logDebug('ASSISTENTE', 'Renderizando etapa de deficiência com base no estado atual.', { precisaDeficienciaEspecial, precisaDeficienciaDistancia, precisaDeficiencia_, precisaDeficienciaEJA, estado });
     let textoPergunta = "<p>O aluno ou responsável legal possui laudo médico válido comprovando <b>deficiência</b>?</p>";
     let estiloAluno = "background:#27ae60;";
     let estiloFamilia = "background:#2980b9;";
@@ -2725,14 +2875,15 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
     return;
 }
 // --- FIM: BLOCO DA ETAPA DEFICIÊNCIA ---
-
+if(window.logDebug) window.logDebug('ASSISTENTE', 'Etapa de deficiência concluída ou não necessária. Continuando para a próxima etapa.', { estado });
         //ETAPA 1:  DISTANCIA E ESCOLAS PROXIMAS
         if (estado.escolaProximaUser === null) {
-
+            window.logDebug?.('[ASSISTENTE] Etapa 1: Distância e Escolas Próximas');
             let dadosGeograficos = dadosGeograficosSessao;
 
             if (dadosGeograficos && (dadosGeograficos.erro || !dadosGeograficos.geoEndereco_Latit) && !estado.tentouResgate) {
                 estado.tentouResgate = true; 
+                window.logDebug?.('[ASSISTENTE] Tentando resgatar dados geográficos novamente...');
                 
                 const iframeMap = ctx.iframeMapa;
                 if (iframeMap?.src?.includes('destination=')) {
@@ -2755,6 +2906,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
                 }
 
                 if (ctx.idSolicitacao) {
+                    window.logDebug?.('[ASSISTENTE] Tentando resgatar dados geográficos via função extrairDadosGeograficos...');
                     dadosGeograficosSessao = null;
                     if (typeof window.setSharedStore === 'function') {
                         window.setSharedStore({ dadosGeograficos: null });
@@ -2765,6 +2917,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
 
                     if (typeof window.extrairDadosGeograficos === 'function') {
                         window.extrairDadosGeograficos(urlFallback).then(dados => {
+                            window.logDebug?.('[ASSISTENTE] Dados geográficos resgatados via função extrairDadosGeograficos:', dados);
                             gravarDadosGeograficosSessao(dados ? dados : { erro: true });
                             renderizarPasso();
                         });
@@ -2807,7 +2960,7 @@ if (estado.escolaProximaUser !== null && (precisaDeficienciaEspecial || precisaD
 
             // DEFINIÇÃO DO MOTOR DA LISTA DINÂMICA
 const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
-    
+    if(window.logDebug) window.logDebug('[ASSISTENTE] Atualizando lista de escolas dinamicamente...');
     // Função helper para arredondar distância
     const Arredondar = (distanciaBase = 0, idEscola = 0) => {
         let valorOriginal = 0;
@@ -2836,7 +2989,9 @@ const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
         if (forcarRecalculo) {
             if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
             estado.buscandoOSRM = false;
+            window.logDebug?.('[ASSISTENTE] Forçando cancelamento de processos em andamento para recalcular a lista.');
         } else {
+            window.logDebug?.('[ASSISTENTE] Processamento em andamento. Ignorando nova solicitação.');
             return;
         }
     }
@@ -2871,9 +3026,10 @@ const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
     estado.perfilOSRM = transpModeAtual === 'carro' ? 'driving' : 'foot';
     
     const containerLista = document.getElementById('container-lista-escolas');
-    if (!containerLista) return;
+    if (!containerLista) {window.logDebug?.('[ASSISTENTE] Container de lista de escolas não encontrado.'); return; }
 
     const verificarTodosCalculados = () => {
+        window.logDebug?.('[ASSISTENTE] Verificando se todas as distâncias foram calculadas...');
         return listaExibirBase.length > 0 && listaExibirBase.every(esc => estado.distanciasOSRM && estado.distanciasOSRM[esc.id] !== undefined);
     };
 
@@ -2996,6 +3152,7 @@ const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
     };
 
     window.rerenderizarListaOSRM = () => {
+        if(window.logDebug) window.logDebug('[ASSISTENTE] Re-renderizando lista de escolas com distâncias atualizadas...');
         const { ehMaisProxima, ehMaisProximaParcial } = recalcularStatusECorrespondencias();
 
         const lis = containerLista.querySelectorAll('li');
@@ -3044,7 +3201,9 @@ const atualizarListaEscolasDinamicamente = async (forcarRecalculo = false) => {
     
     if (listaOrdenada.length === 0) {
         listaHtml += `<li class="school-item text-danger">Nenhuma escola encontrada na base.</li>`;
+        if(window.logDebug) window.logDebug('[ASSISTENTE] Nenhuma escola encontrada na base para o endereço fornecido.');
     } else {
+        if(window.logDebug) window.logDebug('[ASSISTENTE] Renderizando lista de escolas ordenadas por distância...');
         listaOrdenada.forEach((esc, i) => {
             const cor = String(esc.id) === String(idEscolaAtual) ? 'selected' : '';
             const tagAtual = String(esc.id) === String(idEscolaAtual) ? `<span class="mdi mdi-star text-warning" style="font-size: 14px; margin-left: 4px;" title="Escola Solicitada"></span> ` : '';
@@ -3280,6 +3439,7 @@ window.atualizarListaEscolasDinamicamente = atualizarListaEscolasDinamicamente;
             
             dadosGeraisRotaSessao = window.getSharedStoreValue?.('dadosGeraisRota') || dadosGeraisRotaSessao;
             if (dadosGeraisRotaSessao) {
+                if(window.logDebug) window.logDebug('[ASSISTENTE] Dados gerais da rota obtidos do sharedStore:', dadosGeraisRotaSessao);
                 const modoMapaAtual = window.getSharedStoreValue?.('modoMapaAtual') || 'coordenada';
                 const distancia = modoMapaAtual === 'endereco' ? dadosGeraisRotaSessao.distanciaEnd : dadosGeraisRotaSessao.distanciaCoord;
                 if (typeof window.atualizarInputDistancia === 'function') window.atualizarInputDistancia(distancia);
@@ -3287,11 +3447,13 @@ window.atualizarListaEscolasDinamicamente = atualizarListaEscolasDinamicamente;
 
             const btnRefresh = document.getElementById('btn-refresh-lista');
             if (btnRefresh && typeof window.acionarRefreshLista === 'function') {
+                if(window.logDebug) window.logDebug('[ASSISTENTE] Vinculando botão de refresh da lista de escolas.');
                 btnRefresh.onclick = window.acionarRefreshLista;
             }
 
             const inputDist = document.getElementById('input-assistente-dist');
             if (inputDist) {
+                if(window.logDebug) window.logDebug('[ASSISTENTE] Vinculando eventos do input de distância.');
                 setTimeout(() => { inputDist.focus(); document.getElementById('conteudo-assistente').scrollTop = 0;}, 100);
                 vincularEventoUnico(inputDist, 'focus', function () { this.select(); });
                 vincularEventoUnico(inputDist, 'input', function () { this.dataset.editado = 'true'; });
@@ -3323,6 +3485,7 @@ window.atualizarListaEscolasDinamicamente = atualizarListaEscolasDinamicamente;
             });
             
             vincularEventoUnico(document.getElementById('btn-esc-nao'), 'click', () => { 
+                if(window.logDebug) window.logDebug('[ASSISTENTE] Botão NÃO clicado. Processando...');
                 if (window.cancelarProcessamentosAssistente) window.cancelarProcessamentosAssistente();
                 const dist = parseInt(inputDist.value);
                 if (isNaN(dist) || dist < 0) return alert("Por favor, insira uma distância válida em metros.");
@@ -3353,13 +3516,14 @@ window.atualizarListaEscolasDinamicamente = atualizarListaEscolasDinamicamente;
                         }, '');
                         estado.opcoesMaisProxCount = filtradas.length;
                     }
+                    if(window.logDebug) window.logDebug('[ASSISTENTE] Recalculando opcoesMaisProx:', estado.opcoesMaisProx, estado.opcoesMaisProxCount, estado.opcoesMaisProxItems);
                 } catch (e) { console.error('Erro recalculando opcoesMaisProx:', e); }
                 renderizarPasso(); 
             });
-
+            if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa 1 - VERIFICAÇÃO DE ESCOLA E DISTÂNCIA concluída.');
             return;
         }// FIM DA ETAPA 1 - VERIFICAÇÃO DE ESCOLA E DISTÂNCIA
-
+        if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa 1 - VERIFICAÇÃO DE ESCOLA E DISTÂNCIA concluída. Estado atual:', estado);
         //confirmação de dados críticos - somente se a informação do usuario for contrária ao que foi calculado
         if (estado.escolaProximaUser !== null && estado.distancia !== null && !estado.confirmacaoFeita) {
             let pergunta = null;
@@ -3399,6 +3563,7 @@ window.atualizarListaEscolasDinamicamente = atualizarListaEscolasDinamicamente;
                 } else {
                     estado.confirmacaoFeita = true;
                 }
+                if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa 2 - Confirmação de dados críticos concluída. Estado atual:', estado);
         }// fim do bloco de confirmação
 
         
@@ -3412,6 +3577,7 @@ window.atualizarListaEscolasDinamicamente = atualizarListaEscolasDinamicamente;
 
         //etapa DIFICULDADE DE ACESSO
 if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuldadeAcesso === null) || (ctx.ehEJA && historicoRua.ehDificuldadeAcesso))) {
+    if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa 3 - Dificuldade de Acesso. Estado atual:', estado, 'HistoricoRua:', historicoRua);
 
     // A avaliação automática baseada no Banco Local continua rodando imediatamente sem travar
     if (historicoRua.bloqueiaDificuldadeAcesso) {
@@ -3470,6 +3636,7 @@ if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuld
                 textoDetalhes: `Consenso de Dificuldade de Acesso (${historicoRua.historicoDificuldadeAcesso} alunos ativos).`
             };
         }
+        if(window.logDebug) window.logDebug('[ASSISTENTE] CONSENSO DE DIFICULDADE DE ACESSO aplicada. Estado atual:', estado, 'HistoricoRua:', historicoRua);
         return renderizarPasso(); 
     }
 
@@ -3482,6 +3649,7 @@ if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuld
         salvarHistorico();
         estado.dificuldadeAcesso = false; 
         
+        if(window.logDebug) window.logDebug('[ASSISTENTE] VAZIO ABSOLUTO detectado. Estado atual:', estado, 'HistoricoRua:', historicoRua);
         estado.telaFinal = { 
             titulo: "INDEFERIR", 
             mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções.",
@@ -3567,10 +3735,12 @@ if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuld
                 MsgDificuldadeAcesso = ""; 
             }
         }
+        if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa 3 - Dificuldade de Acesso concluída. Estado atual:', estado, 'HistoricoRua:', historicoRua);
     }
     
     // Substitui o Loading pelo conteúdo final gerado
     const loadingEl = document.getElementById('loading-historico-rua');
+    if(window.logDebug) window.logDebug('[ASSISTENTE] Substituindo o loading pelo conteúdo final da etapa de Dificuldade de Acesso.');
     if (loadingEl) {
         let htmlComplementar = `
             ${alertasFetch}
@@ -3625,10 +3795,12 @@ if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuld
         
         vincularEventoUnico(document.getElementById('btn-dif-sim'), 'click', () => { salvarHistorico(); estado.dificuldadeAcesso = true; if (estado.escolaProximaUser === false) { renderizarPasso(); } else { estado.telaFinal = { titulo: "DEFERIR", mensagem: "Deferido devido a Dificuldade de Acesso comprovada na rota." }; renderizarPasso(); } });
         vincularEventoUnico(document.getElementById('btn-dif-nao'), 'click', () => { salvarHistorico(); estado.dificuldadeAcesso = false; estado.telaFinal = { titulo: "INDEFERIR", mensagem: "A distância não atinge 1500m e o caso não se enquadra nas exceções." }; renderizarPasso(); });
+    if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa de Dificuldade de Acesso concluída. Estado atual:', estado, 'HistoricoRua:', historicoRua);
     }
-    
+    window.logDebug?.('[ASSISTENTE] Etapa de Dificuldade de Acesso concluída.');
     return;
 } //FIM DA etapa DIFICULDADE DE ACESSO
+        if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa 3 - Dificuldade de Acesso concluída. Estado atual:', estado, 'HistoricoRua:', historicoRua);
 
         const excecaoGarantida = (estado.deficiencia === 'ALUNO' || estado.deficiencia === 'FAMILIA' || estado.dificuldadeAcesso === true);
         let msgExcecao = "";
@@ -3659,7 +3831,7 @@ if (estado.distancia < 1500 && ((estado.deficiencia === false && estado.dificuld
 
 //etapa encaminhamento
 if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGarantida) && estado.ehEncaminhado === null) {
-
+if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa 4 - Encaminhamento. Estado atual:', estado, 'HistoricoRua:', historicoRua);
     if (estado.isEncaminhamentoDispensado) {
         estado.ehEncaminhado = false; 
         estado.telaFinal = { titulo: "DEFERIR", mensagem: msgExcecao };
@@ -3718,6 +3890,7 @@ if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGa
     conteudo.innerHTML = `
         ${msgEncaminhamentoHtml}
     `;
+    if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa 4 - Encaminhamento concluída. Renderizando interface de decisão manual. Estado atual:', estado, 'HistoricoRua:', historicoRua);
     
     vincularEventoUnico(document.getElementById('btn-enc-sim'), 'click', () => { 
         salvarHistorico(); 
@@ -3732,11 +3905,10 @@ if (estado.escolaProximaUser === false && (estado.distancia >= 1500 || excecaoGa
         estado.telaFinal = { titulo: "INDEFERIR", mensagem: "O aluno não está na escola mais próxima e NÃO possui encaminhamento justificado por falta de vaga." }; 
         renderizarPasso(); 
     });
+    if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa de Encaminhamento concluída.');
     return;
 }// etapa encaminhamento
-
+    if(window.logDebug) window.logDebug('[ASSISTENTE] Etapa final concluída. Renderizando tela final...');
     }
 
-    window.abrindoModalAssistente = false;
-    renderizarPasso(); 
-};
+window.renderizarPasso = renderizarPasso;

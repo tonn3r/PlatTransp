@@ -37,15 +37,14 @@ window.logErro = function(modulo, mensagem, ...args) {
 
     // Obtém a versão e o ambiente diretamente do manifesto da extensão
     const manifest = (typeof chrome !== 'undefined' && chrome?.runtime?.getManifest) 
-  ? chrome.runtime.getManifest() 
-  : null;
+        ? chrome.runtime.getManifest() 
+        : null;
     const VERSAO_ATUAL = manifest ? manifest.version : null;
     const AMBIENTE = manifest ? manifest.config_ambiente || "main" : "main"; // Fallback para main caso não definido
 
     // Constrói a URL de checagem apontando para a branch correspondente do ambiente
     const URL_VERSAO = `https://raw.githubusercontent.com/tonn3r/PlatTransp/${AMBIENTE}/version.json`;
 
-    
     async function verificarAtualizacao() {
         try {
             const response = await fetch(URL_VERSAO + "?t=" + new Date().getTime());
@@ -63,7 +62,6 @@ window.logErro = function(modulo, mensagem, ...args) {
                     alerta.id = 'alerta-atualizacao-addon';
                     alerta.style = "position:fixed; top:0; left:0; width:100%; background:#e74c3c; color:white; text-align:center; padding:12px; z-index:999999; font-family:verdana; font-size:13px; font-weight:bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3);";
                     
-                    // Define a cor de fundo com base no canal de atualização para alertar o usuário visualmente
                     if (AMBIENTE === "teste") {
                         alerta.style.backgroundColor = "#d35400"; // Laranja para ambiente de teste
                     }
@@ -95,8 +93,8 @@ window.logErro = function(modulo, mensagem, ...args) {
         };
     }
 
-    // Quando a plataforma desloga, aparece um link "Clique aqui para relogar" que nao funciona.  Essa é a correção para interceptar e redirecionar corretamente para a página de logout.
-const interceptarLinkSessaoExpirada = (contextoDoc) => {
+    // Quando a plataforma desloga, aparece um link "Clique aqui para relogar" que não funciona. Essa é a correção para interceptar e redirecionar corretamente para a página de logout.
+    const interceptarLinkSessaoExpirada = (contextoDoc) => {
         if (!contextoDoc) return;
         const links = contextoDoc.querySelectorAll('a[href*="login/exit.php"]');
         links.forEach(link => {
@@ -115,13 +113,14 @@ const interceptarLinkSessaoExpirada = (contextoDoc) => {
         });
     };
 
-// Monitora o DOM para capturar o HTML de erro assim que ele for injetado de forma assíncrona
+    // Monitora o DOM para capturar o HTML de erro assim que ele for injetado de forma assíncrona
     const observerSessao = new MutationObserver(() => {
         interceptarLinkSessaoExpirada(document);
     });
     observerSessao.observe(document.body || document.documentElement, { childList: true, subtree: true });
     interceptarLinkSessaoExpirada(document);
 
+    // Identificação de rota e inicialização direta do módulo apropriado no DOM atual
     const urlAtual = window.location.href;
 
     if (urlAtual.includes('solicitacoes_transporte_realizadas') || document.getElementById('id_unidade_selecionada')) {
@@ -131,92 +130,11 @@ const interceptarLinkSessaoExpirada = (contextoDoc) => {
     }
 
     // Interrompe e descarta as solicitações de busca de distância (OSRM) para poupar uso de CPU e memória.
-    // Função global que interrompe qualquer cálculo OSRM a decorrer
     window.cancelarProcessamentosAssistente = function() {
         if (window.osrmAbortController) {
             try { window.osrmAbortController.abort(); } catch(e) {}
         }
-        // limpar referência para evitar controllers pendentes
         window.osrmAbortController = null;
     };
 
-
-// Exibir e ocultar o assistente por monkey patching
-(function() {
-    const win = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
-
-    const originalShowmodal = win.Showmodal;
-    const originalAbrirLinkModal = win.AbrirLinkModal;
-    const originalFechaModal = win.FechaModal;
-
-    const getTargetDoc = () => (win.top && win.top.document) ? win.top.document : win.document;
-
-    function ocultarAssistente() {
-        const targetDoc = getTargetDoc();
-        const removerElemento = (id) => {
-            const elTarget = targetDoc.getElementById(id);
-            if (elTarget) elTarget.remove();
-            const elLocal = win.document.getElementById(id);
-            if (elLocal && elLocal !== elTarget) elLocal.remove();
-        };
-
-        removerElemento('modal-assistente-analise');
-        removerElemento('btn-assistente-transporte');
-
-        if (typeof win.setVarEscopos === 'function') {
-            win.setVarEscopos('abrindoModalAssistente', false);
-        } else {
-            win.abrindoModalAssistente = false;
-        }
-    }
-
-    // Tenta exibir o botão e vincula o evento 'load' ao iframe para garantir a renderização na 1ª abertura
-    function prepararExibicaoBotao() {
-        if (typeof win.gerenciarBotaoAssistente === 'function') {
-            win.gerenciarBotaoAssistente();
-        }
-
-        const targetDoc = getTargetDoc();
-        const iframeFicha = targetDoc.getElementById('img01') || win.document.getElementById('img01');
-
-        if (iframeFicha && !iframeFicha.dataset.plattranspCarregado) {
-            iframeFicha.dataset.plattranspCarregado = "true";
-            iframeFicha.addEventListener('load', () => {
-                if (typeof win.gerenciarBotaoAssistente === 'function') {
-                    win.gerenciarBotaoAssistente();
-                }
-            }, { once: true });
-        }
-    }
-
-    win.AbrirLinkModal = function() {
-        if (typeof originalAbrirLinkModal === 'function') {
-            originalAbrirLinkModal.apply(this, arguments);
-        }
-        prepararExibicaoBotao();
-    };
-
-    win.Showmodal = function() {
-        if (typeof originalShowmodal === 'function') {
-            originalShowmodal.apply(this, arguments);
-        }
-        prepararExibicaoBotao();
-    };
-
-    win.FechaModal = function() {
-        if (typeof originalFechaModal === 'function') {
-            originalFechaModal.apply(this, arguments);
-        }
-
-        const modalSite = win.document.getElementById("myModal");
-        if (!modalSite || modalSite.style.display === "none") {
-            ocultarAssistente();
-        }
-    };
 })();
-
-
-
-})();
-
-

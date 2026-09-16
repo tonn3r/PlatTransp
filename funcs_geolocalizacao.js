@@ -182,7 +182,6 @@ window.sincronizandoGeolocalizacaoEmAndamento = false;
 // Sincroniza a origem e o destino do mapa na interface do usuário adicionando seletores de transporte e coordenadas.
 window.sincronizarMapaECoordenadas = async function(docAlvo, forcarRecalculo = false) {
 
-    // Garante fallback seguro para docAlvo no topo da execução
     docAlvo = docAlvo || document;
 
     let urlOrigem = docAlvo.location ? docAlvo.location.href : window.location.href;
@@ -209,14 +208,12 @@ window.sincronizarMapaECoordenadas = async function(docAlvo, forcarRecalculo = f
         return;
     }
 
-    // Ativa as travas para bloquear chamadas simultâneas
     window.sincronizandoGeolocalizacaoEmAndamento = true;
     window.mapaSincronizado = 'em_andamento';
 
     const execId = Math.random().toString(36).substring(2, 7);
     console.log(`🧭 [GEO SYNC #${execId}] Função chamada.`);
 
-    // Garante que a função global SEMPRE exista desde o primeiro milissegundo
     if (typeof window.atualizarURLsMapasGlobal !== 'function') {
         window.atualizarURLsMapasGlobal = () => console.warn('[GEO] atualizarURLsMapasGlobal chamada antes da inicialização completa do mapa.');
     }
@@ -230,13 +227,12 @@ window.sincronizarMapaECoordenadas = async function(docAlvo, forcarRecalculo = f
 
         let dadosGeo = null;
 
-        // Extração dos dados geográficos
         try {
             console.log(`🔍 [GEO SYNC #${execId}] Solicitando extração de dados geográficos para ficha ID: ${idFicha}`);
             dadosGeo = await window.extrairDadosGeograficos(urlFichaNova);
             console.log(`🔍 [GEO SYNC #${execId}] Dados geográficos recebidos:`, dadosGeo);
         } catch (err) {
-            window.mapaSincronizado = false; // 🟢 Reseta estado do mapa
+            window.mapaSincronizado = false;
             if (err.name === 'AbortError') {
                 console.warn(`🛑 [GEO SYNC #${execId}] Requisição de dados geográficos abortada por uma chamada mais recente.`);
                 return null;
@@ -246,7 +242,6 @@ window.sincronizarMapaECoordenadas = async function(docAlvo, forcarRecalculo = f
             return null;
         }
 
-        // Validação das coordenadas
         const latOk = dadosGeo && dadosGeo.geoEndereco_Latit && String(dadosGeo.geoEndereco_Latit).length > 4;
         const lonOk = dadosGeo && dadosGeo.geoEndereco_Longit && String(dadosGeo.geoEndereco_Longit).length > 4;
 
@@ -380,22 +375,20 @@ window.sincronizarMapaECoordenadas = async function(docAlvo, forcarRecalculo = f
             }
             window.setSharedStoreValue?.('dadosGeograficos', dadosGeo);
 
-            // 🟢 Marca o sucesso da sincronização
             window.mapaSincronizado = true;
             console.log(`✅ [GEO SYNC #${execId}] Sincronização concluída com sucesso.`);
             return dadosGeo;
         } else {
             console.warn(`⚠️ [GEO SYNC #${execId}] Coordenadas inválidas recebidas.`, dadosGeo);
             window.setSharedStoreValue?.('dadosGeograficos', { erro: true });
-            window.mapaSincronizado = false; // 🟢 Reseta a trava em caso de dados inválidos
+            window.mapaSincronizado = false;
             return null;
         }
     } catch (erroInesperado) {
         console.error(`❌ [GEO SYNC #${execId}] Erro não tratado durante a sincronização:`, erroInesperado);
-        window.mapaSincronizado = false; // 🟢 Garante liberação do estado se houver exceção
+        window.mapaSincronizado = false;
         return null;
     } finally {
-        // 🟢 CRUCIAL: Libera a trava global ao encerrar a execução (sucesso ou falha)
         window.sincronizandoGeolocalizacaoEmAndamento = false;
     }
 };
@@ -499,13 +492,14 @@ if (
     !Number.isFinite(latDest) ||
     !Number.isFinite(lonDest)
 ) {
+    if(window.logDebug) window.logDebug('GEO', '⚠️ Coordenadas inválidas fornecidas para cálculo de trajeto:', { latOrigin, lonOrigin, latDest, lonDest });
     return null;
 }
 
     if (isNaN(latOrigin) || isNaN(lonOrigin) || isNaN(latDest) || isNaN(lonDest) ||
         Math.abs(latOrigin) > 90 || Math.abs(lonOrigin) > 180 ||
         Math.abs(latDest) > 90 || Math.abs(lonDest) > 180) {
-        console.warn("[PLUGIN-MAPA] 🚫 Coordenadas inválidas interceptadas. Rota não calculada para não gerar Bad Request.");
+        if(window.logDebug) window.logDebug('GEO', '⚠️ Coordenadas inválidas interceptadas. Rota não calculada para não gerar Bad Request.');
         return null;
     }
 
@@ -513,7 +507,7 @@ if (
     
             // Se não estiver dentro, força o modo 'endereco' para ignorar as coordenadas corrompidas/distantes
             if (!localValido) {
-                console.warn("[ASSISTENTE] Coordenadas fora de SBC");
+                if(window.logDebug) window.logDebug('GEO', '⚠️ Coordenadas fora de SBC');
                 return null;
             }
 
@@ -558,7 +552,7 @@ if (
         distanciaCache > 0 &&
         distanciaCache < 500000
     ) {
-
+        
         return dadosEmCacheValido;
 
     }
@@ -690,6 +684,7 @@ if (
                     }
                 }
             } catch (e) {
+                if(window.logDebug) window.logDebug('GEO', '⚠️ Erro ao consultar OSRM:', e);
                 if (e.name === 'AbortError') return null;
             }
 
