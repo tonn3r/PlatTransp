@@ -82,7 +82,7 @@ window.logErro = function(modulo, mensagem, ...args) {
     }
 
     if (window === window.top) {
-        // verificarAtualizacao();
+        verificarAtualizacao();
     }
 
     // Blindagem contra erros de módulos legados da página principal.php
